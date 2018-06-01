@@ -14,9 +14,7 @@ from datetime import date
 
 import turicreate as tc
 
-from scrapy.utils.misc import arg_to_iter
-
-from .utils import condense_csv, filter_sframe
+from .utils import arg_to_iter, condense_csv, filter_sframe
 
 csv.field_size_limit(sys.maxsize)
 

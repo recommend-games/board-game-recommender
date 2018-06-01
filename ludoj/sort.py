@@ -10,9 +10,7 @@ import sys
 
 from itertools import groupby
 
-from scrapy.utils.misc import arg_to_iter
-
-from .utils import identity, parse_date
+from .utils import arg_to_iter, identity, parse_date
 
 csv.field_size_limit(sys.maxsize)
 
