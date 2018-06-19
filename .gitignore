@@ -99,6 +99,7 @@ include/
 share/
 pip-selfcheck.json
 
+results
 feeds/
 recommender/
 .tc/
