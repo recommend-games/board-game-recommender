@@ -63,7 +63,7 @@ def make_cluster(data, item_id, target, target_dtype=str):
     return clusters.filter(lambda x: x is not None and len(x) > 1)
 
 
-class GamesRecommender(object):
+class GamesRecommender:
     ''' games recommender '''
 
     DEFAULT_MIN_NUM_VOTES = 50
@@ -549,13 +549,14 @@ def _parse_args():
     parser.add_argument('users', nargs='*', help='users to be recommended games')
     parser.add_argument('--model', '-m', default='.tc', help='model directory')
     parser.add_argument('--train', '-t', action='store_true', help='train a new model')
-    parser.add_argument('--games', '-g', default='results/bgg.csv', help='games CSV file')
+    parser.add_argument('--games-file', '-G', default='results/bgg.csv', help='games CSV file')
     parser.add_argument(
-        '--ratings', '-r', default='results/bgg_ratings.csv', help='ratings CSV file')
+        '--ratings-file', '-R', default='results/bgg_ratings.csv', help='ratings CSV file')
     parser.add_argument(
         '--num-rec', '-n', type=int, default=10, help='number of games to recommend')
     parser.add_argument(
         '--cooperative', '-c', action='store_true', help='recommend cooperative games')
+    parser.add_argument('--games', '-g', type=int, nargs='+', help='restrict to these games')
     parser.add_argument('--players', '-p', type=int, help='player count')
     parser.add_argument('--complexity', '-C', type=float, nargs='+', help='complexity')
     parser.add_argument('--time', '-T', type=float, help='max playing time')
@@ -599,7 +600,7 @@ def _main():
         games_filters['min_time__lte'] = args.time * 1.1
 
     if args.train:
-        recommender = GamesRecommender.train_from_csv(args.games, args.ratings)
+        recommender = GamesRecommender.train_from_csv(args.games_file, args.ratings_file)
         recommender.save(args.model)
     else:
         recommender = GamesRecommender.load(args.model)
@@ -610,6 +611,7 @@ def _main():
         # TODO try `diversity` argument
         recommendations = recommender.recommend(
             users=user,
+            games=args.games,
             games_filters=games_filters,
             num_games=None if args.worst else args.num_rec,
         )
