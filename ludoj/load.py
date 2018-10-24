@@ -3,6 +3,7 @@
 
 ''' loading ranking '''
 
+import argparse
 import logging
 import os
 import sys
@@ -31,7 +32,7 @@ def _upload(games, url, id_field='bgg_id'):
             'rec_rank': game.get('rank'),
             'rec_rating': game.get('score'),
         }
-        response = requests.patch(url=url.format(id_), data=data)
+        response = requests.patch(url=os.path.join(url, str(id_), ''), data=data)
 
         if not response.ok:
             LOGGER.warning(
@@ -40,19 +41,37 @@ def _upload(games, url, id_field='bgg_id'):
     return count + 1
 
 
+def _parse_args():
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument(
+        '--model', '-m',
+        default=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.tc')),
+        help='model directory')
+    parser.add_argument(
+        '--url', '-u', default='http://127.0.0.1:8000/games/', help='upload URL')
+    parser.add_argument('--id-field', '-i', default='bgg_id', help='ID field')
+    parser.add_argument(
+        '--verbose', '-v', action='count', default=0, help='log level (repeat for more verbosity)')
+
+    return parser.parse_args()
+
+
 def _main():
+    args = _parse_args()
+
     logging.basicConfig(
         stream=sys.stderr,
-        level=logging.INFO,
+        level=logging.DEBUG if args.verbose > 0 else logging.INFO,
         format='%(asctime)s %(levelname)-8.8s [%(name)s:%(lineno)s] %(message)s'
     )
 
-    path = os.path.join(os.path.dirname(__file__), '..', '.tc', '')
-    LOGGER.info('loading recommender from <%s>...', path)
+    LOGGER.info(args)
 
-    recommender = GamesRecommender.load('.tc/')
+    LOGGER.info('loading recommender from <%s>...', args.model)
+
+    recommender = GamesRecommender.load(args.model)
     games = recommender.recommend()
-    count = _upload(games, 'http://127.0.0.1:8000/games/{}/')
+    count = _upload(games=games, url=args.url, id_field=args.id_field)
 
     LOGGER.info('done updating %d items', count)
 
