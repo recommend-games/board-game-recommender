@@ -33,7 +33,7 @@ with io.open(os.path.join(HERE, 'README.md'), encoding='utf-8') as f:
     LONG_DESCRIPTION = '\n' + f.read()
 
 if REQUIRED is None:
-    with io.open(os.path.join(HERE, 'requirements-top.txt'), encoding='utf-8') as f:
+    with io.open(os.path.join(HERE, 'requirements.txt'), encoding='utf-8') as f:
         REQUIRED = f.read().split()
 
 # Where the magic happens:
