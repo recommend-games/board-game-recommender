@@ -10,12 +10,12 @@ from setuptools import find_packages, setup
 
 # Package meta-data.
 NAME = 'ludoj-recommender'
-DESCRIPTION = 'Ludoj recommender engine'
-URL = 'https://bitbucket.org/MarkusShepherd/ludoj-recommender'
+DESCRIPTION = 'Games recommender engine'
+URL = 'https://gitlab.com/mshepherd/ludoj-recommender'
 EMAIL = 'markus.r.shepherd@gmail.com'
 AUTHOR = 'Markus Shepherd'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.0.1'
+VERSION = '0.1.0'
 
 # What packages are required for this module to be executed?
 REQUIRED = None
@@ -58,7 +58,7 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: Implementation :: CPython',
-        'Programming Language :: Python :: Implementation :: PyPy'
     ],
 )

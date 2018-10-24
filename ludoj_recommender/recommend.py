@@ -639,36 +639,3 @@ def _main():
 
 if __name__ == '__main__':
     _main()
-
-# ids = set(games['bgg_id'])
-
-# with open('clusters.csv', 'w') as f:
-#     writer = csv.DictWriter(f, ('bgg_id', 'bgg_id_impl'))
-#     writer.writeheader()
-
-#     for cluster in clusters:
-#         if len(cluster) == 1:
-#             # writer.writerow({'bgg_id': cluster[0], 'bgg_id_impl': cluster[0]})
-#             continue
-
-#         cluster_rec = set(cluster) & ids
-
-#         if not cluster_rec:
-#             # TODO handle empty cluster
-#             continue
-
-#         recommendations = model.recommend([None], items=list(cluster_rec))
-
-#         recommendations.print_rows(num_rows=3)
-
-#         if not recommendations:
-#             # TODO handle empty recommendations
-#             continue
-
-#         bgg_id_impl = recommendations[0]['bgg_id']
-
-#         # print(bgg_id_impl, cluster)
-
-#         for bgg_id in sorted(cluster):
-
-#             writer.writerow({'bgg_id': bgg_id, 'bgg_id_impl': bgg_id_impl})
