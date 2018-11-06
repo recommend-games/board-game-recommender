@@ -48,7 +48,7 @@ def _parse_args():
         default=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.tc')),
         help='model directory')
     parser.add_argument(
-        '--url', '-u', default='http://127.0.0.1:8000/games/', help='upload URL')
+        '--url', '-u', default='http://localhost:8000/api/games/', help='upload URL')
     parser.add_argument('--id-field', '-i', default='bgg_id', help='ID field')
     parser.add_argument(
         '--verbose', '-v', action='count', default=0, help='log level (repeat for more verbosity)')
