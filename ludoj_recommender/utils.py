@@ -156,6 +156,38 @@ def filter_sframe(sframe, **params):
     return sframe[ind]
 
 
+def percentile_buckets(sarray, percentiles):
+    ''' make percentiles '''
+
+    sarray = sarray.sort(True)
+    total = len(sarray)
+
+    percentiles = list(percentiles)
+    assert percentiles == sorted(percentiles)
+    percentiles = [p / 100 for p in percentiles] if max(percentiles) > 1 else percentiles
+    assert 0 < max(percentiles) < 1
+    percentiles.append(1)
+
+    lower = sarray[0]
+
+    for percentile in percentiles:
+        index = int(percentile * total) if percentile < 1 else -1
+        upper = sarray[index]
+        LOGGER.debug('%5.1f%%-tile: between %.3f and %.3f', percentile * 100, lower, upper)
+        yield percentile, lower, upper
+        lower = upper
+
+
+def star_rating(score, buckets, low=1, high=5):
+    ''' star rating '''
+
+    step = (high - low) / (len(buckets) - 1)
+    for i, (_, _, upper) in enumerate(buckets):
+        if score <= upper:
+            return low + i * step
+    return high
+
+
 def arg_to_iter(arg):
     ''' convert an argument to an iterable '''
 

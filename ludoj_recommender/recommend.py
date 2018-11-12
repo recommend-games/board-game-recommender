@@ -9,10 +9,11 @@ import tempfile
 import sys
 
 from datetime import date
+# from functools import partial
 
 import turicreate as tc
 
-from .utils import arg_to_iter, condense_csv, filter_sframe
+from .utils import arg_to_iter, condense_csv, filter_sframe, percentile_buckets, star_rating
 
 csv.field_size_limit(sys.maxsize)
 
@@ -227,6 +228,7 @@ class GamesRecommender:
             num_games=None,
             ascending=True,
             columns=None,
+            star_percentiles=None,
             **kwargs
         ):
         ''' recommend games '''
@@ -305,6 +307,15 @@ class GamesRecommender:
             recommendations = recommendations.join(self.games, on='bgg_id', how='left')
         else:
             recommendations['name'] = None
+
+        if star_percentiles:
+            columns.append('stars')
+            buckets = tuple(percentile_buckets(recommendations['score'], star_percentiles))
+            # recommendations['stars'] = recommendations['score'].apply(
+            #     partial(star_rating, buckets=buckets, low=1, high=5))
+            recommendations['stars'] = [
+                star_rating(score=score, buckets=buckets, low=1.0, high=5.0)
+                for score in recommendations['score']]
 
         return recommendations.sort('rank', ascending=ascending)[columns]
 
