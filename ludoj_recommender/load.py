@@ -25,12 +25,13 @@ def _upload(games, url, id_field='bgg_id'):
             LOGGER.info('updated %d items so far', count)
 
         id_ = game.get(id_field)
-        if id_field is None:
+        if id_ is None:
             continue
 
         data = {
             'rec_rank': game.get('rank'),
             'rec_rating': game.get('score'),
+            'rec_stars': game.get('stars'),
         }
         response = requests.patch(url=os.path.join(url, str(id_), ''), data=data)
 
@@ -51,6 +52,8 @@ def _parse_args():
         '--url', '-u', default='http://localhost:8000/api/games/', help='upload URL')
     parser.add_argument('--id-field', '-i', default='bgg_id', help='ID field')
     parser.add_argument(
+        '--percentiles', '-p', type=float, nargs='+', help='percentiles for star ratings')
+    parser.add_argument(
         '--verbose', '-v', action='count', default=0, help='log level (repeat for more verbosity)')
 
     return parser.parse_args()
@@ -70,7 +73,7 @@ def _main():
     LOGGER.info('loading recommender from <%s>...', args.model)
 
     recommender = GamesRecommender.load(args.model)
-    games = recommender.recommend()
+    games = recommender.recommend(star_percentiles=args.percentiles)
     count = _upload(games=games, url=args.url, id_field=args.id_field)
 
     LOGGER.info('done updating %d items', count)
