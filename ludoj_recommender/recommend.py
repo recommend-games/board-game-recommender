@@ -101,7 +101,7 @@ class GamesRecommender:
         'bgg_user_rating': float,
     }
     default_limits = {
-        'year': (1500, date.today().year),
+        'year': (-4000, date.today().year),
         'complexity': (1, 5),
         'min_players': 1,
         'max_players': 1,
