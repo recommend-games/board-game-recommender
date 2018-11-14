@@ -21,6 +21,8 @@ def _parse_args():
     parser.add_argument(
         '--ratings-file', '-R', default='results/bgg_ratings.csv', help='ratings CSV file')
     parser.add_argument(
+        '--side-data-columns', '-S', nargs='+', help='game features to use in recommender model')
+    parser.add_argument(
         '--num-rec', '-n', type=int, default=10, help='number of games to recommend')
     parser.add_argument(
         '--cooperative', '-c', action='store_true', help='recommend cooperative games')
@@ -68,7 +70,12 @@ def _main():
         games_filters['min_time__lte'] = args.time * 1.1
 
     if args.train:
-        recommender = GamesRecommender.train_from_csv(args.games_file, args.ratings_file)
+        recommender = GamesRecommender.train_from_csv(
+            games_csv=args.games_file,
+            ratings_csv=args.ratings_file,
+            side_data_columns=args.side_data_columns,
+            verbose=bool(args.verbose),
+        )
         recommender.save(args.model)
     else:
         recommender = GamesRecommender.load(args.model)

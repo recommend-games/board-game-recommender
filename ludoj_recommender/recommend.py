@@ -443,7 +443,9 @@ class GamesRecommender:
             cls,
             games,
             ratings,
+            side_data_columns=None,
             max_iterations=100,
+            verbose=False,
             defaults=True,
             **min_max,
         ):
@@ -472,13 +474,23 @@ class GamesRecommender:
 
         games = games[ind]
 
+        side_data_columns = list(arg_to_iter(side_data_columns))
+        if 'bgg_id' not in side_data_columns:
+            side_data_columns.append('bgg_id')
+        if len(side_data_columns) > 1:
+            LOGGER.info('using game side features: %r', side_data_columns)
+            item_data = all_games[side_data_columns].dropna()
+        else:
+            item_data = None
+
         model = tc.ranking_factorization_recommender.create(
-            ratings.filter_by(games['bgg_id'], 'bgg_id'),
+            observation_data=ratings.filter_by(games['bgg_id'], 'bgg_id'),
             user_id='bgg_user_name',
             item_id='bgg_id',
             target='bgg_user_rating',
-            # item_data=games,
+            item_data=item_data,
             max_iterations=max_iterations,
+            verbose=verbose,
         )
 
         return cls(model=model, games=all_games, ratings=ratings)
@@ -539,7 +551,9 @@ class GamesRecommender:
             ratings_csv,
             games_columns=None,
             ratings_columns=None,
+            side_data_columns=None,
             max_iterations=100,
+            verbose=False,
             defaults=True,
             **min_max,
         ):
@@ -551,7 +565,9 @@ class GamesRecommender:
         return cls.train(
             games=games,
             ratings=ratings,
+            side_data_columns=side_data_columns,
             max_iterations=max_iterations,
+            verbose=verbose,
             defaults=defaults,
             **min_max
         )
