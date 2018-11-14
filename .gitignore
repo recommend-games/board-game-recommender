@@ -103,5 +103,5 @@ pip-selfcheck.json
 results
 feeds/
 recommender/
-.tc/
+.tc*/
 
