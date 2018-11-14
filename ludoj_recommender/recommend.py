@@ -521,8 +521,6 @@ class GamesRecommender:
             # pylint: disable=unexpected-keyword-arg
             games['compilation'] = games['compilation'].apply(bool, skip_na=False)
 
-        # TODO dedupe games by bgg_id
-
         return games
 
     @classmethod

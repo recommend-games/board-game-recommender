@@ -25,6 +25,8 @@ def _parse_args():
     parser.add_argument(
         '--num-rec', '-n', type=int, default=10, help='number of games to recommend')
     parser.add_argument(
+        '--diversity', '-d', type=float, default=0, help='diversity in recommendations')
+    parser.add_argument(
         '--cooperative', '-c', action='store_true', help='recommend cooperative games')
     parser.add_argument('--games', '-g', type=int, nargs='+', help='restrict to these games')
     parser.add_argument('--players', '-p', type=int, help='player count')
@@ -83,12 +85,12 @@ def _main():
     for user in [None] + args.users:
         LOGGER.info('#' * 100)
 
-        # TODO try `diversity` argument
         recommendations = recommender.recommend(
             users=user,
             games=args.games,
             games_filters=games_filters,
             num_games=None if args.worst else args.num_rec,
+            diversity=0 if args.worst else args.diversity,
         )
 
         LOGGER.info('best games for <%s>', user or 'everyone')
