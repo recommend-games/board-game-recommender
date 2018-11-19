@@ -233,7 +233,7 @@ class GamesRecommender:
         ):
         ''' recommend games '''
 
-        users = list(arg_to_iter(users)) or [None]
+        users = [user.lower() if user else None for user in arg_to_iter(users)] or [None]
 
         items = kwargs.pop('items', None)
         assert games is None or items is None, 'cannot use <games> and <items> together'
@@ -534,6 +534,11 @@ class GamesRecommender:
             column_type_hints=columns,
             usecols=columns.keys(),
         ).dropna()
+
+        if 'bgg_user_name' in columns:
+            # pylint: disable=unexpected-keyword-arg
+            ratings['bgg_user_name'] = ratings['bgg_user_name'].apply(
+                str.lower, dtype=str, skip_na=True)
 
         if dedupe and 'bgg_user_rating' in columns:
             ratings = ratings.unstack('bgg_user_rating', 'ratings')
