@@ -17,9 +17,9 @@ def _parse_args():
     parser.add_argument('users', nargs='*', help='users to be recommended games')
     parser.add_argument('--model', '-m', default='.tc', help='model directory')
     parser.add_argument('--train', '-t', action='store_true', help='train a new model')
-    parser.add_argument('--games-file', '-G', default='results/bgg.csv', help='games CSV file')
+    parser.add_argument('--games-file', '-G', default='results/bgg.jl', help='games file')
     parser.add_argument(
-        '--ratings-file', '-R', default='results/bgg_ratings.csv', help='ratings CSV file')
+        '--ratings-file', '-R', default='results/bgg_ratings.jl', help='ratings file')
     parser.add_argument(
         '--side-data-columns', '-S', nargs='+', help='game features to use in recommender model')
     parser.add_argument(
@@ -72,9 +72,9 @@ def _main():
         games_filters['min_time__lte'] = args.time * 1.1
 
     if args.train:
-        recommender = GamesRecommender.train_from_csv(
-            games_csv=args.games_file,
-            ratings_csv=args.ratings_file,
+        recommender = GamesRecommender.train_from_files(
+            games_file=args.games_file,
+            ratings_file=args.ratings_file,
             side_data_columns=args.side_data_columns,
             verbose=bool(args.verbose),
         )

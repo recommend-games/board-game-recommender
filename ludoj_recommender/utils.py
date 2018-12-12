@@ -4,6 +4,7 @@
 
 import csv
 import logging
+import os
 import sys
 
 from datetime import datetime, timezone
@@ -198,3 +199,13 @@ def arg_to_iter(arg):
         return arg
 
     return (arg,)
+
+
+def format_from_path(path):
+    ''' get file extension '''
+    try:
+        _, ext = os.path.splitext(path)
+        return ext.lower()[1:] if ext else None
+    except Exception:
+        pass
+    return None

@@ -3,6 +3,7 @@
 ''' recommend games '''
 
 import csv
+import json
 import logging
 import os
 import tempfile
@@ -13,7 +14,8 @@ from datetime import date
 
 import turicreate as tc
 
-from .utils import arg_to_iter, condense_csv, filter_sframe, percentile_buckets, star_rating
+from .utils import (
+    arg_to_iter, condense_csv, filter_sframe, format_from_path, percentile_buckets, star_rating)
 
 csv.field_size_limit(sys.maxsize)
 
@@ -496,7 +498,7 @@ class GamesRecommender:
         return cls(model=model, games=all_games, ratings=ratings)
 
     @classmethod
-    def load_games(cls, games_csv, columns=None):
+    def load_games_csv(cls, games_csv, columns=None):
         ''' load games from CSV '''
 
         # TODO parse dates, e.g., scraped_at
@@ -524,8 +526,31 @@ class GamesRecommender:
         return games
 
     @classmethod
-    def load_ratings(cls, ratings_csv, columns=None, dedupe=True):
-        ''' load games from CSV '''
+    def load_games_json(cls, games_json, columns=None, orient='lines'):
+        ''' load games from JSON '''
+
+        cls.logger.info('reading games from JSON file <%s>', games_json)
+
+        columns = cls.columns_games if columns is None else columns
+        games = (
+            tc.SFrame.read_json(url=games_json, orient='records') if orient == 'records'
+            else tc.SFrame.read_csv(url=games_json, header=False, column_type_hints=str)['X1']
+            .apply(json.loads)
+            .unpack(column_name_prefix=None))
+
+        for col in columns:
+            if col not in games.column_names():
+                games[col] = None
+
+        if 'compilation' in games.column_names():
+            # pylint: disable=unexpected-keyword-arg
+            games['compilation'] = games['compilation'].apply(bool, skip_na=False)
+
+        return games
+
+    @classmethod
+    def load_ratings_csv(cls, ratings_csv, columns=None, dedupe=True):
+        ''' load ratings from CSV '''
 
         # TODO parse dates, e.g., scraped_at
         columns = cls.columns_ratings if columns is None else columns
@@ -548,10 +573,34 @@ class GamesRecommender:
         return ratings
 
     @classmethod
-    def train_from_csv(
+    def load_ratings_json(cls, ratings_json, columns=None, orient='lines', dedupe=True):
+        ''' load ratings from JSON '''
+
+        columns = cls.columns_ratings if columns is None else columns
+        ratings = (
+            tc.SFrame.read_json(url=ratings_json, orient='records') if orient == 'records'
+            else tc.SFrame.read_csv(url=ratings_json, header=False, column_type_hints=str)['X1']
+            .apply(json.loads)
+            .unpack(column_name_prefix=None))
+        ratings = ratings[columns].dropna()
+
+        if 'bgg_user_name' in ratings.column_names():
+            # pylint: disable=unexpected-keyword-arg
+            ratings['bgg_user_name'] = ratings['bgg_user_name'].apply(
+                str.lower, dtype=str, skip_na=True)
+
+        if dedupe and 'bgg_user_rating' in ratings.column_names():
+            ratings = ratings.unstack('bgg_user_rating', 'ratings')
+            ratings['bgg_user_rating'] = ratings['ratings'].apply(lambda x: x[-1], dtype=float)
+            del ratings['ratings']
+
+        return ratings
+
+    @classmethod
+    def train_from_files(
             cls,
-            games_csv,
-            ratings_csv,
+            games_file,
+            ratings_file,
             games_columns=None,
             ratings_columns=None,
             side_data_columns=None,
@@ -560,10 +609,23 @@ class GamesRecommender:
             defaults=True,
             **min_max,
         ):
-        ''' load data from CSV and train recommender '''
+        ''' load data from JSON or CSV and train recommender '''
 
-        games = cls.load_games(games_csv, games_columns)
-        ratings = cls.load_ratings(ratings_csv, ratings_columns)
+        games_format = format_from_path(games_file)
+        if games_format == 'csv':
+            games = cls.load_games_csv(games_csv=games_file, columns=games_columns)
+        else:
+            orient = 'records' if games_format == 'json' else 'lines'
+            games = cls.load_games_json(
+                games_json=games_file, columns=games_columns, orient=orient)
+
+        ratings_format = format_from_path(ratings_file)
+        if ratings_format == 'csv':
+            ratings = cls.load_ratings_csv(ratings_csv=ratings_file, columns=ratings_columns)
+        else:
+            orient = 'records' if ratings_format == 'json' else 'lines'
+            ratings = cls.load_ratings_json(
+                ratings_json=ratings_file, columns=ratings_columns, orient=orient)
 
         return cls.train(
             games=games,
