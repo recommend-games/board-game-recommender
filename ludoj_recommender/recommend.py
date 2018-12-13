@@ -534,7 +534,7 @@ class GamesRecommender:
         columns = cls.columns_games if columns is None else columns
         games = (
             tc.SFrame.read_json(url=games_json, orient='records') if orient == 'records'
-            else tc.SFrame.read_csv(url=games_json, header=False, column_type_hints=str)['X1']
+            else tc.SArray(games_json)
             .apply(json.loads)
             .unpack(column_name_prefix=None))
 
@@ -579,7 +579,7 @@ class GamesRecommender:
         columns = cls.columns_ratings if columns is None else columns
         ratings = (
             tc.SFrame.read_json(url=ratings_json, orient='records') if orient == 'records'
-            else tc.SFrame.read_csv(url=ratings_json, header=False, column_type_hints=str)['X1']
+            else tc.SArray(ratings_json)
             .apply(json.loads)
             .unpack(column_name_prefix=None))
         ratings = ratings[columns].dropna()
