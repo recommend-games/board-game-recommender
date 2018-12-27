@@ -25,38 +25,51 @@ LOGGER = logging.getLogger(__name__)
 def make_cluster(data, item_id, target, target_dtype=str):
     ''' take an SFrame and cluster by target '''
 
-    if not data or item_id not in data.column_names() or target not in data.column_names():
+    if not data or item_id not in data.column_names():
         return tc.SArray(dtype=list)
 
-    data = data[item_id, target].dropna()
+    target = [t for t in arg_to_iter(target) if t in data.column_names()]
+    target_dtype = list(arg_to_iter(target_dtype))
+    target_dtype += [str] * (len(target) - len(target_dtype))
 
-    if not data:
+    if not target:
         return tc.SArray(dtype=list)
 
-    def _convert(item):
-        try:
-            return target_dtype(item)
-        except Exception:
-            pass
-        return None
+    graph = tc.SGraph()
 
-    data[target] = data[target].apply(
-        lambda x: [i for i in map(_convert, x or ()) if i is not None],
-        dtype=list,
-        skip_na=True,
-    )
+    for tar, tdt in zip(target, target_dtype):
+        def _convert(item, dtype=tdt):
+            try:
+                return dtype(item)
+            except Exception:
+                pass
+            return None
 
-    data = data.stack(
-        column_name=target,
-        new_column_name=target,
-        new_column_type=target_dtype,
-        drop_na=True,
-    )
+        tdata = data[[item_id, tar]].dropna()
 
-    if not data:
+        tdata[tar] = tdata[tar].apply(
+            lambda x: [i for i in map(_convert, x or ()) if i is not None],
+            dtype=list,
+            skip_na=True,
+        )
+
+        tdata = tdata.stack(
+            column_name=tar,
+            new_column_name=tar,
+            new_column_type=tdt,
+            drop_na=True,
+        )
+
+        if not tdata:
+            continue
+
+        graph = graph.add_edges(edges=tdata, src_field=item_id, dst_field=tar)
+
+        del tdata, _convert
+
+    if not graph.edges:
         return tc.SArray(dtype=list)
 
-    graph = tc.SGraph(edges=data, src_field=item_id, dst_field=target)
     components_model = tc.connected_components.create(graph)
     clusters = components_model.component_id.groupby(
         'component_id', {'cluster': tc.aggregate.CONCAT('__id')})['cluster']
@@ -87,7 +100,9 @@ class GamesRecommender:
         'max_time': int,
         'cooperative': bool,
         'compilation': bool,
+        'compilation_of': list,
         'implementation': list,
+        'integration': list,
         'rank': int,
         'num_votes': int,
         'avg_rating': float,
@@ -173,7 +188,12 @@ class GamesRecommender:
         ''' game implementation clusters '''
 
         if self._clusters is None:
-            self._clusters = make_cluster(self.games, 'bgg_id', 'implementation', int)
+            self._clusters = make_cluster(
+                data=self.games,
+                item_id='bgg_id',
+                target=['compilation_of', 'implementation', 'integration'],
+                target_dtype=[int, int, int],
+            )
         return self._clusters
 
     @property
@@ -246,7 +266,7 @@ class GamesRecommender:
             else None)
         games = (
             games if isinstance(games, tc.SArray) or games is None
-            else tc.SArray(list(games), dtype=int))
+            else tc.SArray(tuple(games), dtype=int))
 
         if games_filters and self.games:
             games = tc.SArray(dtype=int) if games is None else games
@@ -263,7 +283,6 @@ class GamesRecommender:
             games = games.append(filtered_games['bgg_id']).unique()
 
         if exclude_known and self.ratings:
-            # TODO also exclude games that the user owns or played
             for user in users:
                 if not user:
                     continue
