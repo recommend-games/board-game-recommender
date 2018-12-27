@@ -188,7 +188,12 @@ class GamesRecommender:
         ''' game implementation clusters '''
 
         if self._clusters is None:
-            self._clusters = make_cluster(self.games, 'bgg_id', 'implementation', int)
+            self._clusters = make_cluster(
+                data=self.games,
+                item_id='bgg_id',
+                target=['compilation_of', 'implementation', 'integration'],
+                target_dtype=[int, int, int],
+            )
         return self._clusters
 
     @property
