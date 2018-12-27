@@ -163,6 +163,9 @@ def percentile_buckets(sarray, percentiles):
     sarray = sarray.sort(True)
     total = len(sarray)
 
+    if not total:
+        return
+
     percentiles = list(percentiles)
     assert percentiles == sorted(percentiles)
     percentiles = [p / 100 for p in percentiles] if max(percentiles) > 1 else percentiles
@@ -181,6 +184,9 @@ def percentile_buckets(sarray, percentiles):
 
 def star_rating(score, buckets, low=1, high=5):
     ''' star rating '''
+
+    if not buckets or len(buckets) < 2:
+        return None
 
     step = (high - low) / (len(buckets) - 1)
     for i, (_, _, upper) in enumerate(buckets):
