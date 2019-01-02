@@ -138,7 +138,7 @@ class GamesRecommender:
     _compilations = None
     _cooperatives = None
 
-    def __init__(self, model, games=None, ratings=None, clusters=None):
+    def __init__(self, model, games=None, ratings=None, clusters=None, compilations=None):
         self.model = model
         self.games = games
         self.ratings = ratings
@@ -146,6 +146,9 @@ class GamesRecommender:
         # pylint: disable=len-as-condition
         if clusters is not None and len(clusters):
             self._clusters = clusters
+
+        if compilations is not None and len(compilations):
+            self._compilations = compilations
 
     @property
     def rated_games(self):
@@ -281,6 +284,7 @@ class GamesRecommender:
 
             filtered_games = self.filter_games(**games_filters)
             games = games.append(filtered_games['bgg_id']).unique()
+            del games_filters, filtered_games
 
         if exclude_known and self.ratings:
             for user in users:
@@ -288,6 +292,7 @@ class GamesRecommender:
                     continue
                 rated = self.ratings.filter_by([user], 'bgg_user_name')['bgg_id', 'bgg_user_name']
                 exclude = rated.copy() if exclude is None else exclude.append(rated)
+                del rated
 
         if exclude_clusters and exclude:
             grouped = exclude.groupby('bgg_user_name', {'bgg_ids': tc.aggregate.CONCAT('bgg_id')})
@@ -303,6 +308,7 @@ class GamesRecommender:
                     'bgg_user_name': tc.SArray.from_const(user, len(bgg_ids), str),
                 })
                 exclude = exclude.append(custers)
+            del grouped
 
         # pylint: disable=len-as-condition
         if exclude_compilations and len(self.compilations):
@@ -310,6 +316,7 @@ class GamesRecommender:
             for user in users:
                 comp['bgg_user_name'] = tc.SArray.from_const(user, len(self.compilations), str)
                 exclude = comp.copy() if exclude is None else exclude.append(comp)
+            del comp
 
         kwargs['k'] = kwargs.get('k', self.num_games) if num_games is None else num_games
 
@@ -323,6 +330,8 @@ class GamesRecommender:
             exclude=exclude,
             exclude_known=exclude_known,
             **kwargs)
+
+        del users, games, exclude
 
         if self.games:
             recommendations = recommendations.join(self.games, on='bgg_id', how='left')
@@ -389,6 +398,7 @@ class GamesRecommender:
             dir_games='games',
             dir_ratings='ratings',
             dir_clusters='clusters',
+            dir_compilations='compilations',
         ):
         ''' save all recommender data to files in the give dir '''
 
@@ -412,6 +422,11 @@ class GamesRecommender:
             self.logger.info('saving clusters to <%s>', path_clusters)
             self.clusters.save(path_clusters)
 
+        if self.compilations is not None and len(self.compilations):
+            path_compilations = os.path.join(path, dir_compilations, '')
+            self.logger.info('saving compilations to <%s>', path_compilations)
+            self.compilations.save(path_compilations)
+
     @classmethod
     def load(
             cls,
@@ -420,6 +435,7 @@ class GamesRecommender:
             dir_games='games',
             dir_ratings='ratings',
             dir_clusters='clusters',
+            dir_compilations='compilations',
         ):
         ''' load all recommender data from files in the give dir '''
 
@@ -457,7 +473,23 @@ class GamesRecommender:
         else:
             clusters = None
 
-        return cls(model=model, games=games, ratings=ratings, clusters=clusters)
+        if dir_compilations:
+            path_compilations = os.path.join(path, dir_compilations, '')
+            cls.logger.info('loading compilations from <%s>', path_compilations)
+            try:
+                compilations = tc.SArray(path_compilations)
+            except Exception:
+                compilations = None
+        else:
+            compilations = None
+
+        return cls(
+            model=model,
+            games=games,
+            ratings=ratings,
+            clusters=clusters,
+            compilations=compilations,
+        )
 
     @classmethod
     def train(
