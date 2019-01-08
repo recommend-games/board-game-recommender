@@ -250,28 +250,7 @@ class GamesRecommender:
 
         return self._game_clusters.get(bgg_id) or (bgg_id,)
 
-    def recommend(
-            self,
-            users=None,
-            games=None,
-            games_filters=None,
-            exclude=None,
-            exclude_known=True,
-            exclude_clusters=True,
-            exclude_compilations=True,
-            num_games=None,
-            ascending=True,
-            columns=None,
-            star_percentiles=None,
-            **kwargs
-        ):
-        ''' recommend games '''
-
-        users = [user.lower() if user else None for user in arg_to_iter(users)] or [None]
-
-        items = kwargs.pop('items', None)
-        assert games is None or items is None, 'cannot use <games> and <items> together'
-        games = items if games is None else games
+    def _process_games(self, games=None, games_filters=None):
         games = (
             games['bgg_id'].astype(int, True) if isinstance(games, tc.SFrame)
             else arg_to_iter(games) if games is not None
@@ -295,6 +274,16 @@ class GamesRecommender:
             games = games.append(filtered_games['bgg_id']).unique()
             del games_filters, filtered_games
 
+        return games
+
+    def _process_exclude(
+            self,
+            users,
+            exclude=None,
+            exclude_known=True,
+            exclude_clusters=True,
+            exclude_compilations=True,
+        ):
         if exclude_known and self.ratings:
             for user in users:
                 if not user:
@@ -327,21 +316,15 @@ class GamesRecommender:
                 exclude = comp.copy() if exclude is None else exclude.append(comp)
             del comp
 
-        kwargs['k'] = kwargs.get('k', self.num_games) if num_games is None else num_games
+        return exclude
 
-        columns = list(arg_to_iter(columns)) or ['rank', 'name', 'bgg_id', 'score']
-        if len(users) > 1 and 'bgg_user_name' not in columns:
-            columns.insert(0, 'bgg_user_name')
-
-        recommendations = self.model.recommend(
-            users=users,
-            items=games,
-            exclude=exclude,
-            exclude_known=exclude_known,
-            **kwargs)
-
-        del users, games, exclude
-
+    def _process_recommendations(
+            self,
+            recommendations,
+            columns,
+            star_percentiles=None,
+            ascending=True,
+        ):
         if self.games:
             recommendations = recommendations.join(self.games, on='bgg_id', how='left')
         else:
@@ -350,13 +333,60 @@ class GamesRecommender:
         if star_percentiles:
             columns.append('stars')
             buckets = tuple(percentile_buckets(recommendations['score'], star_percentiles))
-            # recommendations['stars'] = recommendations['score'].apply(
-            #     partial(star_rating, buckets=buckets, low=1, high=5))
             recommendations['stars'] = [
                 star_rating(score=score, buckets=buckets, low=1.0, high=5.0)
                 for score in recommendations['score']]
 
         return recommendations.sort('rank', ascending=ascending)[columns]
+
+    def recommend(
+            self,
+            users=None,
+            similarity_model=False,
+            games=None,
+            games_filters=None,
+            exclude=None,
+            exclude_known=True,
+            exclude_clusters=True,
+            exclude_compilations=True,
+            num_games=None,
+            ascending=True,
+            columns=None,
+            star_percentiles=None,
+            **kwargs
+        ):
+        ''' recommend games '''
+
+        users = [user.lower() if user else None for user in arg_to_iter(users)] or [None]
+
+        items = kwargs.pop('items', None)
+        assert games is None or items is None, 'cannot use <games> and <items> together'
+        games = items if games is None else games
+        games = self._process_games(games, games_filters)
+        exclude = self._process_exclude(
+            users, exclude, exclude_known, exclude_clusters, exclude_compilations)
+
+        kwargs['k'] = kwargs.get('k', self.num_games) if num_games is None else num_games
+
+        columns = list(arg_to_iter(columns)) or ['rank', 'name', 'bgg_id', 'score']
+        if len(users) > 1 and 'bgg_user_name' not in columns:
+            columns.insert(0, 'bgg_user_name')
+
+        model = self.similarity_model if similarity_model and self.similarity_model else self.model
+
+        self.logger.info('making recommendations using %s', model)
+
+        recommendations = model.recommend(
+            users=users,
+            items=games,
+            exclude=exclude,
+            exclude_known=exclude_known,
+            **kwargs
+        )
+
+        del users, games, exclude
+
+        return self._process_recommendations(recommendations, columns, star_percentiles, ascending)
 
     def lead_game(
             self,
