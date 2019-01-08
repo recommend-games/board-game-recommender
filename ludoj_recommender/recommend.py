@@ -138,8 +138,17 @@ class GamesRecommender:
     _compilations = None
     _cooperatives = None
 
-    def __init__(self, model, games=None, ratings=None, clusters=None, compilations=None):
+    def __init__(
+            self,
+            model,
+            similarity_model=None,
+            games=None,
+            ratings=None,
+            clusters=None,
+            compilations=None,
+        ):
         self.model = model
+        self.similarity_model = similarity_model
         self.games = games
         self.ratings = ratings
 
@@ -395,6 +404,7 @@ class GamesRecommender:
             self,
             path,
             dir_model='recommender',
+            dir_similarity='similarity',
             dir_games='games',
             dir_ratings='ratings',
             dir_clusters='clusters',
@@ -405,6 +415,11 @@ class GamesRecommender:
         path_model = os.path.join(path, dir_model, '')
         self.logger.info('saving model to <%s>', path_model)
         self.model.save(path_model)
+
+        if self.similarity_model:
+            path_similarity = os.path.join(path, dir_similarity, '')
+            self.logger.info('saving similarity model to <%s>', path_similarity)
+            self.similarity_model.save(path_similarity)
 
         if self.games:
             path_games = os.path.join(path, dir_games, '')
@@ -432,6 +447,7 @@ class GamesRecommender:
             cls,
             path,
             dir_model='recommender',
+            dir_similarity='similarity',
             dir_games='games',
             dir_ratings='ratings',
             dir_clusters='clusters',
@@ -442,6 +458,16 @@ class GamesRecommender:
         path_model = os.path.join(path, dir_model, '')
         cls.logger.info('loading model from <%s>', path_model)
         model = tc.load_model(path_model)
+
+        if dir_similarity:
+            path_similarity = os.path.join(path, dir_similarity, '')
+            cls.logger.info('loading similarity model from <%s>', path_similarity)
+            try:
+                similarity_model = tc.load_model(path_similarity)
+            except Exception:
+                similarity_model = None
+        else:
+            similarity_model = None
 
         if dir_games:
             path_games = os.path.join(path, dir_games, '')
@@ -485,6 +511,7 @@ class GamesRecommender:
 
         return cls(
             model=model,
+            similarity_model=similarity_model,
             games=games,
             ratings=ratings,
             clusters=clusters,
@@ -497,6 +524,7 @@ class GamesRecommender:
             games,
             ratings,
             side_data_columns=None,
+            similarity_model=False,
             max_iterations=100,
             verbose=False,
             defaults=True,
@@ -536,8 +564,10 @@ class GamesRecommender:
         else:
             item_data = None
 
+        ratings_filtered = ratings.filter_by(games['bgg_id'], 'bgg_id')
+
         model = tc.ranking_factorization_recommender.create(
-            observation_data=ratings.filter_by(games['bgg_id'], 'bgg_id'),
+            observation_data=ratings_filtered,
             user_id='bgg_user_name',
             item_id='bgg_id',
             target='bgg_user_rating',
@@ -546,7 +576,16 @@ class GamesRecommender:
             verbose=verbose,
         )
 
-        return cls(model=model, games=all_games, ratings=ratings)
+        sim_model = tc.item_similarity_recommender.create(
+            observation_data=ratings_filtered,
+            user_id='bgg_user_name',
+            item_id='bgg_id',
+            target='bgg_user_rating',
+            item_data=item_data,
+            verbose=verbose,
+        ) if similarity_model else None
+
+        return cls(model=model, similarity_model=sim_model, games=all_games, ratings=ratings)
 
     @classmethod
     def load_games_csv(cls, games_csv, columns=None):
@@ -655,6 +694,7 @@ class GamesRecommender:
             games_columns=None,
             ratings_columns=None,
             side_data_columns=None,
+            similarity_model=False,
             max_iterations=100,
             verbose=False,
             defaults=True,
@@ -682,6 +722,7 @@ class GamesRecommender:
             games=games,
             ratings=ratings,
             side_data_columns=side_data_columns,
+            similarity_model=similarity_model,
             max_iterations=max_iterations,
             verbose=verbose,
             defaults=defaults,
