@@ -17,6 +17,8 @@ def _parse_args():
     parser.add_argument('users', nargs='*', help='users to be recommended games')
     parser.add_argument('--model', '-m', default='.tc', help='model directory')
     parser.add_argument('--train', '-t', action='store_true', help='train a new model')
+    parser.add_argument(
+        '--similarity', '-s', action='store_true', help='train a new similarity model')
     parser.add_argument('--games-file', '-G', default='results/bgg.jl', help='games file')
     parser.add_argument(
         '--ratings-file', '-R', default='results/bgg_ratings.jl', help='ratings file')
@@ -33,7 +35,6 @@ def _parse_args():
     parser.add_argument('--complexity', '-C', type=float, nargs='+', help='complexity')
     parser.add_argument('--time', '-T', type=float, help='max playing time')
     parser.add_argument('--worst', '-w', action='store_true', help='show worst games')
-    parser.add_argument('--similar', '-s', action='store_true', help='find similar users')
     parser.add_argument(
         '--verbose', '-v', action='count', default=0, help='log level (repeat for more verbosity)')
 
@@ -76,6 +77,7 @@ def _main():
             games_file=args.games_file,
             ratings_file=args.ratings_file,
             side_data_columns=args.side_data_columns,
+            similarity_model=args.similarity,
             verbose=bool(args.verbose),
         )
         recommender.save(args.model)
@@ -89,6 +91,7 @@ def _main():
             users=user,
             games=args.games,
             games_filters=games_filters,
+            similarity_model=args.similarity,
             num_games=None if args.worst else args.num_rec,
             diversity=0 if args.worst else args.diversity,
         )
@@ -99,19 +102,6 @@ def _main():
         if args.worst:
             LOGGER.info('worst games for <%s>', user or 'everyone')
             recommendations.sort('rank', False).print_rows(num_rows=args.num_rec)
-
-        if not user or not args.similar:
-            continue
-
-        # TODO add to GamesRecommender
-        similar = recommender.model.get_similar_users([user], k=args.num_rec)[
-            'rank',
-            'similar',
-            'score',
-        ]
-
-        LOGGER.info('similar users to <%s>', user)
-        similar.sort('rank').print_rows(num_rows=args.num_rec)
 
 
 if __name__ == '__main__':

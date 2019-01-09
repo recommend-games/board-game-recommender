@@ -138,8 +138,17 @@ class GamesRecommender:
     _compilations = None
     _cooperatives = None
 
-    def __init__(self, model, games=None, ratings=None, clusters=None, compilations=None):
+    def __init__(
+            self,
+            model,
+            similarity_model=None,
+            games=None,
+            ratings=None,
+            clusters=None,
+            compilations=None,
+        ):
         self.model = model
+        self.similarity_model = similarity_model
         self.games = games
         self.ratings = ratings
 
@@ -241,28 +250,7 @@ class GamesRecommender:
 
         return self._game_clusters.get(bgg_id) or (bgg_id,)
 
-    def recommend(
-            self,
-            users=None,
-            games=None,
-            games_filters=None,
-            exclude=None,
-            exclude_known=True,
-            exclude_clusters=True,
-            exclude_compilations=True,
-            num_games=None,
-            ascending=True,
-            columns=None,
-            star_percentiles=None,
-            **kwargs
-        ):
-        ''' recommend games '''
-
-        users = [user.lower() if user else None for user in arg_to_iter(users)] or [None]
-
-        items = kwargs.pop('items', None)
-        assert games is None or items is None, 'cannot use <games> and <items> together'
-        games = items if games is None else games
+    def _process_games(self, games=None, games_filters=None):
         games = (
             games['bgg_id'].astype(int, True) if isinstance(games, tc.SFrame)
             else arg_to_iter(games) if games is not None
@@ -286,6 +274,16 @@ class GamesRecommender:
             games = games.append(filtered_games['bgg_id']).unique()
             del games_filters, filtered_games
 
+        return games
+
+    def _process_exclude(
+            self,
+            users,
+            exclude=None,
+            exclude_known=True,
+            exclude_clusters=True,
+            exclude_compilations=True,
+        ):
         if exclude_known and self.ratings:
             for user in users:
                 if not user:
@@ -318,36 +316,155 @@ class GamesRecommender:
                 exclude = comp.copy() if exclude is None else exclude.append(comp)
             del comp
 
+        return exclude
+
+    def _post_process_games(
+            self,
+            games,
+            columns,
+            join_on=None,
+            sort_by='rank',
+            star_percentiles=None,
+            ascending=True,
+        ):
+        if join_on and self.games:
+            games = games.join(self.games, on=join_on, how='left')
+        else:
+            games['name'] = None
+
+        if star_percentiles:
+            columns.append('stars')
+            buckets = tuple(percentile_buckets(games['score'], star_percentiles))
+            games['stars'] = [
+                star_rating(score=score, buckets=buckets, low=1.0, high=5.0)
+                for score in games['score']]
+
+        return games.sort(sort_by, ascending=ascending)[columns]
+
+    def recommend(
+            self,
+            users=None,
+            similarity_model=False,
+            games=None,
+            games_filters=None,
+            exclude=None,
+            exclude_known=True,
+            exclude_clusters=True,
+            exclude_compilations=True,
+            num_games=None,
+            ascending=True,
+            columns=None,
+            star_percentiles=None,
+            **kwargs
+        ):
+        ''' recommend games '''
+
+        users = [user.lower() if user else None for user in arg_to_iter(users)] or [None]
+
+        items = kwargs.pop('items', None)
+        assert games is None or items is None, 'cannot use <games> and <items> together'
+        games = items if games is None else games
+        games = self._process_games(games, games_filters)
+        exclude = self._process_exclude(
+            users, exclude, exclude_known, exclude_clusters, exclude_compilations)
+
         kwargs['k'] = kwargs.get('k', self.num_games) if num_games is None else num_games
 
         columns = list(arg_to_iter(columns)) or ['rank', 'name', 'bgg_id', 'score']
         if len(users) > 1 and 'bgg_user_name' not in columns:
             columns.insert(0, 'bgg_user_name')
 
-        recommendations = self.model.recommend(
+        model = self.similarity_model if similarity_model and self.similarity_model else self.model
+
+        self.logger.debug('making recommendations using %s', model)
+
+        recommendations = model.recommend(
             users=users,
             items=games,
             exclude=exclude,
             exclude_known=exclude_known,
-            **kwargs)
+            **kwargs
+        )
 
-        del users, games, exclude
+        del users, items, games, exclude, model
 
-        if self.games:
-            recommendations = recommendations.join(self.games, on='bgg_id', how='left')
-        else:
-            recommendations['name'] = None
+        return self._post_process_games(
+            games=recommendations,
+            columns=columns,
+            join_on='bgg_id',
+            sort_by=['bgg_user_name', 'rank'] if 'bgg_user_name' in columns else 'rank',
+            star_percentiles=star_percentiles,
+            ascending=ascending,
+        )
 
-        if star_percentiles:
-            columns.append('stars')
-            buckets = tuple(percentile_buckets(recommendations['score'], star_percentiles))
-            # recommendations['stars'] = recommendations['score'].apply(
-            #     partial(star_rating, buckets=buckets, low=1, high=5))
-            recommendations['stars'] = [
-                star_rating(score=score, buckets=buckets, low=1.0, high=5.0)
-                for score in recommendations['score']]
+    def recommend_similar(
+            self,
+            games=None,
+            items=None,
+            games_filters=None,
+            threshold=.001,
+            num_games=None,
+            columns=None,
+            **kwargs
+        ):
+        ''' recommend games similar to given ones '''
 
-        return recommendations.sort('rank', ascending=ascending)[columns]
+        games = list(arg_to_iter(games))
+        items = self._process_games(items, games_filters)
+        kwargs['k'] = kwargs.get('k', self.num_games) if num_games is None else num_games
+
+        columns = list(arg_to_iter(columns)) or ['rank', 'name', 'bgg_id', 'score']
+
+        model = self.similarity_model or self.model
+
+        self.logger.debug('recommending games similar to %s using %s', games, model)
+
+        recommendations = model.recommend_from_interactions(
+            observed_items=games,
+            items=items,
+            **kwargs
+        )
+
+        recommendations = (
+            recommendations[recommendations['score'] >= threshold]
+            if threshold else recommendations)
+
+        del games, items, model
+
+        return self._post_process_games(
+            games=recommendations,
+            columns=columns,
+            join_on='bgg_id',
+        )
+
+    def similar_games(
+            self,
+            games,
+            num_games=10,
+            columns=None,
+        ):
+        ''' find similar games '''
+
+        games = list(arg_to_iter(games))
+
+        columns = list(arg_to_iter(columns)) or ['rank', 'name', 'similar', 'score']
+        if len(games) > 1 and 'bgg_id' not in columns:
+            columns.insert(0, 'bgg_id')
+
+        model = self.similarity_model or self.model
+
+        self.logger.debug('finding similar games using %s', model)
+
+        sim_games = model.get_similar_items(items=games, k=num_games)
+
+        del games, model
+
+        return self._post_process_games(
+            games=sim_games,
+            columns=columns,
+            join_on={'similar': 'bgg_id'},
+            sort_by=['bgg_id', 'rank'] if 'bgg_id' in columns else 'rank',
+        )
 
     def lead_game(
             self,
@@ -395,6 +512,7 @@ class GamesRecommender:
             self,
             path,
             dir_model='recommender',
+            dir_similarity='similarity',
             dir_games='games',
             dir_ratings='ratings',
             dir_clusters='clusters',
@@ -405,6 +523,11 @@ class GamesRecommender:
         path_model = os.path.join(path, dir_model, '')
         self.logger.info('saving model to <%s>', path_model)
         self.model.save(path_model)
+
+        if self.similarity_model:
+            path_similarity = os.path.join(path, dir_similarity, '')
+            self.logger.info('saving similarity model to <%s>', path_similarity)
+            self.similarity_model.save(path_similarity)
 
         if self.games:
             path_games = os.path.join(path, dir_games, '')
@@ -432,6 +555,7 @@ class GamesRecommender:
             cls,
             path,
             dir_model='recommender',
+            dir_similarity='similarity',
             dir_games='games',
             dir_ratings='ratings',
             dir_clusters='clusters',
@@ -442,6 +566,16 @@ class GamesRecommender:
         path_model = os.path.join(path, dir_model, '')
         cls.logger.info('loading model from <%s>', path_model)
         model = tc.load_model(path_model)
+
+        if dir_similarity:
+            path_similarity = os.path.join(path, dir_similarity, '')
+            cls.logger.info('loading similarity model from <%s>', path_similarity)
+            try:
+                similarity_model = tc.load_model(path_similarity)
+            except Exception:
+                similarity_model = None
+        else:
+            similarity_model = None
 
         if dir_games:
             path_games = os.path.join(path, dir_games, '')
@@ -485,6 +619,7 @@ class GamesRecommender:
 
         return cls(
             model=model,
+            similarity_model=similarity_model,
             games=games,
             ratings=ratings,
             clusters=clusters,
@@ -497,6 +632,7 @@ class GamesRecommender:
             games,
             ratings,
             side_data_columns=None,
+            similarity_model=False,
             max_iterations=100,
             verbose=False,
             defaults=True,
@@ -536,8 +672,10 @@ class GamesRecommender:
         else:
             item_data = None
 
+        ratings_filtered = ratings.filter_by(games['bgg_id'], 'bgg_id')
+
         model = tc.ranking_factorization_recommender.create(
-            observation_data=ratings.filter_by(games['bgg_id'], 'bgg_id'),
+            observation_data=ratings_filtered,
             user_id='bgg_user_name',
             item_id='bgg_id',
             target='bgg_user_rating',
@@ -546,7 +684,16 @@ class GamesRecommender:
             verbose=verbose,
         )
 
-        return cls(model=model, games=all_games, ratings=ratings)
+        sim_model = tc.item_similarity_recommender.create(
+            observation_data=ratings_filtered,
+            user_id='bgg_user_name',
+            item_id='bgg_id',
+            target='bgg_user_rating',
+            item_data=item_data,
+            verbose=verbose,
+        ) if similarity_model else None
+
+        return cls(model=model, similarity_model=sim_model, games=all_games, ratings=ratings)
 
     @classmethod
     def load_games_csv(cls, games_csv, columns=None):
@@ -655,6 +802,7 @@ class GamesRecommender:
             games_columns=None,
             ratings_columns=None,
             side_data_columns=None,
+            similarity_model=False,
             max_iterations=100,
             verbose=False,
             defaults=True,
@@ -682,6 +830,7 @@ class GamesRecommender:
             games=games,
             ratings=ratings,
             side_data_columns=side_data_columns,
+            similarity_model=similarity_model,
             max_iterations=max_iterations,
             verbose=verbose,
             defaults=defaults,
