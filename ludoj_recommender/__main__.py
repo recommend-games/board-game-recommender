@@ -91,6 +91,7 @@ def _main():
             users=user,
             games=args.games,
             games_filters=games_filters,
+            similarity_model=args.similarity,
             num_games=None if args.worst else args.num_rec,
             diversity=0 if args.worst else args.diversity,
         )
