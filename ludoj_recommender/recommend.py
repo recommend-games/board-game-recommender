@@ -318,26 +318,28 @@ class GamesRecommender:
 
         return exclude
 
-    def _process_recommendations(
+    def _post_process_games(
             self,
-            recommendations,
+            games,
             columns,
+            join_on=None,
+            sort_on='rank',
             star_percentiles=None,
             ascending=True,
         ):
-        if self.games:
-            recommendations = recommendations.join(self.games, on='bgg_id', how='left')
+        if join_on and self.games:
+            games = games.join(self.games, on=join_on, how='left')
         else:
-            recommendations['name'] = None
+            games['name'] = None
 
         if star_percentiles:
             columns.append('stars')
-            buckets = tuple(percentile_buckets(recommendations['score'], star_percentiles))
-            recommendations['stars'] = [
+            buckets = tuple(percentile_buckets(games['score'], star_percentiles))
+            games['stars'] = [
                 star_rating(score=score, buckets=buckets, low=1.0, high=5.0)
-                for score in recommendations['score']]
+                for score in games['score']]
 
-        return recommendations.sort('rank', ascending=ascending)[columns]
+        return games.sort(sort_on, ascending=ascending)[columns]
 
     def recommend(
             self,
@@ -374,7 +376,7 @@ class GamesRecommender:
 
         model = self.similarity_model if similarity_model and self.similarity_model else self.model
 
-        self.logger.info('making recommendations using %s', model)
+        self.logger.debug('making recommendations using %s', model)
 
         recommendations = model.recommend(
             users=users,
@@ -384,9 +386,44 @@ class GamesRecommender:
             **kwargs
         )
 
-        del users, games, exclude
+        del users, items, games, exclude, model
 
-        return self._process_recommendations(recommendations, columns, star_percentiles, ascending)
+        return self._post_process_games(
+            games=recommendations,
+            columns=columns,
+            join_on='bgg_id',
+            sort_on=['bgg_user_name', 'rank'] if 'bgg_user_name' in columns else 'rank',
+            star_percentiles=star_percentiles,
+            ascending=ascending,
+        )
+
+    def similar_games(
+            self,
+            games,
+            num_games=10,
+            columns=None,
+        ):
+        ''' find similar games '''
+        games = list(arg_to_iter(games))
+
+        columns = list(arg_to_iter(columns)) or ['rank', 'name', 'similar', 'score']
+        if len(games) > 1 and 'bgg_id' not in columns:
+            columns.insert(0, 'bgg_id')
+
+        model = self.similarity_model or self.model
+
+        self.logger.debug('finding similar games using %s', model)
+
+        sim_games = model.get_similar_items(items=games, k=num_games)
+
+        del games, model
+
+        return self._post_process_games(
+            games=sim_games,
+            columns=columns,
+            join_on={'similar': 'bgg_id'},
+            sort_on=['bgg_id', 'rank'] if 'bgg_id' in columns else 'rank',
+        )
 
     def lead_game(
             self,
