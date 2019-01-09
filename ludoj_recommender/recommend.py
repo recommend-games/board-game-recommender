@@ -323,7 +323,7 @@ class GamesRecommender:
             games,
             columns,
             join_on=None,
-            sort_on='rank',
+            sort_by='rank',
             star_percentiles=None,
             ascending=True,
         ):
@@ -339,7 +339,7 @@ class GamesRecommender:
                 star_rating(score=score, buckets=buckets, low=1.0, high=5.0)
                 for score in games['score']]
 
-        return games.sort(sort_on, ascending=ascending)[columns]
+        return games.sort(sort_by, ascending=ascending)[columns]
 
     def recommend(
             self,
@@ -392,9 +392,49 @@ class GamesRecommender:
             games=recommendations,
             columns=columns,
             join_on='bgg_id',
-            sort_on=['bgg_user_name', 'rank'] if 'bgg_user_name' in columns else 'rank',
+            sort_by=['bgg_user_name', 'rank'] if 'bgg_user_name' in columns else 'rank',
             star_percentiles=star_percentiles,
             ascending=ascending,
+        )
+
+    def recommend_similar(
+            self,
+            games=None,
+            items=None,
+            games_filters=None,
+            threshold=.001,
+            num_games=None,
+            columns=None,
+            **kwargs
+        ):
+        ''' recommend games similar to given ones '''
+
+        games = list(arg_to_iter(games))
+        items = self._process_games(items, games_filters)
+        kwargs['k'] = kwargs.get('k', self.num_games) if num_games is None else num_games
+
+        columns = list(arg_to_iter(columns)) or ['rank', 'name', 'bgg_id', 'score']
+
+        model = self.similarity_model or self.model
+
+        self.logger.debug('recommending games similar to %s using %s', games, model)
+
+        recommendations = model.recommend_from_interactions(
+            observed_items=games,
+            items=items,
+            **kwargs
+        )
+
+        recommendations = (
+            recommendations[recommendations['score'] >= threshold]
+            if threshold else recommendations)
+
+        del games, items, model
+
+        return self._post_process_games(
+            games=recommendations,
+            columns=columns,
+            join_on='bgg_id',
         )
 
     def similar_games(
@@ -404,6 +444,7 @@ class GamesRecommender:
             columns=None,
         ):
         ''' find similar games '''
+
         games = list(arg_to_iter(games))
 
         columns = list(arg_to_iter(columns)) or ['rank', 'name', 'similar', 'score']
@@ -422,7 +463,7 @@ class GamesRecommender:
             games=sim_games,
             columns=columns,
             join_on={'similar': 'bgg_id'},
-            sort_on=['bgg_id', 'rank'] if 'bgg_id' in columns else 'rank',
+            sort_by=['bgg_id', 'rank'] if 'bgg_id' in columns else 'rank',
         )
 
     def lead_game(
