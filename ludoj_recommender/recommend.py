@@ -455,7 +455,7 @@ class GamesRecommender:
 
         self.logger.debug('finding similar games using %s', model)
 
-        sim_games = model.get_similar_items(items=games, k=num_games)
+        sim_games = model.get_similar_items(items=games, k=num_games or self.num_games)
 
         del games, model
 
