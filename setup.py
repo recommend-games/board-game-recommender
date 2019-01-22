@@ -12,7 +12,7 @@ from setuptools import find_packages, setup
 NAME = 'ludoj-recommender'
 DESCRIPTION = 'Games recommender engine'
 URL = 'https://gitlab.com/mshepherd/ludoj-recommender'
-EMAIL = 'markus.r.shepherd@gmail.com'
+EMAIL = 'recommend.ludoj@gmail.com'
 AUTHOR = 'Markus Shepherd'
 REQUIRES_PYTHON = '>=3.6.0'
 VERSION = '0.2.1'
