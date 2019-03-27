@@ -1,4 +1,2 @@
-numpy<1.15.0
 python-dateutil
-requests
 turicreate

@@ -19,9 +19,9 @@ def _parse_args():
     parser.add_argument('--train', '-t', action='store_true', help='train a new model')
     parser.add_argument(
         '--similarity', '-s', action='store_true', help='train a new similarity model')
-    parser.add_argument('--games-file', '-G', default='results/bgg.jl', help='games file')
+    parser.add_argument('--games-file', '-G', default='results/bgg_GameItem.jl', help='games file')
     parser.add_argument(
-        '--ratings-file', '-R', default='results/bgg_ratings.jl', help='ratings file')
+        '--ratings-file', '-R', default='results/bgg_RatingItem.jl', help='ratings file')
     parser.add_argument(
         '--side-data-columns', '-S', nargs='+', help='game features to use in recommender model')
     parser.add_argument(
