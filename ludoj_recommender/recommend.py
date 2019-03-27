@@ -10,7 +10,7 @@ import tempfile
 import sys
 
 from datetime import date
-# from functools import partial
+from typing import Dict, Tuple, Type, Union
 
 import turicreate as tc
 
@@ -80,54 +80,11 @@ def make_cluster(data, item_id, target, target_dtype=str):
 class GamesRecommender:
     ''' games recommender '''
 
-    DEFAULT_MIN_NUM_VOTES = 50
-
     logger = logging.getLogger('GamesRecommender')
-    columns_games = {
-        'name': str,
-        'year': int,
-        'min_players': int,
-        'max_players': int,
-        'min_players_rec': int,
-        'max_players_rec': int,
-        'min_players_best': int,
-        'max_players_best': int,
-        'min_age': int,
-        'max_age': int,
-        'min_age_rec': float,
-        'max_age_rec': float,
-        'min_time': int,
-        'max_time': int,
-        'cooperative': bool,
-        'compilation': bool,
-        'compilation_of': list,
-        'implementation': list,
-        'integration': list,
-        'rank': int,
-        'num_votes': int,
-        'avg_rating': float,
-        'stddev_rating': float,
-        'bayes_rating': float,
-        'complexity': float,
-        'language_dependency': float,
-        'bgg_id': int,
-    }
-    columns_ratings = {
-        'bgg_id': int,
-        'bgg_user_name': str,
-        'bgg_user_rating': float,
-    }
-    default_limits = {
-        'year': (-4000, date.today().year),
-        'complexity': (1, 5),
-        'min_players': 1,
-        'max_players': 1,
-        'min_age': (2, 21),
-        'min_time': (1, 24 * 60),
-        'max_time': (1, 4 * 24 * 60),
-        # 'compilation': (None, 0),
-        'num_votes': DEFAULT_MIN_NUM_VOTES,
-    }
+
+    columns_games: Dict[str, Type]
+    columns_ratings: Dict[str, Type]
+    default_limits: Dict[str, Union[int, Tuple]]
 
     _rated_games = None
     _known_games = None
@@ -699,7 +656,6 @@ class GamesRecommender:
     def load_games_csv(cls, games_csv, columns=None):
         ''' load games from CSV '''
 
-        # TODO parse dates, e.g., scraped_at
         columns = cls.columns_games if columns is None else columns
         _, csv_cond = tempfile.mkstemp(text=True)
         num_games = condense_csv(games_csv, csv_cond, columns.keys())
@@ -747,10 +703,14 @@ class GamesRecommender:
         return games
 
     @classmethod
-    def load_ratings_csv(cls, ratings_csv, columns=None, dedupe=True):
+    def process_ratings(cls, ratings, **kwargs):
+        ''' process ratings '''
+        return ratings
+
+    @classmethod
+    def load_ratings_csv(cls, ratings_csv, columns=None, **kwargs):
         ''' load ratings from CSV '''
 
-        # TODO parse dates, e.g., scraped_at
         columns = cls.columns_ratings if columns is None else columns
         ratings = tc.SFrame.read_csv(
             ratings_csv,
@@ -758,20 +718,10 @@ class GamesRecommender:
             usecols=columns.keys(),
         ).dropna()
 
-        if 'bgg_user_name' in columns:
-            # pylint: disable=unexpected-keyword-arg
-            ratings['bgg_user_name'] = ratings['bgg_user_name'].apply(
-                str.lower, dtype=str, skip_na=True)
-
-        if dedupe and 'bgg_user_rating' in columns:
-            ratings = ratings.unstack('bgg_user_rating', 'ratings')
-            ratings['bgg_user_rating'] = ratings['ratings'].apply(lambda x: x[-1], dtype=float)
-            del ratings['ratings']
-
-        return ratings
+        return cls.process_ratings(ratings, **kwargs)
 
     @classmethod
-    def load_ratings_json(cls, ratings_json, columns=None, orient='lines', dedupe=True):
+    def load_ratings_json(cls, ratings_json, columns=None, orient='lines', **kwargs):
         ''' load ratings from JSON '''
 
         columns = cls.columns_ratings if columns is None else columns
@@ -782,17 +732,7 @@ class GamesRecommender:
             .unpack(column_name_prefix=None))
         ratings = ratings[columns].dropna()
 
-        if 'bgg_user_name' in ratings.column_names():
-            # pylint: disable=unexpected-keyword-arg
-            ratings['bgg_user_name'] = ratings['bgg_user_name'].apply(
-                str.lower, dtype=str, skip_na=True)
-
-        if dedupe and 'bgg_user_rating' in ratings.column_names():
-            ratings = ratings.unstack('bgg_user_rating', 'ratings')
-            ratings['bgg_user_rating'] = ratings['ratings'].apply(lambda x: x[-1], dtype=float)
-            del ratings['ratings']
-
-        return ratings
+        return cls.process_ratings(ratings, **kwargs)
 
     @classmethod
     def train_from_files(
@@ -842,3 +782,103 @@ class GamesRecommender:
 
     def __repr__(self):
         return repr(self.model)
+
+
+class BGGRecommender(GamesRecommender):
+    ''' BoardGameGeek recommender '''
+
+    logger = logging.getLogger('BGGRecommender')
+    columns_games = {
+        'name': str,
+        'year': int,
+        'min_players': int,
+        'max_players': int,
+        'min_players_rec': int,
+        'max_players_rec': int,
+        'min_players_best': int,
+        'max_players_best': int,
+        'min_age': int,
+        'max_age': int,
+        'min_age_rec': float,
+        'max_age_rec': float,
+        'min_time': int,
+        'max_time': int,
+        'cooperative': bool,
+        'compilation': bool,
+        'compilation_of': list,
+        'implementation': list,
+        'integration': list,
+        'rank': int,
+        'num_votes': int,
+        'avg_rating': float,
+        'stddev_rating': float,
+        'bayes_rating': float,
+        'complexity': float,
+        'language_dependency': float,
+        'bgg_id': int,
+    }
+    columns_ratings = {
+        'bgg_id': int,
+        'bgg_user_name': str,
+        'bgg_user_rating': float,
+    }
+    default_limits = {
+        'year': (-4000, date.today().year),
+        'complexity': (1, 5),
+        'min_players': 1,
+        'max_players': 1,
+        'min_age': (2, 21),
+        'min_time': (1, 24 * 60),
+        'max_time': (1, 4 * 24 * 60),
+        'num_votes': 50,
+    }
+
+    @classmethod
+    def process_ratings(cls, ratings, **kwargs):
+        ''' process ratings '''
+
+        ratings = super().process_ratings(ratings, **kwargs)
+
+        if 'bgg_user_name' in ratings.column_names():
+            # pylint: disable=unexpected-keyword-arg
+            ratings['bgg_user_name'] = ratings['bgg_user_name'].apply(
+                str.lower, dtype=str, skip_na=True)
+
+        if kwargs.get('dedupe') and 'bgg_user_rating' in ratings.column_names():
+            ratings = ratings.unstack('bgg_user_rating', 'ratings')
+            ratings['bgg_user_rating'] = ratings['ratings'].apply(lambda x: x[-1], dtype=float)
+            del ratings['ratings']
+
+        return ratings
+
+
+class BGARecommender(GamesRecommender):
+    ''' Board Game Atlas recommender '''
+
+    logger = logging.getLogger('BGARecommender')
+    columns_games = {
+        'name': str,
+        'year': int,
+        'min_players': int,
+        'max_players': int,
+        'min_age': int,
+        'min_time': int,
+        'max_time': int,
+        'num_votes': int,
+        'avg_rating': float,
+        'bga_id': str,
+    }
+    columns_ratings = {
+        'bga_id': str,
+        'bga_user_id': str,
+        'bga_user_rating': float,
+    }
+    default_limits = {
+        'year': (-4000, date.today().year),
+        'min_players': 1,
+        'max_players': 1,
+        'min_age': (2, 21),
+        'min_time': (1, 24 * 60),
+        'max_time': (1, 4 * 24 * 60),
+        'num_votes': 10,
+    }
