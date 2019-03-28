@@ -7,7 +7,7 @@ import argparse
 import logging
 import sys
 
-from .recommend import GamesRecommender
+from .recommend import BGGRecommender
 
 LOGGER = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ def _main():
         games_filters['min_time__lte'] = args.time * 1.1
 
     if args.train:
-        recommender = GamesRecommender.train_from_files(
+        recommender = BGGRecommender.train_from_files(
             games_file=args.games_file,
             ratings_file=args.ratings_file,
             side_data_columns=args.side_data_columns,
@@ -82,7 +82,7 @@ def _main():
         )
         recommender.save(args.model)
     else:
-        recommender = GamesRecommender.load(args.model)
+        recommender = BGGRecommender.load(args.model)
 
     for user in [None] + args.users:
         LOGGER.info('#' * 100)

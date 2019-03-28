@@ -10,7 +10,7 @@ import tempfile
 import sys
 
 from datetime import date
-from typing import Dict, Tuple, Type, Union
+from typing import Dict, Optional, Tuple, Type, Union
 
 import turicreate as tc
 
@@ -82,9 +82,21 @@ class GamesRecommender:
 
     logger = logging.getLogger('GamesRecommender')
 
+    id_field: str
+    id_type: Type = str
+    user_id_field: str
+    user_id_type: Type = str
+    rating_id_field: str
+    rating_id_type: Type = float
+
     columns_games: Dict[str, Type]
     columns_ratings: Dict[str, Type]
     default_limits: Dict[str, Union[int, Tuple]]
+
+    cluster_fields: Optional[Tuple[str, ...]] = None
+    cluster_field_types: Optional[Tuple[Type, ...]] = None
+    compilation_field: Optional[str] = 'compilation'
+    cooperative_field: Optional[str] = 'cooperative'
 
     _rated_games = None
     _known_games = None
@@ -119,19 +131,17 @@ class GamesRecommender:
     @property
     def rated_games(self):
         ''' rated games '''
-
         if self._rated_games is None:
-            self._rated_games = frozenset(self.model.coefficients['bgg_id']['bgg_id'])
+            self._rated_games = frozenset(self.model.coefficients[self.id_field][self.id_field])
         return self._rated_games
 
     @property
     def known_games(self):
         ''' known games '''
-
         if self._known_games is None:
             self._known_games = (
-                frozenset(self.ratings['bgg_id'] if self.ratings else ())
-                | frozenset(self.games['bgg_id'] if self.games else ())
+                frozenset(self.ratings[self.id_field] if self.ratings else ())
+                | frozenset(self.games[self.id_field] if self.games else ())
                 | self.rated_games)
         return self._known_games
 
@@ -140,14 +150,13 @@ class GamesRecommender:
         ''' known users '''
         if self._known_users is None:
             self._known_users = (
-                frozenset(self.ratings['bgg_user_name'] if self.ratings else ())
-                | frozenset(self.model.coefficients['bgg_user_name']['bgg_user_name']))
+                frozenset(self.ratings[self.user_id_field] if self.ratings else ())
+                | frozenset(self.model.coefficients[self.user_id_field][self.user_id_field]))
         return self._known_users
 
     @property
     def num_games(self):
         ''' total number of games known to the recommender '''
-
         if self._num_games is None:
             self._num_games = len(self.known_games)
         return self._num_games
@@ -155,80 +164,81 @@ class GamesRecommender:
     @property
     def clusters(self):
         ''' game implementation clusters '''
-
         if self._clusters is None:
             self._clusters = make_cluster(
                 data=self.games,
-                item_id='bgg_id',
-                target=['compilation_of', 'implementation', 'integration'],
-                target_dtype=[int, int, int],
+                item_id=self.id_field,
+                target=self.cluster_fields,
+                target_dtype=self.cluster_field_types,
             )
         return self._clusters
 
     @property
     def compilations(self):
         ''' compilation games '''
-
         if self._compilations is None:
             self._compilations = (
-                self.games[self.games['compilation']]['bgg_id']
-                if self.games and 'compilation' in self.games.column_names()
-                else tc.SArray(dtype=int))
+                self.games[self.games[self.compilation_field]][self.id_field]
+                if self.games and self.compilation_field
+                and self.compilation_field in self.games.column_names()
+                else tc.SArray(dtype=self.id_type))
         return self._compilations
 
     @property
     def cooperatives(self):
         ''' cooperative games '''
-
         if self._cooperatives is None:
             self._cooperatives = (
-                self.games[self.games['cooperative']]['bgg_id']
-                if self.games and 'cooperative' in self.games.column_names()
-                else tc.SArray(dtype=int))
+                self.games[self.games[self.cooperative_field]][self.id_field]
+                if self.games and self.cooperative_field
+                and self.cooperative_field in self.games.column_names()
+                else tc.SArray(dtype=self.id_type))
         return self._cooperatives
 
     def filter_games(self, **filters):
         ''' return games filtered by given criteria '''
-
         return filter_sframe(self.games, **filters)
 
-    def cluster(self, bgg_id):
+    def cluster(self, game_id):
         ''' get implementation cluster for a given game '''
 
         # pylint: disable=len-as-condition
         if self.clusters is None or not len(self.clusters):
-            return (bgg_id,)
+            return (game_id,)
 
         if self._game_clusters is None:
             self._game_clusters = {
-                id_: cluster for cluster in self.clusters
-                for id_ in cluster if cluster is not None and len(cluster) > 1
+                id_: cluster
+                for cluster in self.clusters
+                for id_ in cluster
+                if cluster is not None and len(cluster) > 1
             }
 
-        return self._game_clusters.get(bgg_id) or (bgg_id,)
+        return self._game_clusters.get(game_id) or (game_id,)
 
     def _process_games(self, games=None, games_filters=None):
         games = (
-            games['bgg_id'].astype(int, True) if isinstance(games, tc.SFrame)
+            games[self.id_field].astype(self.id_type, True) if isinstance(games, tc.SFrame)
             else arg_to_iter(games) if games is not None
             else None)
         games = (
             games if isinstance(games, tc.SArray) or games is None
-            else tc.SArray(tuple(games), dtype=int))
+            else tc.SArray(tuple(games), dtype=self.id_type))
 
         if games_filters and self.games:
-            games = tc.SArray(dtype=int) if games is None else games
-            bgg_id_in = frozenset(games_filters.get('bgg_id__in') or ())
-            games_filters['bgg_id__in'] = (
-                bgg_id_in & self.rated_games if bgg_id_in else self.rated_games)
+            games = tc.SArray(dtype=self.id_type) if games is None else games
+            in_field = f'{self.id_field}__in'
+            game_id_in = frozenset(games_filters.get(in_field) or ())
+            games_filters[in_field] = (
+                game_id_in & self.rated_games if game_id_in else self.rated_games)
 
             self.logger.debug(
                 'games filters: %r', {
-                    k: '[{:d} games]'.format(len(v)) if k == 'bgg_id__in' else v
+                    k: '[{:d} games]'.format(len(v)) if k == in_field else v
                     for k, v in games_filters.items()})
 
             filtered_games = self.filter_games(**games_filters)
-            games = games.append(filtered_games['bgg_id']).unique()
+            games = games.append(filtered_games[self.id_field]).unique()
             del games_filters, filtered_games
 
         return games
@@ -245,31 +255,36 @@ class GamesRecommender:
             for user in users:
                 if not user:
                     continue
-                rated = self.ratings.filter_by([user], 'bgg_user_name')['bgg_id', 'bgg_user_name']
+                rated = self.ratings.filter_by(
+                    [user], self.user_id_field)[self.id_field, self.user_id_field]
                 exclude = rated.copy() if exclude is None else exclude.append(rated)
                 del rated
 
         if exclude_clusters and exclude:
-            grouped = exclude.groupby('bgg_user_name', {'bgg_ids': tc.aggregate.CONCAT('bgg_id')})
-            for user, bgg_ids in zip(grouped['bgg_user_name'], grouped['bgg_ids']):
-                bgg_ids = frozenset(bgg_ids)
-                if not user or not bgg_ids:
+            grouped = exclude.groupby(
+                self.user_id_field, {'game_ids': tc.aggregate.CONCAT(self.id_field)})
+            for user, game_ids in zip(grouped[self.user_id_field], grouped['game_ids']):
+                game_ids = frozenset(game_ids)
+                if not user or not game_ids:
                     continue
-                bgg_ids = {
-                    linked for bgg_id in bgg_ids
-                    for linked in self.cluster(bgg_id) if linked not in bgg_ids}
-                custers = tc.SFrame({
-                    'bgg_id': list(bgg_ids),
-                    'bgg_user_name': tc.SArray.from_const(user, len(bgg_ids), str),
+                game_ids = {
+                    linked for game_id in game_ids
+                    for linked in self.cluster(game_id) if linked not in game_ids}
+                clusters = tc.SFrame({
+                    self.id_field: tc.SArray(list(game_ids), dtype=self.id_type),
+                    self.user_id_field: tc.SArray.from_const(
+                        user, len(game_ids), self.user_id_type),
                 })
-                exclude = exclude.append(custers)
+                exclude = exclude.append(clusters)
+                del clusters
             del grouped
 
         # pylint: disable=len-as-condition
         if exclude_compilations and len(self.compilations):
-            comp = tc.SFrame({'bgg_id': self.compilations})
+            comp = tc.SFrame({self.id_field: self.compilations})
             for user in users:
-                comp['bgg_user_name'] = tc.SArray.from_const(user, len(self.compilations), str)
+                comp[self.user_id_field] = tc.SArray.from_const(
+                    user, len(self.compilations), self.user_id_type)
                 exclude = comp.copy() if exclude is None else exclude.append(comp)
             del comp
 
@@ -298,6 +313,11 @@ class GamesRecommender:
 
         return games.sort(sort_by, ascending=ascending)[columns]
 
+    # pylint: disable=no-self-use
+    def process_user_id(self, user_id):
+        ''' process user ID '''
+        return user_id or None
+
     def recommend(
             self,
             users=None,
@@ -316,7 +336,7 @@ class GamesRecommender:
         ):
         ''' recommend games '''
 
-        users = [user.lower() if user else None for user in arg_to_iter(users)] or [None]
+        users = [self.process_user_id(user) for user in arg_to_iter(users)] or [None]
 
         items = kwargs.pop('items', None)
         assert games is None or items is None, 'cannot use <games> and <items> together'
@@ -327,9 +347,9 @@ class GamesRecommender:
 
         kwargs['k'] = kwargs.get('k', self.num_games) if num_games is None else num_games
 
-        columns = list(arg_to_iter(columns)) or ['rank', 'name', 'bgg_id', 'score']
-        if len(users) > 1 and 'bgg_user_name' not in columns:
-            columns.insert(0, 'bgg_user_name')
+        columns = list(arg_to_iter(columns)) or ['rank', 'name', self.id_field, 'score']
+        if len(users) > 1 and self.user_id_field not in columns:
+            columns.insert(0, self.user_id_field)
 
         model = self.similarity_model if similarity_model and self.similarity_model else self.model
 
@@ -348,8 +368,8 @@ class GamesRecommender:
         return self._post_process_games(
             games=recommendations,
             columns=columns,
-            join_on='bgg_id',
-            sort_by=['bgg_user_name', 'rank'] if 'bgg_user_name' in columns else 'rank',
+            join_on=self.id_field,
+            sort_by=[self.user_id_field, 'rank'] if self.user_id_field in columns else 'rank',
             star_percentiles=star_percentiles,
             ascending=ascending,
         )
@@ -370,7 +390,7 @@ class GamesRecommender:
         items = self._process_games(items, games_filters)
         kwargs['k'] = kwargs.get('k', self.num_games) if num_games is None else num_games
 
-        columns = list(arg_to_iter(columns)) or ['rank', 'name', 'bgg_id', 'score']
+        columns = list(arg_to_iter(columns)) or ['rank', 'name', self.id_field, 'score']
 
         model = self.similarity_model or self.model
 
@@ -391,7 +411,7 @@ class GamesRecommender:
         return self._post_process_games(
             games=recommendations,
             columns=columns,
-            join_on='bgg_id',
+            join_on=self.id_field,
         )
 
     def similar_games(
@@ -405,8 +425,8 @@ class GamesRecommender:
         games = list(arg_to_iter(games))
 
         columns = list(arg_to_iter(columns)) or ['rank', 'name', 'similar', 'score']
-        if len(games) > 1 and 'bgg_id' not in columns:
-            columns.insert(0, 'bgg_id')
+        if len(games) > 1 and self.id_field not in columns:
+            columns.insert(0, self.id_field)
 
         model = self.similarity_model or self.model
 
@@ -419,13 +439,13 @@ class GamesRecommender:
         return self._post_process_games(
             games=sim_games,
             columns=columns,
-            join_on={'similar': 'bgg_id'},
-            sort_by=['bgg_id', 'rank'] if 'bgg_id' in columns else 'rank',
+            join_on={'similar': self.id_field},
+            sort_by=[self.id_field, 'rank'] if self.id_field in columns else 'rank',
         )
 
     def lead_game(
             self,
-            bgg_id,
+            game_id,
             user=None,
             exclude_known=False,
             exclude_compilations=True,
@@ -433,13 +453,13 @@ class GamesRecommender:
         ):
         ''' find the highest rated game in a cluster '''
 
-        cluster = frozenset(self.cluster(bgg_id)) & self.rated_games
+        cluster = frozenset(self.cluster(game_id)) & self.rated_games
         if exclude_compilations:
             cluster -= frozenset(self.compilations)
-        other_games = cluster - {bgg_id}
+        other_games = cluster - {game_id}
 
         if not other_games:
-            return bgg_id
+            return game_id
 
         if len(cluster) == 1:
             return next(iter(cluster))
@@ -456,14 +476,14 @@ class GamesRecommender:
             **kwargs)
 
         if recommendations:
-            return recommendations['bgg_id'][0]
+            return recommendations[self.id_field][0]
 
         if not self.games or 'rank' not in self.games.column_names():
-            return bgg_id
+            return game_id
 
-        ranked = self.games.filter_by(cluster, 'bgg_id').sort('rank')
+        ranked = self.games.filter_by(cluster, self.id_field).sort('rank')
 
-        return ranked['bgg_id'][0] if ranked else bgg_id
+        return ranked[self.id_field][0] if ranked else game_id
 
     def save(
             self,
@@ -602,12 +622,12 @@ class GamesRecommender:
                 min_max.setdefault(column, values)
 
         columns = list(min_max.keys())
-        if 'bgg_id' not in columns:
-            columns.append('bgg_id')
+        if cls.id_field not in columns:
+            columns.append(cls.id_field)
 
         all_games = games
         games = games[columns].dropna()
-        ind = games['bgg_id'].apply(bool, skip_na=False)
+        ind = games[cls.id_field].apply(bool, skip_na=False)
 
         for column, values in min_max.items():
             values = tuple(arg_to_iter(values)) + (None, None)
@@ -621,21 +641,21 @@ class GamesRecommender:
         games = games[ind]
 
         side_data_columns = list(arg_to_iter(side_data_columns))
-        if 'bgg_id' not in side_data_columns:
-            side_data_columns.append('bgg_id')
+        if cls.id_field not in side_data_columns:
+            side_data_columns.append(cls.id_field)
         if len(side_data_columns) > 1:
             LOGGER.info('using game side features: %r', side_data_columns)
             item_data = all_games[side_data_columns].dropna()
         else:
             item_data = None
 
-        ratings_filtered = ratings.filter_by(games['bgg_id'], 'bgg_id')
+        ratings_filtered = ratings.filter_by(games[cls.id_field], cls.id_field)
 
         model = tc.ranking_factorization_recommender.create(
             observation_data=ratings_filtered,
-            user_id='bgg_user_name',
-            item_id='bgg_id',
-            target='bgg_user_rating',
+            user_id=cls.user_id_field,
+            item_id=cls.id_field,
+            target=cls.rating_id_field,
             item_data=item_data,
             max_iterations=max_iterations,
             verbose=verbose,
@@ -643,9 +663,9 @@ class GamesRecommender:
 
         sim_model = tc.item_similarity_recommender.create(
             observation_data=ratings_filtered,
-            user_id='bgg_user_name',
-            item_id='bgg_id',
-            target='bgg_user_rating',
+            user_id=cls.user_id_field,
+            item_id=cls.id_field,
+            target=cls.rating_id_field,
             item_data=item_data,
             verbose=verbose,
         ) if similarity_model else None
@@ -673,9 +693,13 @@ class GamesRecommender:
         except Exception as exc:
             cls.logger.exception(exc)
 
-        if 'compilation' in columns:
+        if cls.compilation_field in columns:
             # pylint: disable=unexpected-keyword-arg
-            games['compilation'] = games['compilation'].apply(bool, skip_na=False)
+            games[cls.compilation_field] = games[cls.compilation_field].apply(bool, skip_na=False)
+
+        if cls.cooperative_field in columns:
+            # pylint: disable=unexpected-keyword-arg
+            games[cls.cooperative_field] = games[cls.cooperative_field].apply(bool, skip_na=False)
 
         return games
 
@@ -696,12 +720,16 @@ class GamesRecommender:
             if col not in games.column_names():
                 games[col] = None
 
-        if 'compilation' in games.column_names():
+        if cls.compilation_field in games.column_names():
             # pylint: disable=unexpected-keyword-arg
-            games['compilation'] = games['compilation'].apply(bool, skip_na=False)
+            games[cls.compilation_field] = games[cls.compilation_field].apply(bool, skip_na=False)
+
+        if cls.cooperative_field in games.column_names():
+            games[cls.cooperative_field] = games[cls.cooperative_field].apply(bool, skip_na=False)
 
         return games
 
+    # pylint: disable=unused-argument
     @classmethod
     def process_ratings(cls, ratings, **kwargs):
         ''' process ratings '''
@@ -788,6 +816,12 @@ class BGGRecommender(GamesRecommender):
     ''' BoardGameGeek recommender '''
 
     logger = logging.getLogger('BGGRecommender')
+
+    id_field = 'bgg_id'
+    id_type = int
+    user_id_field = 'bgg_user_name'
+    rating_id_field = 'bgg_user_rating'
+
     columns_games = {
         'name': str,
         'year': int,
@@ -833,20 +867,26 @@ class BGGRecommender(GamesRecommender):
         'num_votes': 50,
     }
 
+    cluster_fields = ('compilation_of', 'implementation', 'integration')
+    cluster_field_types = (int, int, int)
+
+    def process_user_id(self, user_id):
+        return user_id.lower() if user_id else None
+
     @classmethod
     def process_ratings(cls, ratings, **kwargs):
         ''' process ratings '''
 
         ratings = super().process_ratings(ratings, **kwargs)
 
-        if 'bgg_user_name' in ratings.column_names():
+        if cls.user_id_field in ratings.column_names():
             # pylint: disable=unexpected-keyword-arg
-            ratings['bgg_user_name'] = ratings['bgg_user_name'].apply(
+            ratings[cls.user_id_field] = ratings[cls.user_id_field].apply(
                 str.lower, dtype=str, skip_na=True)
 
-        if kwargs.get('dedupe') and 'bgg_user_rating' in ratings.column_names():
-            ratings = ratings.unstack('bgg_user_rating', 'ratings')
-            ratings['bgg_user_rating'] = ratings['ratings'].apply(lambda x: x[-1], dtype=float)
+        if kwargs.get('dedupe') and cls.rating_id_field in ratings.column_names():
+            ratings = ratings.unstack(cls.rating_id_field, 'ratings')
+            ratings[cls.rating_id_field] = ratings['ratings'].apply(lambda x: x[-1], dtype=float)
             del ratings['ratings']
 
         return ratings
@@ -856,6 +896,11 @@ class BGARecommender(GamesRecommender):
     ''' Board Game Atlas recommender '''
 
     logger = logging.getLogger('BGARecommender')
+
+    id_field = 'bga_id'
+    user_id_field = 'bga_user_id'
+    rating_id_field = 'bga_user_rating'
+
     columns_games = {
         'name': str,
         'year': int,
@@ -875,10 +920,10 @@ class BGARecommender(GamesRecommender):
     }
     default_limits = {
         'year': (-4000, date.today().year),
-        'min_players': 1,
-        'max_players': 1,
-        'min_age': (2, 21),
-        'min_time': (1, 24 * 60),
-        'max_time': (1, 4 * 24 * 60),
-        'num_votes': 10,
+        # 'min_players': 1,
+        # 'max_players': 1,
+        # 'min_age': (2, 21),
+        # 'min_time': (1, 24 * 60),
+        # 'max_time': (1, 4 * 24 * 60),
+        # 'num_votes': 10,
     }
