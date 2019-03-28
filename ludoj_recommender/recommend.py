@@ -882,7 +882,10 @@ class BGGRecommender(GamesRecommender):
         if cls.user_id_field in ratings.column_names():
             # pylint: disable=unexpected-keyword-arg
             ratings[cls.user_id_field] = ratings[cls.user_id_field].apply(
-                str.lower, dtype=str, skip_na=True)
+                lambda user_id: cls.process_user_id(None, user_id),
+                dtype=cls.user_id_type,
+                skip_na=True,
+            )
 
         if kwargs.get('dedupe') and cls.rating_id_field in ratings.column_names():
             ratings = ratings.unstack(cls.rating_id_field, 'ratings')

@@ -5,23 +5,25 @@
 
 import argparse
 import logging
+import os
 import sys
 
-from .recommend import BGGRecommender
+from .recommend import BGARecommender, BGGRecommender
 
 LOGGER = logging.getLogger(__name__)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _parse_args():
     parser = argparse.ArgumentParser(description='train board game recommender model')
     parser.add_argument('users', nargs='*', help='users to be recommended games')
-    parser.add_argument('--model', '-m', default='.tc', help='model directory')
+    parser.add_argument('--bga', '-b', action='store_true', help='use Board Game Atlas data')
+    parser.add_argument('--model', '-m', help='model directory')
     parser.add_argument('--train', '-t', action='store_true', help='train a new model')
     parser.add_argument(
         '--similarity', '-s', action='store_true', help='train a new similarity model')
-    parser.add_argument('--games-file', '-G', default='results/bgg_GameItem.jl', help='games file')
-    parser.add_argument(
-        '--ratings-file', '-R', default='results/bgg_RatingItem.jl', help='ratings file')
+    parser.add_argument('--games-file', '-G', help='games file')
+    parser.add_argument('--ratings-file', '-R', help='ratings file')
     parser.add_argument(
         '--side-data-columns', '-S', nargs='+', help='game features to use in recommender model')
     parser.add_argument(
@@ -52,6 +54,17 @@ def _main():
 
     LOGGER.info(args)
 
+    if args.bga:
+        model_cls = BGARecommender
+        model_dir = args.model or os.path.join(BASE_DIR, '.bga')
+        games_file = args.games_file or os.path.join(BASE_DIR, 'results', 'bga_GameItem.jl')
+        ratings_file = args.ratings_file or os.path.join(BASE_DIR, 'results', 'bga_RatingItem.jl')
+    else:
+        model_cls = BGGRecommender
+        model_dir = args.model or os.path.join(BASE_DIR, '.bgg')
+        games_file = args.games_file or os.path.join(BASE_DIR, 'results', 'bgg_GameItem.jl')
+        ratings_file = args.ratings_file or os.path.join(BASE_DIR, 'results', 'bgg_RatingItem.jl')
+
     games_filters = {}
 
     if args.cooperative:
@@ -73,16 +86,16 @@ def _main():
         games_filters['min_time__lte'] = args.time * 1.1
 
     if args.train:
-        recommender = BGGRecommender.train_from_files(
-            games_file=args.games_file,
-            ratings_file=args.ratings_file,
+        recommender = model_cls.train_from_files(
+            games_file=games_file,
+            ratings_file=ratings_file,
             side_data_columns=args.side_data_columns,
             similarity_model=args.similarity,
             verbose=bool(args.verbose),
         )
-        recommender.save(args.model)
+        recommender.save(model_dir)
     else:
-        recommender = BGGRecommender.load(args.model)
+        recommender = model_cls.load(model_dir)
 
     for user in [None] + args.users:
         LOGGER.info('#' * 100)
