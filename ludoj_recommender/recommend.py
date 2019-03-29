@@ -922,11 +922,11 @@ class BGARecommender(GamesRecommender):
         'bga_user_rating': float,
     }
     default_limits = {
-        'year': (-4000, date.today().year),
+        # 'year': (-4000, date.today().year),
         # 'min_players': 1,
         # 'max_players': 1,
         # 'min_age': (2, 21),
         # 'min_time': (1, 24 * 60),
         # 'max_time': (1, 4 * 24 * 60),
-        'num_votes': 5,
+        # 'num_votes': 10,
     }
