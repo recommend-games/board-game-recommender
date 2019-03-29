@@ -29,6 +29,8 @@ def _parse_args():
     parser.add_argument(
         '--num-rec', '-n', type=int, default=10, help='number of games to recommend')
     parser.add_argument(
+        '--max-iterations', '-M', type=int, default=100, help='maximal number of training steps')
+    parser.add_argument(
         '--diversity', '-d', type=float, default=0, help='diversity in recommendations')
     parser.add_argument(
         '--cooperative', '-c', action='store_true', help='recommend cooperative games')
@@ -91,6 +93,7 @@ def _main():
             ratings_file=ratings_file,
             side_data_columns=args.side_data_columns,
             similarity_model=args.similarity,
+            max_iterations=args.max_iterations,
             verbose=bool(args.verbose),
         )
         recommender.save(model_dir)

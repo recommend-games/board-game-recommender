@@ -928,5 +928,5 @@ class BGARecommender(GamesRecommender):
         # 'min_age': (2, 21),
         # 'min_time': (1, 24 * 60),
         # 'max_time': (1, 4 * 24 * 60),
-        # 'num_votes': 10,
+        'num_votes': 5,
     }
