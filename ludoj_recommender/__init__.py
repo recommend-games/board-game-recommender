@@ -2,4 +2,4 @@
 
 ''' ludoj recommender '''
 
-from .recommend import GamesRecommender
+from .recommend import BGARecommender, BGGRecommender, GamesRecommender
