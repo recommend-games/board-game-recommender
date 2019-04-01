@@ -9,7 +9,7 @@ import os
 import tempfile
 import sys
 
-from datetime import date
+# from datetime import date
 from typing import Dict, Optional, Tuple, Type, Union
 
 import turicreate as tc
@@ -620,6 +620,7 @@ class GamesRecommender:
         if defaults:
             for column, values in cls.default_limits.items():
                 min_max.setdefault(column, values)
+        min_max = {k: v for k, v in min_max.items() if k and v is not None}
 
         columns = list(min_max.keys())
         if cls.id_field not in columns:
@@ -857,13 +858,13 @@ class BGGRecommender(GamesRecommender):
         'bgg_user_rating': float,
     }
     default_limits = {
-        'year': (-4000, date.today().year),
-        'complexity': (1, 5),
-        'min_players': 1,
-        'max_players': 1,
-        'min_age': (2, 21),
-        'min_time': (1, 24 * 60),
-        'max_time': (1, 4 * 24 * 60),
+        # 'year': (-4000, date.today().year),
+        # 'complexity': (1, 5),
+        # 'min_players': 1,
+        # 'max_players': 1,
+        # 'min_age': (2, 21),
+        # 'min_time': (1, 24 * 60),
+        # 'max_time': (1, 4 * 24 * 60),
         'num_votes': 50,
     }
 
