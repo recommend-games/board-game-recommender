@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 
+from collections import OrderedDict
 from datetime import datetime, timezone
 
 import dateutil.parser
@@ -130,6 +131,8 @@ def filter_sframe(sframe, **params):
         elif operation == 'iexact':
             value = value.lower()
             ind &= sarray.apply(str.lower) == value
+        elif operation == 'ne':
+            ind &= sarray != value
         elif operation == 'contains':
             ind &= sarray.apply(lambda string, v=value: v in string)
         elif operation == 'icontains':
@@ -205,6 +208,11 @@ def arg_to_iter(arg):
         return arg
 
     return (arg,)
+
+
+def clear_list(items):
+    '''remove duplicates and empty values from a list without changing the order'''
+    return list(OrderedDict.fromkeys(filter(None, items)))
 
 
 def format_from_path(path):
