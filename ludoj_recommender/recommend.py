@@ -10,12 +10,13 @@ import tempfile
 import sys
 
 # from datetime import date
-from typing import Dict, Optional, Tuple, Type, Union
+from typing import Any, Dict, Optional, Tuple, Type
 
 import turicreate as tc
 
 from .utils import (
-    arg_to_iter, condense_csv, filter_sframe, format_from_path, percentile_buckets, star_rating)
+    arg_to_iter, clear_list, condense_csv, filter_sframe,
+    format_from_path, percentile_buckets, star_rating)
 
 csv.field_size_limit(sys.maxsize)
 
@@ -91,7 +92,7 @@ class GamesRecommender:
 
     columns_games: Dict[str, Type]
     columns_ratings: Dict[str, Type]
-    default_limits: Dict[str, Union[int, Tuple]]
+    default_filters: Dict[str, Any]
 
     cluster_fields: Optional[Tuple[str, ...]] = None
     cluster_field_types: Optional[Tuple[Type, ...]] = None
@@ -613,33 +614,19 @@ class GamesRecommender:
             max_iterations=100,
             verbose=False,
             defaults=True,
-            **min_max,
+            **filters,
         ):
         ''' train recommender from data '''
 
+        filters.setdefault(f'{cls.id_field}__apply', bool)
         if defaults:
-            for column, values in cls.default_limits.items():
-                min_max.setdefault(column, values)
-        min_max = {k: v for k, v in min_max.items() if k and v is not None}
-
-        columns = list(min_max.keys())
-        if cls.id_field not in columns:
-            columns.append(cls.id_field)
+            for column, values in cls.default_filters.items():
+                filters.setdefault(column, values)
+        filters = {k: v for k, v in filters.items() if k and v is not None}
+        columns = clear_list(k.split('__')[0] for k in filters)
 
         all_games = games
-        games = games[columns].dropna()
-        ind = games[cls.id_field].apply(bool, skip_na=False)
-
-        for column, values in min_max.items():
-            values = tuple(arg_to_iter(values)) + (None, None)
-            lower, upper = values[:2]
-
-            if lower is not None:
-                ind &= games[column] >= lower
-            if upper is not None:
-                ind &= games[column] <= upper
-
-        games = games[ind]
+        games = filter_sframe(games[columns].dropna(), **filters)
 
         side_data_columns = list(arg_to_iter(side_data_columns))
         if cls.id_field not in side_data_columns:
@@ -775,7 +762,7 @@ class GamesRecommender:
             max_iterations=100,
             verbose=False,
             defaults=True,
-            **min_max,
+            **filters,
         ):
         ''' load data from JSON or CSV and train recommender '''
 
@@ -803,7 +790,7 @@ class GamesRecommender:
             max_iterations=max_iterations,
             verbose=verbose,
             defaults=defaults,
-            **min_max
+            **filters
         )
 
     def __str__(self):
@@ -857,15 +844,15 @@ class BGGRecommender(GamesRecommender):
         'bgg_user_name': str,
         'bgg_user_rating': float,
     }
-    default_limits = {
-        # 'year': (-4000, date.today().year),
-        # 'complexity': (1, 5),
-        # 'min_players': 1,
-        # 'max_players': 1,
-        # 'min_age': (2, 21),
-        # 'min_time': (1, 24 * 60),
-        # 'max_time': (1, 4 * 24 * 60),
-        'num_votes': 50,
+    default_filters = {
+        # 'year__range': (-4000, date.today().year),
+        # 'complexity__range': (1, 5),
+        # 'min_players__gte': 1,
+        # 'max_players__gte': 1,
+        # 'min_age__range': (2, 21),
+        # 'min_time__range': (1, 24 * 60),
+        # 'max_time__range': (1, 4 * 24 * 60),
+        'num_votes__gte': 50,
     }
 
     cluster_fields = ('compilation_of', 'implementation', 'integration')
@@ -922,12 +909,14 @@ class BGARecommender(GamesRecommender):
         'bga_user_id': str,
         'bga_user_rating': float,
     }
-    default_limits = {
-        # 'year': (-4000, date.today().year),
-        # 'min_players': 1,
-        # 'max_players': 1,
-        # 'min_age': (2, 21),
-        # 'min_time': (1, 24 * 60),
-        # 'max_time': (1, 4 * 24 * 60),
-        # 'num_votes': 10,
+    default_filters = {
+        # exclude expansions
+        'category__apply': lambda item: not item or 'v4SfYtS2Lr' not in item,
+        # 'year__range': (-4000, date.today().year),
+        # 'min_players__gte': 1,
+        # 'max_players__gte': 1,
+        # 'min_age__range': (2, 21),
+        # 'min_time__range': (1, 24 * 60),
+        # 'max_time__range': (1, 4 * 24 * 60),
+        # 'num_votes__gte': 10,
     }
