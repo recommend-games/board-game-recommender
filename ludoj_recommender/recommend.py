@@ -910,6 +910,7 @@ class BGARecommender(GamesRecommender):
         'bga_user_rating': float,
     }
     default_filters = {
+        # exclude expansions
         'category__apply': lambda item: not item or 'v4SfYtS2Lr' not in item,
         # 'year__range': (-4000, date.today().year),
         # 'min_players__gte': 1,
