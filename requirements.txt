@@ -1,2 +1,2 @@
 python-dateutil
-turicreate
+turicreate<5.7
