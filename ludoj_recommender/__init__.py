@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
 
-''' ludoj recommender '''
+""" ludoj recommender """
 
 from .recommend import BGARecommender, BGGRecommender, GamesRecommender
