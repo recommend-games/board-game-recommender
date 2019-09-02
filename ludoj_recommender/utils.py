@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-''' util functions '''
+""" util functions """
 
 import csv
 import logging
@@ -20,13 +20,13 @@ ITERABLE_SINGLE_VALUES = (dict, str, bytes)
 
 
 def identity(obj):
-    ''' do nothing '''
+    """ do nothing """
 
     return obj
 
 
 def parse_float(number):
-    ''' safely convert an object to float if possible, else return None '''
+    """ safely convert an object to float if possible, else return None """
 
     try:
         return float(number)
@@ -37,11 +37,13 @@ def parse_float(number):
 
 
 def _add_tz(date, tzinfo=None):
-    return date if not tzinfo or not date or date.tzinfo else date.replace(tzinfo=tzinfo)
+    return (
+        date if not tzinfo or not date or date.tzinfo else date.replace(tzinfo=tzinfo)
+    )
 
 
 def parse_date(date, tzinfo=None, format_str=None):
-    '''try to turn input into a datetime object'''
+    """try to turn input into a datetime object"""
 
     if not date:
         return None
@@ -84,14 +86,14 @@ def parse_date(date, tzinfo=None, format_str=None):
 
 
 def condense_csv(in_file, out_file, columns, header=True):
-    ''' copying only columns from in_file to out_file '''
+    """ copying only columns from in_file to out_file """
 
     if isinstance(in_file, str):
         with open(in_file) as in_file_obj:
             return condense_csv(in_file_obj, out_file, columns)
 
     if isinstance(out_file, str):
-        with open(out_file, 'w') as out_file_obj:
+        with open(out_file, "w") as out_file_obj:
             return condense_csv(in_file, out_file_obj, columns)
 
     columns = tuple(columns)
@@ -111,7 +113,7 @@ def condense_csv(in_file, out_file, columns, header=True):
 
 
 def filter_sframe(sframe, **params):
-    ''' query an SFrame with given parameters '''
+    """ query an SFrame with given parameters """
 
     if not params:
         return sframe
@@ -119,49 +121,49 @@ def filter_sframe(sframe, **params):
     ind = tc.SArray.from_const(True, len(sframe))
 
     for key, value in params.items():
-        split = key.split('__')
+        split = key.split("__")
         if len(split) == 1:
-            split.append('exact')
+            split.append("exact")
         field, operation = split
 
         sarray = sframe[field]
 
-        if operation == 'exact':
+        if operation == "exact":
             ind &= sarray == value
-        elif operation == 'iexact':
+        elif operation == "iexact":
             value = value.lower()
             ind &= sarray.apply(str.lower) == value
-        elif operation == 'ne':
+        elif operation == "ne":
             ind &= sarray != value
-        elif operation == 'contains':
+        elif operation == "contains":
             ind &= sarray.apply(lambda string, v=value: v in string)
-        elif operation == 'icontains':
+        elif operation == "icontains":
             value = value.lower()
             ind &= sarray.apply(lambda string, v=value: v in string.lower())
-        elif operation == 'in':
+        elif operation == "in":
             value = frozenset(value)
             ind &= sarray.apply(lambda item, v=value: item in v)
-        elif operation == 'gt':
+        elif operation == "gt":
             ind &= sarray > value
-        elif operation == 'gte':
+        elif operation == "gte":
             ind &= sarray >= value
-        elif operation == 'lt':
+        elif operation == "lt":
             ind &= sarray < value
-        elif operation == 'lte':
+        elif operation == "lte":
             ind &= sarray <= value
-        elif operation == 'range':
+        elif operation == "range":
             lower, upper = value
             ind &= (sarray >= lower) & (sarray <= upper)
-        elif operation == 'apply':
+        elif operation == "apply":
             ind &= sarray.apply(value)
         else:
-            raise ValueError('unknown operation <{}>'.format(operation))
+            raise ValueError("unknown operation <{}>".format(operation))
 
     return sframe[ind]
 
 
 def percentile_buckets(sarray, percentiles):
-    ''' make percentiles '''
+    """ make percentiles """
 
     sarray = sarray.sort(True)
     total = len(sarray)
@@ -171,7 +173,9 @@ def percentile_buckets(sarray, percentiles):
 
     percentiles = list(percentiles)
     assert percentiles == sorted(percentiles)
-    percentiles = [p / 100 for p in percentiles] if max(percentiles) > 1 else percentiles
+    percentiles = (
+        [p / 100 for p in percentiles] if max(percentiles) > 1 else percentiles
+    )
     assert 0 < max(percentiles) < 1
     percentiles.append(1)
 
@@ -180,13 +184,15 @@ def percentile_buckets(sarray, percentiles):
     for percentile in percentiles:
         index = int(percentile * total) if percentile < 1 else -1
         upper = sarray[index]
-        LOGGER.debug('%5.1f%%-tile: between %.3f and %.3f', percentile * 100, lower, upper)
+        LOGGER.debug(
+            "%5.1f%%-tile: between %.3f and %.3f", percentile * 100, lower, upper
+        )
         yield percentile, lower, upper
         lower = upper
 
 
 def star_rating(score, buckets, low=1, high=5):
-    ''' star rating '''
+    """ star rating """
 
     if not buckets or len(buckets) < 2:
         return None
@@ -199,24 +205,24 @@ def star_rating(score, buckets, low=1, high=5):
 
 
 def arg_to_iter(arg):
-    ''' convert an argument to an iterable '''
+    """ convert an argument to an iterable """
 
     if arg is None:
         return ()
 
-    if not isinstance(arg, ITERABLE_SINGLE_VALUES) and hasattr(arg, '__iter__'):
+    if not isinstance(arg, ITERABLE_SINGLE_VALUES) and hasattr(arg, "__iter__"):
         return arg
 
     return (arg,)
 
 
 def clear_list(items):
-    '''remove duplicates and empty values from a list without changing the order'''
+    """remove duplicates and empty values from a list without changing the order"""
     return list(OrderedDict.fromkeys(filter(None, items)))
 
 
 def format_from_path(path):
-    ''' get file extension '''
+    """ get file extension """
     try:
         _, ext = os.path.splitext(path)
         return ext.lower()[1:] if ext else None
