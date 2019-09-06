@@ -12,7 +12,7 @@ import os
 import sys
 from shutil import rmtree
 
-from setuptools import setup, Command  # find_packages
+from setuptools import find_packages, setup, Command
 
 # Package meta-data.
 NAME = "ludoj-recommender"
@@ -105,9 +105,9 @@ setup(
     author_email=EMAIL,
     python_requires=REQUIRES_PYTHON,
     url=URL,
-    # packages=find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
+    packages=find_packages(exclude=("tests", "*.tests", "*.tests.*", "tests.*")),
     # If your package is a single module, use this instead of 'packages':
-    py_modules=("ludoj_recommender",),
+    # py_modules=("ludoj_recommender",),
     # entry_points={
     #     'console_scripts': ['mycli=mymodule:cli'],
     # },
@@ -115,7 +115,7 @@ setup(
     extras_require=EXTRAS,
     include_package_data=True,
     license="GPL-3.0-or-later",
-    classifiers=[
+    classifiers=(
         # Trove classifiers
         # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
@@ -124,7 +124,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Topic :: Games/Entertainment :: Board Games",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    ],
+    ),
     # $ setup.py publish support.
     cmdclass={"upload": UploadCommand},
 )
