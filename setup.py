@@ -17,7 +17,7 @@ from setuptools import find_packages, setup, Command
 # Package meta-data.
 NAME = "ludoj-recommender"
 DESCRIPTION = "Board games recommender engine"
-URL = "https://gitlab.com/mshepherd/ludoj-recommender"
+URL = "https://gitlab.com/recommend.games/board-game-recommender"
 EMAIL = "recommend.ludoj@gmail.com"
 AUTHOR = "Markus Shepherd"
 REQUIRES_PYTHON = ">=3.6.0"

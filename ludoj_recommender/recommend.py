@@ -540,28 +540,32 @@ class GamesRecommender:
         self.logger.info("saving model to <%s>", path_model)
         self.model.save(path_model)
 
-        if self.similarity_model:
+        if self.similarity_model and dir_similarity:
             path_similarity = os.path.join(path, dir_similarity, "")
             self.logger.info("saving similarity model to <%s>", path_similarity)
             self.similarity_model.save(path_similarity)
 
-        if self.games:
+        if self.games and dir_games:
             path_games = os.path.join(path, dir_games, "")
             self.logger.info("saving games to <%s>", path_games)
             self.games.save(path_games)
 
-        if self.ratings:
+        if self.ratings and dir_ratings:
             path_ratings = os.path.join(path, dir_ratings, "")
             self.logger.info("saving ratings to <%s>", path_ratings)
             self.ratings.save(path_ratings)
 
         # pylint: disable=len-as-condition
-        if self.clusters is not None and len(self.clusters):
+        if self.clusters is not None and len(self.clusters) and dir_clusters:
             path_clusters = os.path.join(path, dir_clusters, "")
             self.logger.info("saving clusters to <%s>", path_clusters)
             self.clusters.save(path_clusters)
 
-        if self.compilations is not None and len(self.compilations):
+        if (
+            self.compilations is not None
+            and len(self.compilations)
+            and dir_compilations
+        ):
             path_compilations = os.path.join(path, dir_compilations, "")
             self.logger.info("saving compilations to <%s>", path_compilations)
             self.compilations.save(path_compilations)
