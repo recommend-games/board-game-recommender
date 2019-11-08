@@ -7,8 +7,11 @@ verify_ssl = true
 python_version = "3.6"
 
 [packages]
-python-dateutil = "*"
+pytility = "*"
 turicreate = "<5.7"
 
 [dev-packages]
+black = "==19.10b0"
+mypy = "*"
+pylint = "*"
 twine = "*"
