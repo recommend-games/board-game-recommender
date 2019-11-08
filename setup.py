@@ -4,8 +4,6 @@
 """Setup."""
 
 # Template from https://github.com/navdeep-G/setup.py
-# Note: To use the 'upload' functionality of this file, you must:
-#   $ pipenv install twine --dev
 
 import io
 import os
@@ -15,12 +13,34 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = "ludoj-recommender"
+NAME = "board-game-recommender"
 DESCRIPTION = "Board games recommender engine"
-URL = "https://gitlab.com/recommend.games/board-game-recommender"
+KEYWORDS = (
+    "board games",
+    "tabletop games",
+    "recommendations",
+    "recommender",
+    "recommender engine",
+    "recommendation engine",
+    "boardgamegeek",
+    "bgg",
+    "ratings",
+    "turicreate",
+    "collaborative filtering",
+    "ludoj",
+    "ludoj-recommender",
+)
+URL_HOMEPAGE = "https://recommend.games/"
+URL_DOCUMENTATION = (
+    "https://gitlab.com/recommend.games/board-game-recommender/blob/master/README.md"
+)
+URL_FUNDING = None
+URL_THANKS = None
+URL_SOURCE = "https://gitlab.com/recommend.games/board-game-recommender"
+URL_TRACKER = "https://gitlab.com/recommend.games/board-game-recommender/issues"
 EMAIL = "recommend.ludoj@gmail.com"
 AUTHOR = "Markus Shepherd"
-REQUIRES_PYTHON = ">=3.6.0"
+REQUIRES_PYTHON = ">=3.6.0,<3.7.0"
 VERSION = None  # will be read from __version__.py
 
 # What packages are required for this module to be executed?
@@ -101,30 +121,37 @@ setup(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
+    keywords=KEYWORDS,
     author=AUTHOR,
     author_email=EMAIL,
+    url=URL_HOMEPAGE,
+    project_urls={
+        "Documentation": URL_DOCUMENTATION,
+        # "Funding": URL_FUNDING,
+        # "Say Thanks!": URL_THANKS,
+        "Source": URL_SOURCE,
+        "Tracker": URL_TRACKER,
+    },
     python_requires=REQUIRES_PYTHON,
-    url=URL,
     packages=find_packages(exclude=("tests", "*.tests", "*.tests.*", "tests.*")),
     # If your package is a single module, use this instead of 'packages':
-    # py_modules=("ludoj_recommender",),
+    # py_modules=(),
     # entry_points={
     #     'console_scripts': ['mycli=mymodule:cli'],
     # },
     install_requires=REQUIRED,
     extras_require=EXTRAS,
     include_package_data=True,
-    license="GPL-3.0-or-later",
-    classifiers=(
+    license="MIT",
+    classifiers=[
         # Trove classifiers
         # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
-        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+        "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Topic :: Games/Entertainment :: Board Games",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    ),
+    ],
     # $ setup.py publish support.
     cmdclass={"upload": UploadCommand},
 )

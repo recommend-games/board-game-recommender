@@ -3,7 +3,6 @@
 """ recommend games """
 
 import csv
-import json
 import logging
 import os
 import tempfile
@@ -748,11 +747,7 @@ class GamesRecommender:
         cls.logger.info("reading games from JSON file <%s>", games_json)
 
         columns = cls.columns_games if columns is None else columns
-        games = (
-            tc.SFrame.read_json(url=games_json, orient="records")
-            if orient == "records"
-            else tc.SArray(games_json).apply(json.loads).unpack(column_name_prefix=None)
-        )
+        games = tc.SFrame.read_json(url=games_json, orient=orient)
 
         for col in columns:
             if col not in games.column_names():
@@ -793,13 +788,7 @@ class GamesRecommender:
         """ load ratings from JSON """
 
         columns = cls.columns_ratings if columns is None else columns
-        ratings = (
-            tc.SFrame.read_json(url=ratings_json, orient="records")
-            if orient == "records"
-            else tc.SArray(ratings_json)
-            .apply(json.loads)
-            .unpack(column_name_prefix=None)
-        )
+        ratings = tc.SFrame.read_json(url=ratings_json, orient=orient)
         ratings = ratings[columns].dropna()
 
         return cls.process_ratings(ratings, **kwargs)
