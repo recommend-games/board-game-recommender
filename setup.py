@@ -44,7 +44,7 @@ REQUIRES_PYTHON = ">=3.6.0,<3.7.0"
 VERSION = None  # will be read from __version__.py
 
 # What packages are required for this module to be executed?
-REQUIRED = ("python-dateutil", "turicreate<5.7")
+REQUIRED = ("pytility", "turicreate<5.7")
 
 # What packages are optional?
 EXTRAS = {

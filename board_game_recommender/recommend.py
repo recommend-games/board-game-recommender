@@ -11,11 +11,11 @@ import sys
 # from datetime import date
 from typing import Any, Dict, Optional, Tuple, Type
 
+from pytility import arg_to_iter, clear_list
+
 import turicreate as tc
 
 from .utils import (
-    arg_to_iter,
-    clear_list,
     condense_csv,
     filter_sframe,
     format_from_path,

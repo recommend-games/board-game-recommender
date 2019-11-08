@@ -7,82 +7,11 @@ import logging
 import os
 import sys
 
-from collections import OrderedDict
-from datetime import datetime, timezone
-
-import dateutil.parser
 import turicreate as tc
 
 csv.field_size_limit(sys.maxsize)
 
 LOGGER = logging.getLogger(__name__)
-ITERABLE_SINGLE_VALUES = (dict, str, bytes)
-
-
-def identity(obj):
-    """ do nothing """
-
-    return obj
-
-
-def parse_float(number):
-    """ safely convert an object to float if possible, else return None """
-
-    try:
-        return float(number)
-    except Exception:
-        pass
-
-    return None
-
-
-def _add_tz(date, tzinfo=None):
-    return (
-        date if not tzinfo or not date or date.tzinfo else date.replace(tzinfo=tzinfo)
-    )
-
-
-def parse_date(date, tzinfo=None, format_str=None):
-    """try to turn input into a datetime object"""
-
-    if not date:
-        return None
-
-    # already a datetime
-    if isinstance(date, datetime):
-        return _add_tz(date, tzinfo)
-
-    # parse as epoch time
-    timestamp = parse_float(date)
-    if timestamp is not None:
-        return datetime.fromtimestamp(timestamp, tzinfo or timezone.utc)
-
-    if format_str:
-        try:
-            # parse as string in given format
-            return _add_tz(datetime.strptime(date, format_str), tzinfo)
-        except Exception:
-            pass
-
-    try:
-        # parse as string
-        return _add_tz(dateutil.parser.parse(date), tzinfo)
-    except Exception:
-        pass
-
-    try:
-        # parse as (year, month, day, hour, minute, second, microsecond, tzinfo)
-        return datetime(*date)
-    except Exception:
-        pass
-
-    try:
-        # parse as time.struct_time
-        return datetime(*date[:6], tzinfo=tzinfo or timezone.utc)
-    except Exception:
-        pass
-
-    return None
 
 
 def condense_csv(in_file, out_file, columns, header=True):
@@ -202,23 +131,6 @@ def star_rating(score, buckets, low=1, high=5):
         if score <= upper:
             return low + i * step
     return high
-
-
-def arg_to_iter(arg):
-    """ convert an argument to an iterable """
-
-    if arg is None:
-        return ()
-
-    if not isinstance(arg, ITERABLE_SINGLE_VALUES) and hasattr(arg, "__iter__"):
-        return arg
-
-    return (arg,)
-
-
-def clear_list(items):
-    """remove duplicates and empty values from a list without changing the order"""
-    return list(OrderedDict.fromkeys(filter(None, items)))
 
 
 def format_from_path(path):
