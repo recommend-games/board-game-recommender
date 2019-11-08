@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-""" ludoj recommender """
+"""Board game recommender."""
 
 from .__version__ import VERSION, __version__
 from .recommend import BGARecommender, BGGRecommender, GamesRecommender

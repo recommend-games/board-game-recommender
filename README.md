@@ -1,3 +1,3 @@
-# ludoj-recommender #
+# board-game-recommender
 
 Board game recommendation engine.
