@@ -40,7 +40,7 @@ URL_SOURCE = "https://gitlab.com/recommend.games/board-game-recommender"
 URL_TRACKER = "https://gitlab.com/recommend.games/board-game-recommender/issues"
 EMAIL = "markus@recommend.games"
 AUTHOR = "Markus Shepherd"
-REQUIRES_PYTHON = ">=3.6.0,<3.8.0"
+REQUIRES_PYTHON = ">=3.6.0,<3.9.0"
 VERSION = None  # will be read from __version__.py
 
 # What packages are required for this module to be executed?
@@ -137,7 +137,7 @@ setup(
     # If your package is a single module, use this instead of 'packages':
     # py_modules=(),
     # entry_points={
-    #     'console_scripts': ['mycli=mymodule:cli'],
+    #     "console_scripts": ["mycli=mymodule:cli"],
     # },
     install_requires=REQUIRED,
     extras_require=EXTRAS,
@@ -149,6 +149,8 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "Topic :: Games/Entertainment :: Board Games",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
