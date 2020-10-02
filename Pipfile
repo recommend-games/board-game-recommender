@@ -4,14 +4,14 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [requires]
-python_version = "3.7"
+python_version = "3.8"
 
 [packages]
 pytility = "*"
 turicreate = "*"
 
 [dev-packages]
-black = "==19.10b0"
+black = "==20.8b1"
 mypy = "*"
 pylint = "*"
 twine = "*"
