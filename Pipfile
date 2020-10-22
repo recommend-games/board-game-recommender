@@ -13,5 +13,6 @@ turicreate = "*"
 [dev-packages]
 black = "==20.8b1"
 mypy = "*"
+pre-commit = "*"
 pylint = "*"
 twine = "*"
