@@ -1,4 +1,4 @@
-# board-game-recommender
+# 🎲 Board Game Recommender 👍
 
 Board game recommendation engine. View the recommendations live at
 [Recommend.Games](https://recommend.games/)! Install via
