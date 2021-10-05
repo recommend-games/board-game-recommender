@@ -664,7 +664,7 @@ class GamesRecommender:
             dataset=observation_data,
             user_id=user_id,
             item_id=item_id,
-        )  # TODO other arguments
+        )  # TODO other arguments, in particular max_num_users
         cls.logger.info(
             "Hyperparameter tuning on %d train and %d test rows", len(train), len(test)
         )
@@ -698,7 +698,6 @@ class GamesRecommender:
             model[0]: result["rmse_overall"] for model, result in zip(models, results)
         }
 
-        print(results)  # TODO remove
         best = min(results.items(), key=lambda x: x[1])
         cls.logger.info("The smallest RMSE was %.3f with %d factors", best[1], best[0])
 
@@ -754,7 +753,7 @@ class GamesRecommender:
                 target=cls.rating_id_field,
                 num_factors_list=num_factors_list,
                 item_data=item_data,
-                max_iterations=25,  # TODO
+                max_iterations=25,  # TODO better max_iterations
                 verbose=verbose,
             )
         cls.logger.info(
