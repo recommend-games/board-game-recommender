@@ -665,13 +665,13 @@ class GamesRecommender:
             user_id=user_id,
             item_id=item_id,
         )  # TODO other arguments
-        LOGGER.info(
+        cls.logger.info(
             "Hyperparameter tuning on %d train and %d test rows", len(train), len(test)
         )
 
         models = {}
         for num_factors in arg_to_iter(num_factors_list):
-            LOGGER.info(
+            cls.logger.info(
                 "Train model with %d latent factors on training data", num_factors
             )
             models[num_factors] = tc.ranking_factorization_recommender.create(
@@ -695,12 +695,12 @@ class GamesRecommender:
             verbose=verbose,
         )
         results = {
-            model[0]: result["rmse_overall"] for model, result in zip(model, results)
+            model[0]: result["rmse_overall"] for model, result in zip(models, results)
         }
 
         print(results)  # TODO remove
         best = min(results.items(), key=lambda x: x[1])
-        LOGGER.info("The smallest RMSE was %.3f with %d factors", best[1], best[0])
+        cls.logger.info("The smallest RMSE was %.3f with %d factors", best[1], best[0])
 
         return best[0]
 
@@ -734,7 +734,7 @@ class GamesRecommender:
         if cls.id_field not in side_data_columns:
             side_data_columns.append(cls.id_field)
         if len(side_data_columns) > 1:
-            LOGGER.info("using game side features: %r", side_data_columns)
+            cls.logger.info("using game side features: %r", side_data_columns)
             item_data = all_games[side_data_columns].dropna()
         else:
             item_data = None
@@ -757,7 +757,9 @@ class GamesRecommender:
                 max_iterations=25,  # TODO
                 verbose=verbose,
             )
-        LOGGER.info("Using %d latent factors in collaborative filtering", num_factors)
+        cls.logger.info(
+            "Using %d latent factors in collaborative filtering", num_factors
+        )
 
         model = tc.ranking_factorization_recommender.create(
             observation_data=ratings_filtered,
