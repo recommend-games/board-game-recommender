@@ -659,6 +659,7 @@ class GamesRecommender:
         verbose=False,
     ):
         """Hyperparameter tuning."""
+        # TODO this ain't a class method
 
         train, test = tc.recommender.util.random_split_by_user(
             dataset=observation_data,
