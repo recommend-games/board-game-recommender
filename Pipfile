@@ -11,7 +11,7 @@ pytility = "*"
 turicreate = "*"
 
 [dev-packages]
-black = "==20.8b1"
+black = "==21.9b0"
 mypy = "*"
 pre-commit = "*"
 pylint = "*"
