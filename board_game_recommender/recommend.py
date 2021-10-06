@@ -697,6 +697,8 @@ class GamesRecommender:
                 num_factors_list=num_factors_list,
                 item_data=item_data,
                 max_iterations=25,  # TODO better max_iterations
+                max_num_users=10_000,  # TODO proportion (10%) of all users?
+                item_test_proportion=0.33,
                 verbose=verbose,
             )
         cls.logger.info(

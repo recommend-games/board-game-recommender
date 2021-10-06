@@ -88,7 +88,7 @@ def filter_sframe(sframe, **params):
         elif operation == "apply":
             ind &= sarray.apply(value)
         else:
-            raise ValueError("unknown operation <{}>".format(operation))
+            raise ValueError(f"unknown operation <{operation}>")
 
     return sframe[ind]
 
@@ -153,6 +153,8 @@ def find_best_num_factors(
     num_factors_list,
     item_data=None,
     max_iterations=25,
+    max_num_users=1_000,
+    item_test_proportion=0.2,
     verbose=False,
 ):
     """Hyperparameter tuning."""
@@ -161,14 +163,18 @@ def find_best_num_factors(
         dataset=observation_data,
         user_id=user_id,
         item_id=item_id,
-    )  # TODO other arguments, in particular max_num_users
+        max_num_users=max_num_users,
+        item_test_proportion=item_test_proportion,
+    )
     LOGGER.info(
         "Hyperparameter tuning on %d train and %d test rows", len(train), len(test)
     )
 
     models = {}
     for num_factors in arg_to_iter(num_factors_list):
-        LOGGER.info("Train model with %d latent factors on training data", num_factors)
+        LOGGER.info(
+            "Training model with %d latent factors on training data", num_factors
+        )
         models[num_factors] = tc.ranking_factorization_recommender.create(
             observation_data=train,
             user_id=user_id,
