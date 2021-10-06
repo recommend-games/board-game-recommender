@@ -9,13 +9,15 @@ import sys
 
 import turicreate as tc
 
+from pytility import arg_to_iter
+
 csv.field_size_limit(sys.maxsize)
 
 LOGGER = logging.getLogger(__name__)
 
 
 def condense_csv(in_file, out_file, columns, header=True):
-    """ copying only columns from in_file to out_file """
+    """copying only columns from in_file to out_file"""
 
     if isinstance(in_file, str):
         with open(in_file) as in_file_obj:
@@ -42,7 +44,7 @@ def condense_csv(in_file, out_file, columns, header=True):
 
 
 def filter_sframe(sframe, **params):
-    """ query an SFrame with given parameters """
+    """query an SFrame with given parameters"""
 
     if not params:
         return sframe
@@ -92,7 +94,7 @@ def filter_sframe(sframe, **params):
 
 
 def percentile_buckets(sarray, percentiles):
-    """ make percentiles """
+    """make percentiles"""
 
     sarray = sarray.sort(True)
     total = len(sarray)
@@ -121,7 +123,7 @@ def percentile_buckets(sarray, percentiles):
 
 
 def star_rating(score, buckets, low=1, high=5):
-    """ star rating """
+    """star rating"""
 
     if not buckets or len(buckets) < 2:
         return None
@@ -134,10 +136,64 @@ def star_rating(score, buckets, low=1, high=5):
 
 
 def format_from_path(path):
-    """ get file extension """
+    """get file extension"""
     try:
         _, ext = os.path.splitext(path)
         return ext.lower()[1:] if ext else None
     except Exception:
         pass
     return None
+
+
+def find_best_num_factors(
+    observation_data,
+    user_id,
+    item_id,
+    target,
+    num_factors_list,
+    item_data=None,
+    max_iterations=25,
+    verbose=False,
+):
+    """Hyperparameter tuning."""
+
+    train, test = tc.recommender.util.random_split_by_user(
+        dataset=observation_data,
+        user_id=user_id,
+        item_id=item_id,
+    )  # TODO other arguments, in particular max_num_users
+    LOGGER.info(
+        "Hyperparameter tuning on %d train and %d test rows", len(train), len(test)
+    )
+
+    models = {}
+    for num_factors in arg_to_iter(num_factors_list):
+        LOGGER.info("Train model with %d latent factors on training data", num_factors)
+        models[num_factors] = tc.ranking_factorization_recommender.create(
+            observation_data=train,
+            user_id=user_id,
+            item_id=item_id,
+            target=target,
+            num_factors=num_factors,
+            item_data=item_data,
+            max_iterations=max_iterations,
+            verbose=verbose,
+        )
+    models = tuple(models.items())
+
+    results = tc.recommender.util.compare_models(
+        dataset=test,
+        models=[model[1] for model in models],
+        model_names=[f"{model[0]} factors" for model in models],
+        metric="rmse",
+        target=target,
+        verbose=verbose,
+    )
+    results = {
+        model[0]: result["rmse_overall"] for model, result in zip(models, results)
+    }
+
+    best = min(results.items(), key=lambda x: x[1])
+    LOGGER.info("The smallest RMSE was %.3f with %d factors", best[1], best[0])
+
+    return best[0]

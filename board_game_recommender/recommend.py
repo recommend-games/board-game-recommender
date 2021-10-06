@@ -18,6 +18,7 @@ import turicreate as tc
 from .utils import (
     condense_csv,
     filter_sframe,
+    find_best_num_factors,
     format_from_path,
     percentile_buckets,
     star_rating,
@@ -646,65 +647,6 @@ class GamesRecommender:
         )
 
     @classmethod
-    def find_best_num_factors(
-        cls,
-        *,
-        observation_data,
-        user_id,
-        item_id,
-        target,
-        num_factors_list,
-        item_data=None,
-        max_iterations=25,
-        verbose=False,
-    ):
-        """Hyperparameter tuning."""
-        # TODO this ain't a class method
-
-        train, test = tc.recommender.util.random_split_by_user(
-            dataset=observation_data,
-            user_id=user_id,
-            item_id=item_id,
-        )  # TODO other arguments, in particular max_num_users
-        cls.logger.info(
-            "Hyperparameter tuning on %d train and %d test rows", len(train), len(test)
-        )
-
-        models = {}
-        for num_factors in arg_to_iter(num_factors_list):
-            cls.logger.info(
-                "Train model with %d latent factors on training data", num_factors
-            )
-            models[num_factors] = tc.ranking_factorization_recommender.create(
-                observation_data=train,
-                user_id=user_id,
-                item_id=item_id,
-                target=target,
-                num_factors=num_factors,
-                item_data=item_data,
-                max_iterations=max_iterations,
-                verbose=verbose,
-            )
-        models = tuple(models.items())
-
-        results = tc.recommender.util.compare_models(
-            dataset=test,
-            models=[model[1] for model in models],
-            model_names=[f"{model[0]} factors" for model in models],
-            metric="rmse",
-            target=target,
-            verbose=verbose,
-        )
-        results = {
-            model[0]: result["rmse_overall"] for model, result in zip(models, results)
-        }
-
-        best = min(results.items(), key=lambda x: x[1])
-        cls.logger.info("The smallest RMSE was %.3f with %d factors", best[1], best[0])
-
-        return best[0]
-
-    @classmethod
     def train(
         cls,
         games,
@@ -747,7 +689,7 @@ class GamesRecommender:
         if len(num_factors_list) == 1:
             num_factors = num_factors_list[0]
         else:
-            num_factors = cls.find_best_num_factors(
+            num_factors = find_best_num_factors(
                 observation_data=ratings_filtered,
                 user_id=cls.user_id_field,
                 item_id=cls.id_field,
