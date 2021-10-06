@@ -23,6 +23,14 @@ def _parse_args():
     parser.add_argument("--model", "-m", help="model directory")
     parser.add_argument("--train", "-t", action="store_true", help="train a new model")
     parser.add_argument(
+        "--num-factors",
+        "-n",
+        nargs="+",
+        type=int,
+        default=32,
+        help="number of latent factors",
+    )
+    parser.add_argument(
         "--similarity", "-s", action="store_true", help="train a new similarity model"
     )
     parser.add_argument("--games-file", "-G", help="games file")
@@ -34,7 +42,7 @@ def _parse_args():
         help="game features to use in recommender model",
     )
     parser.add_argument(
-        "--num-rec", "-n", type=int, default=10, help="number of games to recommend"
+        "--num-rec", "-r", type=int, default=10, help="number of games to recommend"
     )
     parser.add_argument(
         "--max-iterations",
@@ -123,6 +131,7 @@ def _main():
             ratings_file=ratings_file,
             side_data_columns=args.side_data_columns,
             similarity_model=args.similarity,
+            num_factors=args.num_factors,
             max_iterations=args.max_iterations,
             verbose=bool(args.verbose),
         )
