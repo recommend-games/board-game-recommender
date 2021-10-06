@@ -690,6 +690,7 @@ class GamesRecommender:
             num_factors = num_factors_list[0]
         else:
             max_iterations_hpt = min(max_iterations // len(num_factors_list), 100)
+            max_num_users = max(len(ratings["bgg_user_name"].unique()) // 10, 1_000)
             num_factors = find_best_num_factors(
                 observation_data=ratings_filtered,
                 user_id=cls.user_id_field,
@@ -698,7 +699,7 @@ class GamesRecommender:
                 num_factors_list=num_factors_list,
                 item_data=item_data,
                 max_iterations=max_iterations_hpt,
-                max_num_users=10_000,  # TODO proportion (10%) of all users?
+                max_num_users=max_num_users,
                 item_test_proportion=0.33,
                 verbose=verbose,
             )
