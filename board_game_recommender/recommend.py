@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-""" recommend games """
+"""Board game recommenders."""
 
 import csv
 import logging
@@ -29,7 +29,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def make_cluster(data, item_id, target, target_dtype=str):
-    """ take an SFrame and cluster by target """
+    """take an SFrame and cluster by target"""
 
     if not data or item_id not in data.column_names():
         return tc.SArray(dtype=list)
@@ -83,7 +83,7 @@ def make_cluster(data, item_id, target, target_dtype=str):
 
 
 class GamesRecommender:
-    """ games recommender """
+    """games recommender"""
 
     logger = logging.getLogger("GamesRecommender")
 
@@ -135,7 +135,7 @@ class GamesRecommender:
 
     @property
     def rated_games(self):
-        """ rated games """
+        """rated games"""
         if self._rated_games is None:
             self._rated_games = frozenset(
                 self.model.coefficients[self.id_field][self.id_field]
@@ -144,7 +144,7 @@ class GamesRecommender:
 
     @property
     def known_games(self):
-        """ known games """
+        """known games"""
         if self._known_games is None:
             self._known_games = (
                 frozenset(self.ratings[self.id_field] if self.ratings else ())
@@ -155,7 +155,7 @@ class GamesRecommender:
 
     @property
     def known_users(self):
-        """ known users """
+        """known users"""
         if self._known_users is None:
             self._known_users = frozenset(
                 self.ratings[self.user_id_field] if self.ratings else ()
@@ -166,14 +166,14 @@ class GamesRecommender:
 
     @property
     def num_games(self):
-        """ total number of games known to the recommender """
+        """total number of games known to the recommender"""
         if self._num_games is None:
             self._num_games = len(self.known_games)
         return self._num_games
 
     @property
     def clusters(self):
-        """ game implementation clusters """
+        """game implementation clusters"""
         if self._clusters is None:
             self._clusters = make_cluster(
                 data=self.games,
@@ -185,7 +185,7 @@ class GamesRecommender:
 
     @property
     def compilations(self):
-        """ compilation games """
+        """compilation games"""
         if self._compilations is None:
             self._compilations = (
                 self.games[self.games[self.compilation_field]][self.id_field]
@@ -198,7 +198,7 @@ class GamesRecommender:
 
     @property
     def cooperatives(self):
-        """ cooperative games """
+        """cooperative games"""
         if self._cooperatives is None:
             self._cooperatives = (
                 self.games[self.games[self.cooperative_field]][self.id_field]
@@ -210,11 +210,11 @@ class GamesRecommender:
         return self._cooperatives
 
     def filter_games(self, **filters):
-        """ return games filtered by given criteria """
+        """return games filtered by given criteria"""
         return filter_sframe(self.games, **filters)
 
     def cluster(self, game_id):
-        """ get implementation cluster for a given game """
+        """get implementation cluster for a given game"""
 
         # pylint: disable=len-as-condition
         if self.clusters is None or not len(self.clusters):
@@ -255,7 +255,7 @@ class GamesRecommender:
             self.logger.debug(
                 "games filters: %r",
                 {
-                    k: "[{:d} games]".format(len(v)) if k == in_field else v
+                    k: f"[{len(v)} games]" if k == in_field else v
                     for k, v in games_filters.items()
                 },
             )
@@ -348,7 +348,7 @@ class GamesRecommender:
 
     # pylint: disable=no-self-use
     def process_user_id(self, user_id):
-        """ process user ID """
+        """process user ID"""
         return user_id or None
 
     def recommend(
@@ -367,7 +367,7 @@ class GamesRecommender:
         star_percentiles=None,
         **kwargs,
     ):
-        """ recommend games """
+        """recommend games"""
 
         users = [self.process_user_id(user) for user in arg_to_iter(users)] or [None]
 
@@ -426,7 +426,7 @@ class GamesRecommender:
         columns=None,
         **kwargs,
     ):
-        """ recommend games similar to given ones """
+        """recommend games similar to given ones"""
 
         games = list(arg_to_iter(games))
         items = self._process_games(items, games_filters)
@@ -457,7 +457,7 @@ class GamesRecommender:
         )
 
     def similar_games(self, games, num_games=10, columns=None):
-        """ find similar games """
+        """find similar games"""
 
         games = list(arg_to_iter(games))
 
@@ -488,7 +488,7 @@ class GamesRecommender:
         exclude_compilations=True,
         **kwargs,
     ):
-        """ find the highest rated game in a cluster """
+        """find the highest rated game in a cluster"""
 
         cluster = frozenset(self.cluster(game_id)) & self.rated_games
         if exclude_compilations:
@@ -533,7 +533,7 @@ class GamesRecommender:
         dir_clusters="clusters",
         dir_compilations="compilations",
     ):
-        """ save all recommender data to files in the give dir """
+        """save all recommender data to files in the give dir"""
 
         path_model = os.path.join(path, dir_model, "")
         self.logger.info("saving model to <%s>", path_model)
@@ -580,7 +580,7 @@ class GamesRecommender:
         dir_clusters="clusters",
         dir_compilations="compilations",
     ):
-        """ load all recommender data from files in the give dir """
+        """load all recommender data from files in the give dir"""
 
         path_model = os.path.join(path, dir_model, "")
         cls.logger.info("loading model from <%s>", path_model)
@@ -657,7 +657,7 @@ class GamesRecommender:
         defaults=True,
         **filters,
     ):
-        """ train recommender from data """
+        """train recommender from data"""
 
         filters.setdefault(f"{cls.id_field}__apply", bool)
         if defaults:
@@ -709,7 +709,7 @@ class GamesRecommender:
 
     @classmethod
     def load_games_csv(cls, games_csv, columns=None):
-        """ load games from CSV """
+        """load games from CSV"""
 
         columns = cls.columns_games if columns is None else columns
         _, csv_cond = tempfile.mkstemp(text=True)
@@ -742,7 +742,7 @@ class GamesRecommender:
 
     @classmethod
     def load_games_json(cls, games_json, columns=None, orient="lines"):
-        """ load games from JSON """
+        """load games from JSON"""
 
         cls.logger.info("reading games from JSON file <%s>", games_json)
 
@@ -769,12 +769,12 @@ class GamesRecommender:
     # pylint: disable=unused-argument
     @classmethod
     def process_ratings(cls, ratings, **kwargs):
-        """ process ratings """
+        """process ratings"""
         return ratings
 
     @classmethod
     def load_ratings_csv(cls, ratings_csv, columns=None, **kwargs):
-        """ load ratings from CSV """
+        """load ratings from CSV"""
 
         columns = cls.columns_ratings if columns is None else columns
         ratings = tc.SFrame.read_csv(
@@ -785,7 +785,7 @@ class GamesRecommender:
 
     @classmethod
     def load_ratings_json(cls, ratings_json, columns=None, orient="lines", **kwargs):
-        """ load ratings from JSON """
+        """load ratings from JSON"""
 
         columns = cls.columns_ratings if columns is None else columns
         ratings = tc.SFrame.read_json(url=ratings_json, orient=orient)
@@ -807,7 +807,7 @@ class GamesRecommender:
         defaults=True,
         **filters,
     ):
-        """ load data from JSON or CSV and train recommender """
+        """load data from JSON or CSV and train recommender"""
 
         games_format = format_from_path(games_file)
         if games_format == "csv":
@@ -848,7 +848,7 @@ class GamesRecommender:
 
 
 class BGGRecommender(GamesRecommender):
-    """ BoardGameGeek recommender """
+    """BoardGameGeek recommender"""
 
     logger = logging.getLogger("BGGRecommender")
 
@@ -906,7 +906,7 @@ class BGGRecommender(GamesRecommender):
 
     @classmethod
     def process_ratings(cls, ratings, **kwargs):
-        """ process ratings """
+        """process ratings"""
 
         ratings = super().process_ratings(ratings, **kwargs)
 
@@ -929,7 +929,7 @@ class BGGRecommender(GamesRecommender):
 
 
 class BGARecommender(GamesRecommender):
-    """ Board Game Atlas recommender """
+    """Board Game Atlas recommender"""
 
     logger = logging.getLogger("BGARecommender")
 
