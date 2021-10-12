@@ -18,11 +18,11 @@ def condense_csv(in_file, out_file, columns, header=True):
     """copying only columns from in_file to out_file"""
 
     if isinstance(in_file, str):
-        with open(in_file) as in_file_obj:
+        with open(in_file, encoding="utf-8") as in_file_obj:
             return condense_csv(in_file_obj, out_file, columns)
 
     if isinstance(out_file, str):
-        with open(out_file, "w") as out_file_obj:
+        with open(out_file, "w", encoding="utf-8") as out_file_obj:
             return condense_csv(in_file, out_file_obj, columns)
 
     columns = tuple(columns)
@@ -86,7 +86,7 @@ def filter_sframe(sframe, **params):
         elif operation == "apply":
             ind &= sarray.apply(value)
         else:
-            raise ValueError("unknown operation <{}>".format(operation))
+            raise ValueError(f"unknown operation <{operation}>")
 
     return sframe[ind]
 

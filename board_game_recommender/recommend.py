@@ -255,7 +255,7 @@ class GamesRecommender:
             self.logger.debug(
                 "games filters: %r",
                 {
-                    k: "[{:d} games]".format(len(v)) if k == in_field else v
+                    k: f"[{len(v)} games]" if k == in_field else v
                     for k, v in games_filters.items()
                 },
             )
