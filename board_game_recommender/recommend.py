@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-""" recommend games """
+"""Board game recommenders."""
 
 import csv
 import logging

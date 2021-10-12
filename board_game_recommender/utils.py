@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-""" util functions """
+"""Utility functions."""
 
 import csv
 import logging

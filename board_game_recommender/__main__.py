@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-""" main script """
+"""Main script & CLI entry point."""
 
 import argparse
 import logging
