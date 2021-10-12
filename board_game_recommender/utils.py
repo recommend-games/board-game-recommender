@@ -15,7 +15,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def condense_csv(in_file, out_file, columns, header=True):
-    """ copying only columns from in_file to out_file """
+    """copying only columns from in_file to out_file"""
 
     if isinstance(in_file, str):
         with open(in_file) as in_file_obj:
@@ -42,7 +42,7 @@ def condense_csv(in_file, out_file, columns, header=True):
 
 
 def filter_sframe(sframe, **params):
-    """ query an SFrame with given parameters """
+    """query an SFrame with given parameters"""
 
     if not params:
         return sframe
@@ -92,7 +92,7 @@ def filter_sframe(sframe, **params):
 
 
 def percentile_buckets(sarray, percentiles):
-    """ make percentiles """
+    """make percentiles"""
 
     sarray = sarray.sort(True)
     total = len(sarray)
@@ -121,7 +121,7 @@ def percentile_buckets(sarray, percentiles):
 
 
 def star_rating(score, buckets, low=1, high=5):
-    """ star rating """
+    """star rating"""
 
     if not buckets or len(buckets) < 2:
         return None
@@ -134,7 +134,7 @@ def star_rating(score, buckets, low=1, high=5):
 
 
 def format_from_path(path):
-    """ get file extension """
+    """get file extension"""
     try:
         _, ext = os.path.splitext(path)
         return ext.lower()[1:] if ext else None
