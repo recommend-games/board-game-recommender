@@ -48,11 +48,14 @@ REQUIRES_PYTHON = ">=3.6.0,<3.9.0"
 VERSION = None  # will be read from __version__.py
 
 # What packages are required for this module to be executed?
-REQUIRED = ("pytility", "turicreate")
+REQUIRED = (
+    "pytility",
+    "turicreate",
+)
 
 # What packages are optional?
 EXTRAS = {
-    # "fancy feature": ["django"],
+    "trust": ("numpy", "pandas", "scipy"),
 }
 
 # The rest you shouldn't have to touch too much :)
