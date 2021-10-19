@@ -25,7 +25,7 @@ def _user_trust(
     if len(ratings) < min_ratings:
         return 0
 
-    if (ratings == ratings[0]).all():
+    if (ratings == ratings.iloc[0]).all():
         return 0
 
     months = (
