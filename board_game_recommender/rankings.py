@@ -37,6 +37,8 @@ def calculate_rankings(
     )
 
     trust = user_trust(ratings=ratings, min_ratings=min_ratings)
+    del ratings
+
     users = users.join(
         tc.SFrame(data={"bgg_user_name": trust.index, "trust": trust.values}),
         on="bgg_user_name",
@@ -44,12 +46,14 @@ def calculate_rankings(
     )
 
     heavy_users = users[(users["ratings_count"] >= min_ratings) & (users["trust"] > 0)]
+    del users
 
     recommendations = recommender.model.recommend(
         users=heavy_users["bgg_user_name"],
         exclude_known=False,
         k=top,
     )
+    del recommender
 
     recommendations = recommendations.join(heavy_users, on="bgg_user_name", how="inner")
     recommendations["rev_rank"] = top + 1 - recommendations["rank"]
@@ -66,6 +70,7 @@ def calculate_rankings(
             ),
         },
     )
+    del recommendations
 
     total_weight = heavy_users["trust"].sum()
     scores["score"] = scores["score"] / len(heavy_users)
