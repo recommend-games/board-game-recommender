@@ -1,0 +1,19 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[requires]
+python_version = "3.8"
+
+[packages]
+pytility = "*"
+turicreate = "*"
+
+[dev-packages]
+black = "==21.9b0"
+mypy = "*"
+pre-commit = "*"
+pylint = "*"
+twine = "*"
+ipython = "*"
