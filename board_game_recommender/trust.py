@@ -1,11 +1,12 @@
 """Calculate the trust into users."""
 
 import json
+import math
 
 from itertools import groupby
 from typing import Any, Dict, Generator, Iterable, Tuple, Union
 
-import numpy as np
+# TODO use turicreate instead of pandas
 import pandas as pd
 
 from scipy.stats import shapiro
@@ -39,7 +40,7 @@ def _user_trust(
     except Exception:
         return 0
 
-    return score * np.log2(months)
+    return score * math.log2(months)
 
 
 def _users_trust(
@@ -89,6 +90,8 @@ def user_trust(
         date_col=date_col,
     )
     data = pd.DataFrame.from_records(
-        data=trust, columns=[key_col, "trust"], index=key_col
+        data=trust,
+        columns=[key_col, "trust"],
+        index=key_col,
     )
     return data["trust"]

@@ -7,7 +7,6 @@ verify_ssl = true
 python_version = "3.8"
 
 [packages]
-numpy = "*"
 pandas = "*"
 pytility = "*"
 scipy = "*"

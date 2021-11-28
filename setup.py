@@ -55,7 +55,10 @@ REQUIRED = (
 
 # What packages are optional?
 EXTRAS = {
-    "trust": ("numpy", "pandas", "scipy"),
+    "trust": (
+        "pandas",
+        "scipy",
+    ),
 }
 
 # The rest you shouldn't have to touch too much :)
