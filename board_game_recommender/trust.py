@@ -4,34 +4,24 @@ import json
 import math
 
 from itertools import groupby
-from typing import Any, Dict, Generator, Iterable, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, Optional, Tuple, Union
 
-# TODO use turicreate instead of pandas
-import pandas as pd
+import turicreate as tc
 
 from scipy.stats import shapiro
 
 
 def _user_trust(
     *,
-    data: pd.DataFrame,
+    ratings: Iterable[Optional[float]],
+    dates: Iterable[Optional[str]],
     min_ratings: int,
-    ratings_col: str,
-    date_col: str,
 ) -> float:
-    if len(data) < min_ratings or ratings_col not in data or date_col not in data:
+    ratings = tuple(r for r in ratings if r is not None)
+    if (len(ratings) < min_ratings) or all(r == ratings[0] for r in ratings):
         return 0
 
-    ratings = data[ratings_col].dropna()
-    if len(ratings) < min_ratings:
-        return 0
-
-    if (ratings == ratings.iloc[0]).all():
-        return 0
-
-    months = (
-        data[date_col].apply(lambda d: d[:7] if isinstance(d, str) else None).nunique()
-    )
+    months = len({d[:7] for d in dates if isinstance(d, str)})
     if months < 2:
         return 0
 
@@ -63,13 +53,9 @@ def _users_trust(
             return
 
     for key, group in groupby(ratings, key=lambda r: r[key_col]):
-        data = pd.DataFrame.from_records(data=group)
-        yield key, _user_trust(
-            data=data,
-            min_ratings=min_ratings,
-            ratings_col=ratings_col,
-            date_col=date_col,
-        )
+        rows = ((row.get(ratings_col), row.get(date_col)) for row in group)
+        ratings, dates = zip(*rows)
+        yield key, _user_trust(ratings=ratings, min_ratings=min_ratings, dates=dates)
 
 
 def user_trust(
@@ -79,7 +65,7 @@ def user_trust(
     key_col: str = "bgg_user_name",
     ratings_col: str = "bgg_user_rating",
     date_col: str = "updated_at",
-) -> pd.Series:
+) -> tc.SFrame:
     """Calculate the trust in users."""
 
     trust = _users_trust(
@@ -89,9 +75,6 @@ def user_trust(
         ratings_col=ratings_col,
         date_col=date_col,
     )
-    data = pd.DataFrame.from_records(
-        data=trust,
-        columns=[key_col, "trust"],
-        index=key_col,
-    )
-    return data["trust"]
+
+    keys, scores = zip(*trust)
+    return tc.SFrame(data={key_col: keys, "trust": scores})
