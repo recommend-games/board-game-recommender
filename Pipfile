@@ -7,7 +7,6 @@ verify_ssl = true
 python_version = "3.8"
 
 [packages]
-pandas = "*"
 pytility = "*"
 scipy = "*"
 turicreate = "*"
