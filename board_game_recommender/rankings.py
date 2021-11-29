@@ -40,7 +40,7 @@ def calculate_rankings(
     del ratings
 
     users = users.join(
-        tc.SFrame(data={"bgg_user_name": trust.index, "trust": trust.values}),
+        right=trust,
         on="bgg_user_name",
         how="inner",
     )
