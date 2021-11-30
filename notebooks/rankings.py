@@ -35,3 +35,6 @@ rankings.shape
 
 # %%
 rankings.print_rows(100)
+
+# %%
+rankings.export_csv("rankings.csv")
