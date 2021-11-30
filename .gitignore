@@ -106,3 +106,4 @@ recommender/
 .tc*/
 .bga*/
 .bgg*/
+*.ipynb
