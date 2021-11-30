@@ -376,7 +376,7 @@ class GamesRecommender:
         assert games is None or items is None, "cannot use <games> and <items> together"
         games = items if games is None else games
         games = self._process_games(games, games_filters)
-        if games:
+        if games is not None:
             self.logger.info("Restrict recommendations to %d games", len(games))
         exclude = self._process_exclude(
             users,
@@ -385,7 +385,7 @@ class GamesRecommender:
             exclude_clusters,
             exclude_compilations,
         )
-        if exclude:
+        if exclude is not None:
             self.logger.info("Exclude %d games from recommendations")
 
         kwargs["k"] = (

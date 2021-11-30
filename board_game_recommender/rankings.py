@@ -47,6 +47,15 @@ def calculate_rankings(
 
     trust = user_trust(ratings=ratings, min_ratings=min_ratings)
     LOGGER.info("Calculated trust scores for %d users", len(trust))
+
+    games = ratings.groupby(
+        key_column_names="bgg_id",
+        operations={
+            "num_votes": tc.aggregate.COUNT(),
+            "avg_rating": tc.aggregate.MEAN("bgg_user_rating"),
+        },
+    )
+    LOGGER.info("Found %d games in total", len(games))
     del ratings
 
     users = users.join(
@@ -63,11 +72,19 @@ def calculate_rankings(
     )
     del users
 
-    # TODO exclude compilations
+    items = (
+        games["bgg_id"].filter_by(recommender.compilations, exclude=True)
+        if recommender.compilations is not None
+        else None
+    )
+    if items is not None:
+        LOGGER.info("Restrict recommendations to %d games", len(items))
+
     recommendations = recommender.model.recommend(
         users=heavy_users["bgg_user_name"],
-        k=top,
+        items=items,
         exclude_known=False,
+        k=top,
     )
     LOGGER.info("Calculated a total of %d recommendations", len(recommendations))
     del recommender
@@ -95,6 +112,7 @@ def calculate_rankings(
     LOGGER.info("Calculated ranking scores for %d games", len(scores))
 
     # TODO what to do with ties?
+    # TODO add more scores (recommend(), avg, …) and use in sorting
     scores = scores.sort(["score_weighted", "score"], ascending=False)
     scores["rank_weighted"] = range(1, len(scores) + 1)
     scores = scores.sort(["score", "score_weighted"], ascending=False)
