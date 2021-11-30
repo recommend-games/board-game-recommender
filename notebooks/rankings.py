@@ -14,8 +14,16 @@
 # ---
 
 # %%
+import logging
+import sys
 from board_game_recommender import BGGRecommender
 from board_game_recommender.rankings import calculate_rankings
+
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)-8.8s [%(name)s:%(lineno)s] %(message)s",
+)
 
 # %load_ext nb_black
 # %load_ext lab_black

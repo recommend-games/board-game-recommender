@@ -370,18 +370,28 @@ class GamesRecommender:
         """recommend games"""
 
         users = [self.process_user_id(user) for user in arg_to_iter(users)] or [None]
+        self.logger.info("Calculating recommendations for %d users", len(users))
 
         items = kwargs.pop("items", None)
         assert games is None or items is None, "cannot use <games> and <items> together"
         games = items if games is None else games
         games = self._process_games(games, games_filters)
+        if games:
+            self.logger.info("Restrict recommendations to %d games", len(games))
         exclude = self._process_exclude(
-            users, exclude, exclude_known, exclude_clusters, exclude_compilations
+            users,
+            exclude,
+            exclude_known,
+            exclude_clusters,
+            exclude_compilations,
         )
+        if exclude:
+            self.logger.info("Exclude %d games from recommendations")
 
         kwargs["k"] = (
             kwargs.get("k", self.num_games) if num_games is None else num_games
         )
+        self.logger.info("Recommending %d games per user", kwargs["k"])
 
         columns = list(arg_to_iter(columns)) or ["rank", "name", self.id_field, "score"]
         if len(users) > 1 and self.user_id_field not in columns:
@@ -392,8 +402,7 @@ class GamesRecommender:
             if similarity_model and self.similarity_model
             else self.model
         )
-
-        self.logger.debug("making recommendations using %s", model)
+        self.logger.info("Making recommendations using <%s>", model)
 
         recommendations = model.recommend(
             users=users,
@@ -402,6 +411,7 @@ class GamesRecommender:
             exclude_known=exclude_known,
             **kwargs,
         )
+        self.logger.info("Calculated %d recommendations", len(recommendations))
 
         del users, items, games, exclude, model
 

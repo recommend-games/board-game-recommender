@@ -1,5 +1,7 @@
 """Calcuate game rankings."""
 
+import logging
+
 from pathlib import Path
 from typing import Union
 
@@ -7,6 +9,8 @@ import turicreate as tc
 
 from .recommend import BGGRecommender
 from .trust import user_trust
+
+LOGGER = logging.getLogger(__name__)
 
 
 def calculate_rankings(
@@ -23,20 +27,26 @@ def calculate_rankings(
         else recommender
     )
 
+    LOGGER.info("Using <%s> for recommendations", recommender)
+
     columns = BGGRecommender.columns_ratings
     columns["updated_at"] = str
 
+    LOGGER.info("Loading ratings from <%s>", path_ratings)
     ratings = BGGRecommender.load_ratings_json(
         ratings_json=path_ratings,
         columns=columns,
     )
+    LOGGER.info("Loaded %d ratings", len(ratings))
 
     users = ratings.groupby(
         key_column_names="bgg_user_name",
         operations={"ratings_count": tc.aggregate.COUNT()},
     )
+    LOGGER.info("Found %d users in total", len(users))
 
     trust = user_trust(ratings=ratings, min_ratings=min_ratings)
+    LOGGER.info("Calculated trust scores for %d users", len(trust))
     del ratings
 
     users = users.join(
@@ -46,13 +56,20 @@ def calculate_rankings(
     )
 
     heavy_users = users[(users["ratings_count"] >= min_ratings) & (users["trust"] > 0)]
+    LOGGER.info(
+        "Got user info for %d users, %d of which are heavy users",
+        len(users),
+        len(heavy_users),
+    )
     del users
 
+    # TODO exclude compilations
     recommendations = recommender.model.recommend(
         users=heavy_users["bgg_user_name"],
-        exclude_known=False,
         k=top,
+        exclude_known=False,
     )
+    LOGGER.info("Calculated a total of %d recommendations", len(recommendations))
     del recommender
 
     recommendations = recommendations.join(heavy_users, on="bgg_user_name", how="inner")
@@ -75,7 +92,9 @@ def calculate_rankings(
     total_weight = heavy_users["trust"].sum()
     scores["score"] = scores["score"] / len(heavy_users)
     scores["score_weighted"] = scores["score_weighted"] / total_weight
+    LOGGER.info("Calculated ranking scores for %d games", len(scores))
 
+    # TODO what to do with ties?
     scores = scores.sort(["score_weighted", "score"], ascending=False)
     scores["rank_weighted"] = range(1, len(scores) + 1)
     scores = scores.sort(["score", "score_weighted"], ascending=False)
