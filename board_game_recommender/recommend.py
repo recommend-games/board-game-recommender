@@ -386,7 +386,10 @@ class GamesRecommender:
             exclude_compilations,
         )
         if exclude is not None:
-            self.logger.info("Exclude %d games from recommendations")
+            self.logger.info(
+                "Exclude %d game-user pairs from recommendations",
+                len(exclude),
+            )
 
         kwargs["k"] = (
             kwargs.get("k", self.num_games) if num_games is None else num_games
