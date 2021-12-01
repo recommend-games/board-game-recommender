@@ -58,6 +58,17 @@ def calculate_rankings(
     LOGGER.info("Found %d games in total", len(games))
     del ratings
 
+    if recommender.compilations is not None:
+        games = games.filter_by(
+            values=recommender.compilations,
+            column_name="bgg_id",
+            exclude=True,
+        )
+        LOGGER.info(
+            "Restrict recommendations to %d games after removing compilations",
+            len(games),
+        )
+
     users = users.join(
         right=trust,
         on="bgg_user_name",
@@ -73,32 +84,24 @@ def calculate_rankings(
     )
     del users
 
-    items = (
-        games["bgg_id"].filter_by(recommender.compilations, exclude=True)
-        if recommender.compilations is not None
-        else None
-    )
-    if items is not None:
-        LOGGER.info("Restrict recommendations to %d games", len(items))
-
     recommendations = recommender.model.recommend(
         users=heavy_users["bgg_user_name"],
-        items=items,
+        items=games["bgg_id"],
         exclude_known=False,
         k=top,
     )
     standard_recommendations = recommender.model.recommend(
         users=[None],
-        items=items,
+        items=games["bgg_id"],
         exclude_known=False,
-        k=len(items),
+        k=len(games),
     )["bgg_id", "score"]
     standard_recommendations.rename({"score": "score_standard"}, inplace=True)
     LOGGER.info(
         "Calculated a total of %d recommendations",
         len(recommendations) + len(standard_recommendations),
     )
-    del items, recommender
+    del recommender
 
     recommendations = recommendations.join(heavy_users, on="bgg_user_name", how="inner")
     recommendations["rev_rank"] = top + 1 - recommendations["rank"]
