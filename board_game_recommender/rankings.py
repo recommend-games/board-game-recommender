@@ -51,8 +51,8 @@ def calculate_rankings(
     games = ratings.groupby(
         key_column_names="bgg_id",
         operations={
-            "num_votes": tc.aggregate.COUNT(),
             "avg_rating": tc.aggregate.MEAN("bgg_user_rating"),
+            "num_votes": tc.aggregate.COUNT(),
         },
     )
     LOGGER.info("Found %d games in total", len(games))
@@ -63,6 +63,7 @@ def calculate_rankings(
         on="bgg_user_name",
         how="inner",
     )
+    del trust
 
     heavy_users = users[(users["ratings_count"] >= min_ratings) & (users["trust"] > 0)]
     LOGGER.info(
@@ -86,8 +87,18 @@ def calculate_rankings(
         exclude_known=False,
         k=top,
     )
-    LOGGER.info("Calculated a total of %d recommendations", len(recommendations))
-    del recommender
+    standard_recommendations = recommender.model.recommend(
+        users=[None],
+        items=items,
+        exclude_known=False,
+        k=len(items),
+    )["bgg_id", "score"]
+    standard_recommendations.rename({"score": "score_standard"}, inplace=True)
+    LOGGER.info(
+        "Calculated a total of %d recommendations",
+        len(recommendations) + len(standard_recommendations),
+    )
+    del items, recommender
 
     recommendations = recommendations.join(heavy_users, on="bgg_user_name", how="inner")
     recommendations["rev_rank"] = top + 1 - recommendations["rank"]
@@ -110,13 +121,46 @@ def calculate_rankings(
     scores["score"] = scores["score"] / len(heavy_users)
     scores["score_weighted"] = scores["score_weighted"] / total_weight
     LOGGER.info("Calculated ranking scores for %d games", len(scores))
+    del heavy_users
+
+    scores = scores.join(
+        right=standard_recommendations,
+        on="bgg_id",
+        how="outer",
+    ).join(
+        right=games,
+        on="bgg_id",
+        how="outer",
+    )
+    LOGGER.info("Calculated different scores for a total of %d games", len(scores))
+    del games, standard_recommendations
+
+    for col in ("score", "score_weighted", "score_standard", "avg_rating", "num_votes"):
+        scores = scores.fillna(col, 0)
 
     # TODO what to do with ties?
-    # TODO add more scores (recommend(), avg, …) and use in sorting
-    scores = scores.sort(["score_weighted", "score"], ascending=False)
+    scores = scores.sort(
+        key_column_names=[
+            "score_weighted",
+            "score",
+            "score_standard",
+            "avg_rating",
+            "num_votes",
+        ],
+        ascending=False,
+    )
     scores["rank_weighted"] = range(1, len(scores) + 1)
-    scores = scores.sort(["score", "score_weighted"], ascending=False)
+
+    scores = scores.sort(
+        key_column_names=[
+            "score",
+            "score_weighted",
+            "score_standard",
+            "avg_rating",
+            "num_votes",
+        ],
+        ascending=False,
+    )
     scores["rank"] = range(1, len(scores) + 1)
-    # scores.print_rows(100)
 
     return scores
