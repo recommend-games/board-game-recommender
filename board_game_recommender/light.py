@@ -3,6 +3,11 @@
 import logging
 import sys
 
+from typing import Iterable
+
+import numpy as np
+import pandas as pd
+
 from board_game_recommender.recommend import BGGRecommender
 
 LOGGER = logging.getLogger(__name__)
@@ -38,6 +43,34 @@ class LightRecommender:
             len(self.items_labels),
         )
 
+    def recommend(self: "LightRecommender", users: Iterable[str]) -> pd.DataFrame:
+        """Calculate recommendations for certain users."""
+
+        users = list(users)
+        user_ids = np.array([self.users_indexes[user] for user in users])
+
+        scores = (
+            self.users_factors[user_ids] @ self.items_factors
+            + self.users_linear_terms[user_ids].reshape(len(user_ids), 1)
+            + self.items_linear_terms
+            + self.intercept
+        )
+
+        result = pd.DataFrame(
+            index=self.items_labels,
+            columns=pd.MultiIndex.from_product([users, ["score"]]),
+            data=scores.T,
+        )
+        result[pd.MultiIndex.from_product([users, ["rank"]])] = result.rank(
+            method="min",
+            ascending=False,
+        ).astype(int)
+
+        if len(users) == 1:
+            result.sort_values((users[0], "rank"), inplace=True)
+
+        return result[pd.MultiIndex.from_product([users, ["score", "rank"]])]
+
 
 def turi_create_to_numpy(model, *, user_id="bgg_user_name", item_id="bgg_id"):
     """Convert a Turi Create model into NumPy arrays."""
@@ -66,23 +99,6 @@ def turi_create_to_numpy(model, *, user_id="bgg_user_name", item_id="bgg_id"):
     )
 
 
-# from games.utils import load_recommender
-# r = load_recommender("data.bk/recommender_bgg/")
-# users_map = dict(zip(users, range(len(users))))
-# users_map["markus shepherd"]
-# games_map = dict(zip(games, range(len(games))))
-# g = users_factors[405817].reshape(1, 32) @ f_games.T
-# g.reshape(79113) + w_games + mu + users_linear_terms[405817]
-# rec = g.reshape(79113) + w_games + mu + users_linear_terms[405817]
-# games[(-rec).argsort()]
-# games.to_numpy()[(-rec).argsort()]
-# recommendations = games.to_numpy()[(-rec).argsort()]
-# r.recommend("markus shepherd", exclude_known=False)
-# recommendations[10]
-# recommendations[:10]
-# sorted(rec, reverse=True)[:10]
-
-
 def _main():
     logging.basicConfig(
         stream=sys.stdout,
@@ -90,11 +106,24 @@ def _main():
         format="%(asctime)s %(levelname)-8.8s [%(name)s:%(lineno)s] %(message)s",
     )
 
+    user = "markus shepherd"
+    num_games = 10
+
     for model_path in sys.argv[1:]:
         LOGGER.info("Loading model from <%s>…", model_path)
         recommender = BGGRecommender.load(model_path)
         LOGGER.info("Loaded model: %r", recommender)
+
         light = LightRecommender(recommender.model)
+        recommendations = light.recommend([user])
+        print(recommendations.head(num_games))
+
+        recommendations = recommender.model.recommend(
+            users=[user],
+            exclude_known=False,
+            k=num_games,
+        )
+        recommendations.print_rows(num_games)
 
 
 if __name__ == "__main__":
