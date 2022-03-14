@@ -24,11 +24,19 @@ class LightRecommender:
 
         self.intercept = intercept
         self.users_labels = users_labels
+        self.users_indexes = dict(zip(users_labels, range(len(users_labels))))
         self.users_linear_terms = users_linear_terms
         self.users_factors = users_factors
         self.items_labels = items_labels
+        self.items_indexes = dict(zip(items_labels, range(len(items_labels))))
         self.items_linear_terms = items_linear_terms
         self.items_factors = items_factors
+
+        LOGGER.info(
+            "Loaded light recommender with %d users and %d items",
+            len(self.users_labels),
+            len(self.items_labels),
+        )
 
 
 def turi_create_to_numpy(model, *, user_id="bgg_user_name", item_id="bgg_id"):
@@ -86,7 +94,7 @@ def _main():
         LOGGER.info("Loading model from <%s>…", model_path)
         recommender = BGGRecommender.load(model_path)
         LOGGER.info("Loaded model: %r", recommender)
-        turi_create_to_numpy(recommender.model)
+        light = LightRecommender(recommender.model)
 
 
 if __name__ == "__main__":
