@@ -1,6 +1,9 @@
 """Light recommender model, without the heavy Turi Create dependency."""
 
 import logging
+import sys
+
+from board_game_recommender.recommend import BGGRecommender
 
 LOGGER = logging.getLogger(__name__)
 
@@ -39,3 +42,21 @@ def turi_create_to_numpy(model, *, user_id="bgg_user_name", item_id="bgg_id"):
 # recommendations[10]
 # recommendations[:10]
 # sorted(rec, reverse=True)[:10]
+
+
+def _main():
+    logging.basicConfig(
+        stream=sys.stdout,
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)-8.8s [%(name)s:%(lineno)s] %(message)s",
+    )
+
+    for model_path in sys.argv[1:]:
+        LOGGER.info("Loading model from <%s>…", model_path)
+        recommender = BGGRecommender.load(model_path)
+        LOGGER.info("Loaded model: %r", recommender)
+        turi_create_to_numpy(recommender.model)
+
+
+if __name__ == "__main__":
+    _main()
