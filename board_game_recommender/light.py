@@ -8,23 +8,54 @@ from board_game_recommender.recommend import BGGRecommender
 LOGGER = logging.getLogger(__name__)
 
 
+class LightRecommender:
+    """Light recommender without Turi Create dependency."""
+
+    def __init__(self, model, *, user_id="bgg_user_name", item_id="bgg_id"):
+        (
+            intercept,
+            users_labels,
+            users_linear_terms,
+            users_factors,
+            items_labels,
+            items_linear_terms,
+            items_factors,
+        ) = turi_create_to_numpy(model=model, user_id=user_id, item_id=item_id)
+
+        self.intercept = intercept
+        self.users_labels = users_labels
+        self.users_linear_terms = users_linear_terms
+        self.users_factors = users_factors
+        self.items_labels = items_labels
+        self.items_linear_terms = items_linear_terms
+        self.items_factors = items_factors
+
+
 def turi_create_to_numpy(model, *, user_id="bgg_user_name", item_id="bgg_id"):
     """Convert a Turi Create model into NumPy arrays."""
 
     intercept = model.coefficients["intercept"]
-    l_users = model.coefficients[user_id][user_id].to_numpy()
-    w_users = model.coefficients[user_id]["linear_terms"].to_numpy()
-    LOGGER.info("Loaded %d user linear terms", len(w_users))
-    f_users = model.coefficients[user_id]["factors"].to_numpy()
-    LOGGER.info("Loaded user factors with shape %dx%d", *f_users.shape)
+    users_labels = model.coefficients[user_id][user_id].to_numpy()
+    users_linear_terms = model.coefficients[user_id]["linear_terms"].to_numpy()
+    LOGGER.info("Loaded %d user linear terms", len(users_linear_terms))
+    users_factors = model.coefficients[user_id]["factors"].to_numpy()
+    LOGGER.info("Loaded user factors with shape %dx%d", *users_factors.shape)
 
-    l_items = model.coefficients[item_id][item_id].to_numpy()
-    w_items = model.coefficients[item_id]["linear_terms"].to_numpy()
-    LOGGER.info("Loaded %d item linear terms", len(w_items))
-    f_items = model.coefficients[item_id]["factors"].to_numpy().T
-    LOGGER.info("Loaded item factors with shape %dx%d", *f_items.shape)
+    items_labels = model.coefficients[item_id][item_id].to_numpy()
+    items_linear_terms = model.coefficients[item_id]["linear_terms"].to_numpy()
+    LOGGER.info("Loaded %d item linear terms", len(items_linear_terms))
+    items_factors = model.coefficients[item_id]["factors"].to_numpy().T
+    LOGGER.info("Loaded item factors with shape %dx%d", *items_factors.shape)
 
-    return intercept, l_users, w_users, f_users, l_items, w_items, f_items
+    return (
+        intercept,
+        users_labels,
+        users_linear_terms,
+        users_factors,
+        items_labels,
+        items_linear_terms,
+        items_factors,
+    )
 
 
 # from games.utils import load_recommender
@@ -32,9 +63,9 @@ def turi_create_to_numpy(model, *, user_id="bgg_user_name", item_id="bgg_id"):
 # users_map = dict(zip(users, range(len(users))))
 # users_map["markus shepherd"]
 # games_map = dict(zip(games, range(len(games))))
-# g = f_users[405817].reshape(1, 32) @ f_games.T
-# g.reshape(79113) + w_games + mu + w_users[405817]
-# rec = g.reshape(79113) + w_games + mu + w_users[405817]
+# g = users_factors[405817].reshape(1, 32) @ f_games.T
+# g.reshape(79113) + w_games + mu + users_linear_terms[405817]
+# rec = g.reshape(79113) + w_games + mu + users_linear_terms[405817]
 # games[(-rec).argsort()]
 # games.to_numpy()[(-rec).argsort()]
 # recommendations = games.to_numpy()[(-rec).argsort()]
