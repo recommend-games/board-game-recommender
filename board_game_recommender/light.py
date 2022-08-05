@@ -3,7 +3,7 @@
 import logging
 import sys
 
-from typing import Iterable
+from collections.abc import Iterable, Set
 
 import numpy as np
 import pandas as pd
@@ -44,6 +44,26 @@ class LightRecommender(BaseGamesRecommender):
             len(self.items_labels),
         )
 
+    @property
+    def known_games(self: "LightRecommender") -> Set[int]:
+        return frozenset(self.items_labels)
+
+    @property
+    def rated_games(self: "LightRecommender") -> Set[int]:
+        return self.known_games
+
+    @property
+    def num_games(self: "LightRecommender") -> int:
+        return len(self.items_labels)
+
+    @property
+    def known_users(self: "LightRecommender") -> Set[str]:
+        return frozenset(self.users_labels)
+
+    @property
+    def num_users(self: "LightRecommender") -> int:
+        return len(self.users_labels)
+
     def recommend(self: "LightRecommender", users: Iterable[str]) -> pd.DataFrame:
         """Calculate recommendations for certain users."""
 
@@ -71,6 +91,12 @@ class LightRecommender(BaseGamesRecommender):
             result.sort_values((users[0], "rank"), inplace=True)
 
         return result[pd.MultiIndex.from_product([users, ["score", "rank"]])]
+
+    def recommend_similar(self: "LightRecommender", games: Iterable[int]):
+        raise NotImplementedError
+
+    def similar_games(self: "LightRecommender", games: Iterable[int]):
+        raise NotImplementedError
 
 
 def turi_create_to_numpy(model, *, user_id="bgg_user_name", item_id="bgg_id"):
