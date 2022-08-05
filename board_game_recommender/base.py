@@ -1,63 +1,49 @@
 """Abstract base recommender class."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Set
+from typing import Generic, TypeVar
+
+GameKeyType = TypeVar("GameKeyType")
+UserKeyType = TypeVar("UserKeyType")
 
 
-class BaseGamesRecommender(ABC):
+class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
     """Abstract base recommender class."""
 
     @property
     @abstractmethod
-    def rated_games(self):
+    def known_games(self: "BaseGamesRecommender") -> Set[GameKeyType]:
         pass
 
     @property
     @abstractmethod
-    def known_games(self):
+    def rated_games(self: "BaseGamesRecommender") -> Set[GameKeyType]:
         pass
 
     @property
     @abstractmethod
-    def known_users(self):
+    def num_games(self: "BaseGamesRecommender") -> int:
         pass
 
     @property
     @abstractmethod
-    def num_games(self):
+    def known_users(self: "BaseGamesRecommender") -> Set[UserKeyType]:
+        pass
+
+    @property
+    @abstractmethod
+    def num_users(self: "BaseGamesRecommender") -> int:
         pass
 
     @abstractmethod
-    def recommend(
-        self,
-        users=None,
-        similarity_model=False,
-        games=None,
-        games_filters=None,
-        exclude=None,
-        exclude_known=True,
-        exclude_clusters=True,
-        exclude_compilations=True,
-        num_games=None,
-        ascending=True,
-        columns=None,
-        star_percentiles=None,
-        **kwargs,
-    ):
+    def recommend(self: "BaseGamesRecommender", users: Iterable[UserKeyType]):
         pass
 
     @abstractmethod
-    def recommend_similar(
-        self,
-        games=None,
-        items=None,
-        games_filters=None,
-        threshold=0.001,
-        num_games=None,
-        columns=None,
-        **kwargs,
-    ):
+    def recommend_similar(self: "BaseGamesRecommender", games: Iterable[GameKeyType]):
         pass
 
     @abstractmethod
-    def similar_games(self, games, num_games=10, columns=None):
+    def similar_games(self: "BaseGamesRecommender", games: Iterable[GameKeyType]):
         pass

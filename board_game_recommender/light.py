@@ -8,12 +8,13 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
+from board_game_recommender.base import BaseGamesRecommender
 from board_game_recommender.recommend import BGGRecommender
 
 LOGGER = logging.getLogger(__name__)
 
 
-class LightRecommender:
+class LightRecommender(BaseGamesRecommender):
     """Light recommender without Turi Create dependency."""
 
     def __init__(self, model, *, user_id="bgg_user_name", item_id="bgg_id"):
