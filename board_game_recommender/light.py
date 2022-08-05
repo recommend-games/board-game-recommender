@@ -3,7 +3,7 @@
 import logging
 import sys
 
-from collections.abc import Iterable, Set
+from typing import Iterable, Set
 
 import numpy as np
 import pandas as pd

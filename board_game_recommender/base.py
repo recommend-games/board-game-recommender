@@ -1,8 +1,7 @@
 """Abstract base recommender class."""
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Set
-from typing import Generic, TypeVar
+from typing import Generic, Iterable, Set, TypeVar
 
 GameKeyType = TypeVar("GameKeyType")
 UserKeyType = TypeVar("UserKeyType")
