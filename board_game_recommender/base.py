@@ -16,13 +16,12 @@ class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
         pass
 
     @property
-    @abstractmethod
-    def rated_games(self: "BaseGamesRecommender") -> Set[GameKeyType]:
-        pass
+    def num_games(self: "BaseGamesRecommender") -> int:
+        return len(self.known_games)
 
     @property
     @abstractmethod
-    def num_games(self: "BaseGamesRecommender") -> int:
+    def rated_games(self: "BaseGamesRecommender") -> Set[GameKeyType]:
         pass
 
     @property
@@ -31,9 +30,8 @@ class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
         pass
 
     @property
-    @abstractmethod
     def num_users(self: "BaseGamesRecommender") -> int:
-        pass
+        return len(self.known_users)
 
     @abstractmethod
     def recommend(self: "BaseGamesRecommender", users: Iterable[UserKeyType]):
