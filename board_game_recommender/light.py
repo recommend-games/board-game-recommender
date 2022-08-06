@@ -21,14 +21,14 @@ RecommenderModel = Union[
 ]
 
 
-class LightRecommender(BaseGamesRecommender):
+class LightGamesRecommender(BaseGamesRecommender):
     """Light recommender without Turi Create dependency."""
 
     _known_games: Optional[FrozenSet[int]] = None
     _known_users: Optional[FrozenSet[str]] = None
 
     def __init__(
-        self: "LightRecommender",
+        self: "LightGamesRecommender",
         model: RecommenderModel,
         *,
         user_id: str = "bgg_user_name",
@@ -61,33 +61,33 @@ class LightRecommender(BaseGamesRecommender):
         )
 
     @property
-    def known_games(self: "LightRecommender") -> FrozenSet[int]:
+    def known_games(self: "LightGamesRecommender") -> FrozenSet[int]:
         if self._known_games is not None:
             return self._known_games
         self._known_games = frozenset(self.items_labels)
         return self._known_games
 
     @property
-    def rated_games(self: "LightRecommender") -> FrozenSet[int]:
+    def rated_games(self: "LightGamesRecommender") -> FrozenSet[int]:
         return self.known_games
 
     @property
-    def num_games(self: "LightRecommender") -> int:
+    def num_games(self: "LightGamesRecommender") -> int:
         return len(self.items_labels)
 
     @property
-    def known_users(self: "LightRecommender") -> FrozenSet[str]:
+    def known_users(self: "LightGamesRecommender") -> FrozenSet[str]:
         if self._known_users is not None:
             return self._known_users
         self._known_users = frozenset(self.users_labels)
         return self._known_users
 
     @property
-    def num_users(self: "LightRecommender") -> int:
+    def num_users(self: "LightGamesRecommender") -> int:
         return len(self.users_labels)
 
     def recommend(
-        self: "LightRecommender",
+        self: "LightGamesRecommender",
         users: Iterable[str],
         **kwargs,
     ) -> pd.DataFrame:
@@ -118,10 +118,18 @@ class LightRecommender(BaseGamesRecommender):
 
         return result[pd.MultiIndex.from_product([users, ["score", "rank"]])]
 
-    def recommend_similar(self: "LightRecommender", games: Iterable[int], **kwargs):
+    def recommend_similar(
+        self: "LightGamesRecommender",
+        games: Iterable[int],
+        **kwargs,
+    ):
         raise NotImplementedError
 
-    def similar_games(self: "LightRecommender", games: Iterable[int], **kwargs):
+    def similar_games(
+        self: "LightGamesRecommender",
+        games: Iterable[int],
+        **kwargs,
+    ):
         raise NotImplementedError
 
 
@@ -182,7 +190,7 @@ def _main():
         recommender = BGGRecommender.load(model_path)
         LOGGER.info("Loaded model: %r", recommender)
 
-        light = LightRecommender(recommender.model)
+        light = LightGamesRecommender(recommender.model)
         recommendations = light.recommend([user])
         print(recommendations.head(num_games))
 
