@@ -1,10 +1,16 @@
 """Abstract base recommender class."""
 
 from abc import ABC, abstractmethod
-from typing import AbstractSet, Generic, Iterable, TypeVar
+from typing import TYPE_CHECKING, AbstractSet, Generic, Iterable, TypeVar, Union
 
 GameKeyType = TypeVar("GameKeyType")
 UserKeyType = TypeVar("UserKeyType")
+
+if TYPE_CHECKING:
+    import pandas
+    import turicreate
+
+DataFrame = Union["pandas.DataFrame", "turicreate.SFrame"]
 
 
 class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
@@ -36,13 +42,19 @@ class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
         return len(self.known_users)
 
     @abstractmethod
-    def recommend(self: "BaseGamesRecommender", users: Iterable[UserKeyType]):
+    def recommend(
+        self: "BaseGamesRecommender", users: Iterable[UserKeyType]
+    ) -> DataFrame:
         """Recommend games for given users."""
 
     @abstractmethod
-    def recommend_similar(self: "BaseGamesRecommender", games: Iterable[GameKeyType]):
+    def recommend_similar(
+        self: "BaseGamesRecommender", games: Iterable[GameKeyType]
+    ) -> DataFrame:
         """Recommend games similar to the given ones."""
 
     @abstractmethod
-    def similar_games(self: "BaseGamesRecommender", games: Iterable[GameKeyType]):
+    def similar_games(
+        self: "BaseGamesRecommender", games: Iterable[GameKeyType]
+    ) -> DataFrame:
         """Find games similar to the given ones."""
