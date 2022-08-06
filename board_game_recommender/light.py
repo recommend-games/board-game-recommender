@@ -3,7 +3,7 @@
 import logging
 import sys
 
-from typing import Iterable, Set, Tuple, Union
+from typing import Iterable, List, FrozenSet, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -14,11 +14,25 @@ from board_game_recommender.recommend import BGGRecommender
 
 LOGGER = logging.getLogger(__name__)
 
+RecommenderModel = Union[
+    tc.recommender.factorization_recommender.FactorizationRecommender,
+    tc.recommender.ranking_factorization_recommender.RankingFactorizationRecommender,
+]
+
 
 class LightRecommender(BaseGamesRecommender):
     """Light recommender without Turi Create dependency."""
 
-    def __init__(self, model, *, user_id="bgg_user_name", item_id="bgg_id"):
+    _known_games: Optional[FrozenSet[int]] = None
+    _known_users: Optional[FrozenSet[str]] = None
+
+    def __init__(
+        self: "LightRecommender",
+        model: RecommenderModel,
+        *,
+        user_id: str = "bgg_user_name",
+        item_id: str = "bgg_id",
+    ):
         (
             intercept,
             users_labels,
@@ -29,12 +43,12 @@ class LightRecommender(BaseGamesRecommender):
             items_factors,
         ) = turi_create_to_numpy(model=model, user_id=user_id, item_id=item_id)
 
-        self.intercept = intercept
-        self.users_labels = users_labels
+        self.intercept: float = intercept
+        self.users_labels: List[str] = list(users_labels)
         self.users_indexes = dict(zip(users_labels, range(len(users_labels))))
         self.users_linear_terms = users_linear_terms
         self.users_factors = users_factors
-        self.items_labels = items_labels
+        self.items_labels: List[int] = list(items_labels)
         self.items_indexes = dict(zip(items_labels, range(len(items_labels))))
         self.items_linear_terms = items_linear_terms
         self.items_factors = items_factors
@@ -46,11 +60,14 @@ class LightRecommender(BaseGamesRecommender):
         )
 
     @property
-    def known_games(self: "LightRecommender") -> Set[int]:
-        return frozenset(self.items_labels)
+    def known_games(self: "LightRecommender") -> FrozenSet[int]:
+        if self._known_games is not None:
+            return self._known_games
+        self._known_games = frozenset(self.items_labels)
+        return self._known_games
 
     @property
-    def rated_games(self: "LightRecommender") -> Set[int]:
+    def rated_games(self: "LightRecommender") -> FrozenSet[int]:
         return self.known_games
 
     @property
@@ -58,8 +75,11 @@ class LightRecommender(BaseGamesRecommender):
         return len(self.items_labels)
 
     @property
-    def known_users(self: "LightRecommender") -> Set[str]:
-        return frozenset(self.users_labels)
+    def known_users(self: "LightRecommender") -> FrozenSet[str]:
+        if self._known_users is not None:
+            return self._known_users
+        self._known_users = frozenset(self.users_labels)
+        return self._known_users
 
     @property
     def num_users(self: "LightRecommender") -> int:
@@ -101,10 +121,7 @@ class LightRecommender(BaseGamesRecommender):
 
 
 def turi_create_to_numpy(
-    model: Union[
-        tc.recommender.factorization_recommender.FactorizationRecommender,
-        tc.recommender.ranking_factorization_recommender.RankingFactorizationRecommender,
-    ],
+    model: RecommenderModel,
     *,
     user_id: str = "bgg_user_name",
     item_id: str = "bgg_id",

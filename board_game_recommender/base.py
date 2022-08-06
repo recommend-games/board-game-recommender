@@ -1,7 +1,7 @@
 """Abstract base recommender class."""
 
 from abc import ABC, abstractmethod
-from typing import Generic, Iterable, Set, TypeVar
+from typing import AbstractSet, Generic, Iterable, TypeVar
 
 GameKeyType = TypeVar("GameKeyType")
 UserKeyType = TypeVar("UserKeyType")
@@ -12,7 +12,7 @@ class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
 
     @property
     @abstractmethod
-    def known_games(self: "BaseGamesRecommender") -> Set[GameKeyType]:
+    def known_games(self: "BaseGamesRecommender") -> AbstractSet[GameKeyType]:
         pass
 
     @property
@@ -21,12 +21,12 @@ class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
 
     @property
     @abstractmethod
-    def rated_games(self: "BaseGamesRecommender") -> Set[GameKeyType]:
+    def rated_games(self: "BaseGamesRecommender") -> AbstractSet[GameKeyType]:
         pass
 
     @property
     @abstractmethod
-    def known_users(self: "BaseGamesRecommender") -> Set[UserKeyType]:
+    def known_users(self: "BaseGamesRecommender") -> AbstractSet[UserKeyType]:
         pass
 
     @property
