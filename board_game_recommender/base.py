@@ -8,39 +8,41 @@ UserKeyType = TypeVar("UserKeyType")
 
 
 class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
-    """Abstract base recommender class."""
+    """Abstract base games recommender class."""
 
     @property
     @abstractmethod
     def known_games(self: "BaseGamesRecommender") -> AbstractSet[GameKeyType]:
-        pass
+        """IDs of all known games."""
 
     @property
     def num_games(self: "BaseGamesRecommender") -> int:
+        """Number of known games."""
         return len(self.known_games)
 
     @property
     @abstractmethod
     def rated_games(self: "BaseGamesRecommender") -> AbstractSet[GameKeyType]:
-        pass
+        """IDs of all rated games."""
 
     @property
     @abstractmethod
     def known_users(self: "BaseGamesRecommender") -> AbstractSet[UserKeyType]:
-        pass
+        """IDs of all known users."""
 
     @property
     def num_users(self: "BaseGamesRecommender") -> int:
+        """Number of known users."""
         return len(self.known_users)
 
     @abstractmethod
     def recommend(self: "BaseGamesRecommender", users: Iterable[UserKeyType]):
-        pass
+        """Recommend games for given users."""
 
     @abstractmethod
     def recommend_similar(self: "BaseGamesRecommender", games: Iterable[GameKeyType]):
-        pass
+        """Recommend games similar to the given ones."""
 
     @abstractmethod
     def similar_games(self: "BaseGamesRecommender", games: Iterable[GameKeyType]):
-        pass
+        """Find games similar to the given ones."""
