@@ -3,20 +3,21 @@
 import logging
 import sys
 
-from typing import Iterable, List, FrozenSet, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Iterable, List, FrozenSet, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import turicreate as tc
 
 from board_game_recommender.base import BaseGamesRecommender
-from board_game_recommender.recommend import BGGRecommender
 
 LOGGER = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    import turicreate
+
 RecommenderModel = Union[
-    tc.recommender.factorization_recommender.FactorizationRecommender,
-    tc.recommender.ranking_factorization_recommender.RankingFactorizationRecommender,
+    "turicreate.recommender.factorization_recommender.FactorizationRecommender",
+    "turicreate.recommender.ranking_factorization_recommender.RankingFactorizationRecommender",
 ]
 
 
@@ -161,6 +162,8 @@ def turi_create_to_numpy(
 
 
 def _main():
+    from board_game_recommender.recommend import BGGRecommender
+
     logging.basicConfig(
         stream=sys.stdout,
         level=logging.INFO,
