@@ -3,10 +3,11 @@
 import logging
 import sys
 
-from typing import Iterable, Set
+from typing import Iterable, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
+import turicreate as tc
 
 from board_game_recommender.base import BaseGamesRecommender
 from board_game_recommender.recommend import BGGRecommender
@@ -99,7 +100,23 @@ class LightRecommender(BaseGamesRecommender):
         raise NotImplementedError
 
 
-def turi_create_to_numpy(model, *, user_id="bgg_user_name", item_id="bgg_id"):
+def turi_create_to_numpy(
+    model: Union[
+        tc.recommender.factorization_recommender.FactorizationRecommender,
+        tc.recommender.ranking_factorization_recommender.RankingFactorizationRecommender,
+    ],
+    *,
+    user_id: str = "bgg_user_name",
+    item_id: str = "bgg_id",
+) -> Tuple[
+    float,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+]:
     """Convert a Turi Create model into NumPy arrays."""
 
     intercept = model.coefficients["intercept"]
