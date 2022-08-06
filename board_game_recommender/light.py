@@ -86,7 +86,11 @@ class LightRecommender(BaseGamesRecommender):
     def num_users(self: "LightRecommender") -> int:
         return len(self.users_labels)
 
-    def recommend(self: "LightRecommender", users: Iterable[str]) -> pd.DataFrame:
+    def recommend(
+        self: "LightRecommender",
+        users: Iterable[str],
+        **kwargs,
+    ) -> pd.DataFrame:
         """Calculate recommendations for certain users."""
 
         users = list(users)
@@ -114,10 +118,10 @@ class LightRecommender(BaseGamesRecommender):
 
         return result[pd.MultiIndex.from_product([users, ["score", "rank"]])]
 
-    def recommend_similar(self: "LightRecommender", games: Iterable[int]):
+    def recommend_similar(self: "LightRecommender", games: Iterable[int], **kwargs):
         raise NotImplementedError
 
-    def similar_games(self: "LightRecommender", games: Iterable[int]):
+    def similar_games(self: "LightRecommender", games: Iterable[int], **kwargs):
         raise NotImplementedError
 
 

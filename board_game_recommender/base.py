@@ -43,18 +43,24 @@ class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
 
     @abstractmethod
     def recommend(
-        self: "BaseGamesRecommender", users: Iterable[UserKeyType]
+        self: "BaseGamesRecommender",
+        users: Iterable[UserKeyType],
+        **kwargs,
     ) -> DataFrame:
         """Recommend games for given users."""
 
     @abstractmethod
     def recommend_similar(
-        self: "BaseGamesRecommender", games: Iterable[GameKeyType]
+        self: "BaseGamesRecommender",
+        games: Iterable[GameKeyType],
+        **kwargs,
     ) -> DataFrame:
         """Recommend games similar to the given ones."""
 
     @abstractmethod
     def similar_games(
-        self: "BaseGamesRecommender", games: Iterable[GameKeyType]
+        self: "BaseGamesRecommender",
+        games: Iterable[GameKeyType],
+        **kwargs,
     ) -> DataFrame:
         """Find games similar to the given ones."""
