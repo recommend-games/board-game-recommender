@@ -44,7 +44,7 @@ URL_MAILING = None
 URL_TWITTER = "https://twitter.com/recommend_games"
 EMAIL = "markus@recommend.games"
 AUTHOR = "Markus Shepherd"
-REQUIRES_PYTHON = ">=3.6.0,<3.9.0"
+REQUIRES_PYTHON = ">=3.7.0,<3.9.0"
 VERSION = None  # will be read from __version__.py
 
 # What packages are required for this module to be executed?
@@ -159,7 +159,6 @@ setup(
         # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Topic :: Games/Entertainment :: Board Games",
