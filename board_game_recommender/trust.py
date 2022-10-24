@@ -2,12 +2,10 @@
 
 import json
 import math
-
 from itertools import groupby
 from typing import Any, Dict, Generator, Iterable, Optional, Tuple, Union
 
 import turicreate as tc
-
 from scipy.stats import shapiro
 
 

@@ -5,15 +5,14 @@
 import csv
 import logging
 import os
-import tempfile
 import sys
+import tempfile
 
 # from datetime import date
 from typing import Any, Dict, FrozenSet, Iterable, Optional, Tuple, Type
 
-from pytility import arg_to_iter, clear_list
-
 import turicreate as tc
+from pytility import arg_to_iter, clear_list
 
 from board_game_recommender.base import BaseGamesRecommender, GameKeyType, UserKeyType
 from board_game_recommender.utils import (

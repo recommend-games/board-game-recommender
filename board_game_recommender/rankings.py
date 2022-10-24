@@ -1,14 +1,13 @@
 """Calcuate game rankings."""
 
 import logging
-
 from pathlib import Path
 from typing import Union
 
 import turicreate as tc
 
-from .recommend import BGGRecommender
-from .trust import user_trust
+from board_game_recommender.recommend import BGGRecommender
+from board_game_recommender.trust import user_trust
 
 LOGGER = logging.getLogger(__name__)
 

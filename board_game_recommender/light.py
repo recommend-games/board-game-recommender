@@ -2,9 +2,8 @@
 
 import logging
 import sys
-
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterable, List, FrozenSet, Optional, Union
+from typing import TYPE_CHECKING, FrozenSet, Iterable, List, Optional, Union
 
 import numpy as np
 import pandas as pd
