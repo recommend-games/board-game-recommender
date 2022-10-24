@@ -23,7 +23,7 @@ RecommenderModel = Union[
 
 @dataclass(frozen=True)
 class CollaborativeFilteringData:
-    """TODO."""
+    """Labels, vectors and matrices for linear collaborative filtering models."""
 
     intercept: float
     users_labels: np.ndarray
