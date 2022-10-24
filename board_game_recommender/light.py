@@ -1,7 +1,6 @@
 """Light recommender model, without the heavy Turi Create dependency."""
 
 import logging
-import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, FrozenSet, Iterable, List, Optional, Union
 
@@ -168,36 +167,3 @@ def turi_create_to_numpy(
         items_linear_terms=items_linear_terms,
         items_factors=items_factors,
     )
-
-
-def _main():
-    from board_game_recommender.recommend import BGGRecommender
-
-    logging.basicConfig(
-        stream=sys.stdout,
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)-8.8s [%(name)s:%(lineno)s] %(message)s",
-    )
-
-    user = "markus shepherd"
-    num_games = 10
-
-    for model_path in sys.argv[1:]:
-        LOGGER.info("Loading model from <%s>…", model_path)
-        recommender = BGGRecommender.load(model_path)
-        LOGGER.info("Loaded model: %r", recommender)
-
-        light = LightGamesRecommender(recommender.model)
-        recommendations = light.recommend([user])
-        print(recommendations.head(num_games))
-
-        recommendations = recommender.model.recommend(
-            users=[user],
-            exclude_known=False,
-            k=num_games,
-        )
-        recommendations.print_rows(num_games)
-
-
-if __name__ == "__main__":
-    _main()
