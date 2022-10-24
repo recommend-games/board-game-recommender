@@ -3,7 +3,8 @@
 import logging
 import sys
 
-from typing import TYPE_CHECKING, Iterable, List, FrozenSet, Optional, Tuple, Union
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Iterable, List, FrozenSet, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -21,6 +22,19 @@ RecommenderModel = Union[
 ]
 
 
+@dataclass(frozen=True)
+class CollaborativeFilteringData:
+    """TODO."""
+
+    intercept: float
+    users_labels: np.ndarray
+    users_linear_terms: np.ndarray
+    users_factors: np.ndarray
+    items_labels: np.ndarray
+    items_linear_terms: np.ndarray
+    items_factors: np.ndarray
+
+
 class LightGamesRecommender(BaseGamesRecommender):
     """Light recommender without Turi Create dependency."""
 
@@ -34,25 +48,17 @@ class LightGamesRecommender(BaseGamesRecommender):
         user_id: str = "bgg_user_name",
         item_id: str = "bgg_id",
     ):
-        (
-            intercept,
-            users_labels,
-            users_linear_terms,
-            users_factors,
-            items_labels,
-            items_linear_terms,
-            items_factors,
-        ) = turi_create_to_numpy(model=model, user_id=user_id, item_id=item_id)
+        data = turi_create_to_numpy(model=model, user_id=user_id, item_id=item_id)
 
-        self.intercept: float = intercept
-        self.users_labels: List[str] = list(users_labels)
-        self.users_indexes = dict(zip(users_labels, range(len(users_labels))))
-        self.users_linear_terms = users_linear_terms
-        self.users_factors = users_factors
-        self.items_labels: List[int] = list(items_labels)
-        self.items_indexes = dict(zip(items_labels, range(len(items_labels))))
-        self.items_linear_terms = items_linear_terms
-        self.items_factors = items_factors
+        self.intercept: float = data.intercept
+        self.users_labels: List[str] = list(data.users_labels)
+        self.users_indexes = dict(zip(data.users_labels, range(len(data.users_labels))))
+        self.users_linear_terms = data.users_linear_terms
+        self.users_factors = data.users_factors
+        self.items_labels: List[int] = list(data.items_labels)
+        self.items_indexes = dict(zip(data.items_labels, range(len(data.items_labels))))
+        self.items_linear_terms = data.items_linear_terms
+        self.items_factors = data.items_factors
 
         LOGGER.info(
             "Loaded light recommender with %d users and %d items",
@@ -138,15 +144,7 @@ def turi_create_to_numpy(
     *,
     user_id: str = "bgg_user_name",
     item_id: str = "bgg_id",
-) -> Tuple[
-    float,
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-]:
+) -> CollaborativeFilteringData:
     """Convert a Turi Create model into NumPy arrays."""
 
     intercept = model.coefficients["intercept"]
@@ -162,14 +160,14 @@ def turi_create_to_numpy(
     items_factors = model.coefficients[item_id]["factors"].to_numpy().T
     LOGGER.info("Loaded item factors with shape %dx%d", *items_factors.shape)
 
-    return (
-        intercept,
-        users_labels,
-        users_linear_terms,
-        users_factors,
-        items_labels,
-        items_linear_terms,
-        items_factors,
+    return CollaborativeFilteringData(
+        intercept=intercept,
+        users_labels=users_labels,
+        users_linear_terms=users_linear_terms,
+        users_factors=users_factors,
+        items_labels=items_labels,
+        items_linear_terms=items_linear_terms,
+        items_factors=items_factors,
     )
 
 
