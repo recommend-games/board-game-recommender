@@ -92,7 +92,7 @@ class LightGamesRecommender(BaseGamesRecommender):
 
     @classmethod
     def from_turi_create(
-        cls: Type,
+        cls: Type["LightGamesRecommender"],
         model: RecommenderModel,
         *,
         user_id: str = "bgg_user_name",
@@ -101,6 +101,19 @@ class LightGamesRecommender(BaseGamesRecommender):
         """Create a LightGamesRecommender from a Turi Create model."""
         data = turi_create_to_numpy(model=model, user_id=user_id, item_id=item_id)
         return cls(data=data)
+
+    def to_npz(self: "LightGamesRecommender", file_path: Union[Path, str]) -> None:
+        """Save data into an .npz file."""
+        self.data.to_npz(file_path)
+
+    @classmethod
+    def from_npz(
+        cls: Type["LightGamesRecommender"],
+        file_path: Union[Path, str],
+    ) -> "LightGamesRecommender":
+        """Load data from an .npz file."""
+        data = CollaborativeFilteringData.from_npz(file_path)
+        return cls(data)
 
     @property
     def known_games(self: "LightGamesRecommender") -> FrozenSet[int]:
