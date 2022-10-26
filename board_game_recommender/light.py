@@ -35,6 +35,7 @@ class CollaborativeFilteringData:
 
     def to_npz(self: "CollaborativeFilteringData", file_path: Union[Path, str]) -> None:
         """Save data into an .npz file."""
+
         file_path = Path(file_path).resolve()
         LOGGER.info("Saving data as .npz to <%s>", file_path)
         with file_path.open(mode="wb") as file:
@@ -47,6 +48,7 @@ class CollaborativeFilteringData:
         file_path: Union[Path, str],
     ) -> "CollaborativeFilteringData":
         """Load data from an .npz file."""
+
         file_path = Path(file_path).resolve()
         LOGGER.info("Loading data as .npz from <%s>", file_path)
         with file_path.open(mode="rb") as file:
@@ -66,18 +68,17 @@ class LightGamesRecommender(BaseGamesRecommender):
 
     def __init__(
         self: "LightGamesRecommender",
-        model: RecommenderModel,
-        *,
-        user_id: str = "bgg_user_name",
-        item_id: str = "bgg_id",
-    ):
-        data = turi_create_to_numpy(model=model, user_id=user_id, item_id=item_id)
+        data: CollaborativeFilteringData,
+    ) -> None:
+        self.data = data
 
         self.intercept: float = data.intercept
+
         self.users_labels: List[str] = list(data.users_labels)
         self.users_indexes = dict(zip(data.users_labels, range(len(data.users_labels))))
         self.users_linear_terms = data.users_linear_terms
         self.users_factors = data.users_factors
+
         self.items_labels: List[int] = list(data.items_labels)
         self.items_indexes = dict(zip(data.items_labels, range(len(data.items_labels))))
         self.items_linear_terms = data.items_linear_terms
@@ -88,6 +89,18 @@ class LightGamesRecommender(BaseGamesRecommender):
             len(self.users_labels),
             len(self.items_labels),
         )
+
+    @classmethod
+    def from_turi_create(
+        cls: Type,
+        model: RecommenderModel,
+        *,
+        user_id: str = "bgg_user_name",
+        item_id: str = "bgg_id",
+    ) -> "LightGamesRecommender":
+        """Create a LightGamesRecommender from a Turi Create model."""
+        data = turi_create_to_numpy(model=model, user_id=user_id, item_id=item_id)
+        return cls(data=data)
 
     @property
     def known_games(self: "LightGamesRecommender") -> FrozenSet[int]:
