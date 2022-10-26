@@ -1,8 +1,9 @@
 """Light recommender model, without the heavy Turi Create dependency."""
 
 import logging
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, FrozenSet, Iterable, List, Optional, Union
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import TYPE_CHECKING, FrozenSet, Iterable, List, Optional, Type, Union
 
 import numpy as np
 import pandas as pd
@@ -31,6 +32,30 @@ class CollaborativeFilteringData:
     items_labels: np.ndarray
     items_linear_terms: np.ndarray
     items_factors: np.ndarray
+
+    def to_npz(self: "CollaborativeFilteringData", file_path: Union[Path, str]) -> None:
+        """Save data into an .npz file."""
+        file_path = Path(file_path).resolve()
+        LOGGER.info("Saving data as .npz to <%s>", file_path)
+        with file_path.open(mode="wb") as file:
+            np.savez(file=file, **asdict(self))
+        LOGGER.info("Done saving <%s>", file_path)
+
+    @classmethod
+    def from_npz(
+        cls: Type["CollaborativeFilteringData"],
+        file_path: Union[Path, str],
+    ) -> "CollaborativeFilteringData":
+        """Load data from an .npz file."""
+        file_path = Path(file_path).resolve()
+        LOGGER.info("Loading data as .npz from <%s>", file_path)
+        with file_path.open(mode="rb") as file:
+            files = np.load(file=file)
+            files_dict = {
+                key: float(files[key]) if key == "intercept" else files[key]
+                for key in files.files
+            }
+            return cls(**files_dict)
 
 
 class LightGamesRecommender(BaseGamesRecommender):
