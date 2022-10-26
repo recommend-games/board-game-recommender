@@ -1,8 +1,9 @@
 """Light recommender model, without the heavy Turi Create dependency."""
 
 import logging
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, FrozenSet, Iterable, List, Optional, Union
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import TYPE_CHECKING, FrozenSet, Iterable, List, Optional, Type, Union
 
 import numpy as np
 import pandas as pd
@@ -32,6 +33,32 @@ class CollaborativeFilteringData:
     items_linear_terms: np.ndarray
     items_factors: np.ndarray
 
+    def to_npz(self: "CollaborativeFilteringData", file_path: Union[Path, str]) -> None:
+        """Save data into an .npz file."""
+
+        file_path = Path(file_path).resolve()
+        LOGGER.info("Saving data as .npz to <%s>", file_path)
+        with file_path.open(mode="wb") as file:
+            np.savez(file=file, **asdict(self))
+        LOGGER.info("Done saving <%s>", file_path)
+
+    @classmethod
+    def from_npz(
+        cls: Type["CollaborativeFilteringData"],
+        file_path: Union[Path, str],
+    ) -> "CollaborativeFilteringData":
+        """Load data from an .npz file."""
+
+        file_path = Path(file_path).resolve()
+        LOGGER.info("Loading data as .npz from <%s>", file_path)
+        with file_path.open(mode="rb") as file:
+            files = np.load(file=file)
+            files_dict = {
+                key: float(files[key]) if key == "intercept" else files[key]
+                for key in files.files
+            }
+            return cls(**files_dict)
+
 
 class LightGamesRecommender(BaseGamesRecommender):
     """Light recommender without Turi Create dependency."""
@@ -41,18 +68,17 @@ class LightGamesRecommender(BaseGamesRecommender):
 
     def __init__(
         self: "LightGamesRecommender",
-        model: RecommenderModel,
-        *,
-        user_id: str = "bgg_user_name",
-        item_id: str = "bgg_id",
-    ):
-        data = turi_create_to_numpy(model=model, user_id=user_id, item_id=item_id)
+        data: CollaborativeFilteringData,
+    ) -> None:
+        self.data = data
 
         self.intercept: float = data.intercept
+
         self.users_labels: List[str] = list(data.users_labels)
         self.users_indexes = dict(zip(data.users_labels, range(len(data.users_labels))))
         self.users_linear_terms = data.users_linear_terms
         self.users_factors = data.users_factors
+
         self.items_labels: List[int] = list(data.items_labels)
         self.items_indexes = dict(zip(data.items_labels, range(len(data.items_labels))))
         self.items_linear_terms = data.items_linear_terms
@@ -63,6 +89,31 @@ class LightGamesRecommender(BaseGamesRecommender):
             len(self.users_labels),
             len(self.items_labels),
         )
+
+    @classmethod
+    def from_turi_create(
+        cls: Type["LightGamesRecommender"],
+        model: RecommenderModel,
+        *,
+        user_id: str = "bgg_user_name",
+        item_id: str = "bgg_id",
+    ) -> "LightGamesRecommender":
+        """Create a LightGamesRecommender from a Turi Create model."""
+        data = turi_create_to_numpy(model=model, user_id=user_id, item_id=item_id)
+        return cls(data=data)
+
+    def to_npz(self: "LightGamesRecommender", file_path: Union[Path, str]) -> None:
+        """Save data into an .npz file."""
+        self.data.to_npz(file_path)
+
+    @classmethod
+    def from_npz(
+        cls: Type["LightGamesRecommender"],
+        file_path: Union[Path, str],
+    ) -> "LightGamesRecommender":
+        """Load data from an .npz file."""
+        data = CollaborativeFilteringData.from_npz(file_path)
+        return cls(data)
 
     @property
     def known_games(self: "LightGamesRecommender") -> FrozenSet[int]:
