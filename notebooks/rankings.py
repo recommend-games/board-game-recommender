@@ -16,6 +16,7 @@
 # %%
 import logging
 import sys
+
 from board_game_recommender import BGGRecommender
 from board_game_recommender.rankings import calculate_rankings
 

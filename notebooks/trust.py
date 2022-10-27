@@ -15,6 +15,7 @@
 
 # %%
 import turicreate as tc
+
 from board_game_recommender.trust import user_trust
 
 # %load_ext nb_black
