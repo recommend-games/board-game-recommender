@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """Setup."""
 
@@ -67,7 +66,7 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 # Import the README and use it as the long-description.
 # Note: this will only work if 'README.md' is present in your MANIFEST.in file!
 try:
-    with io.open(os.path.join(HERE, "README.md"), encoding="utf-8") as f:
+    with open(os.path.join(HERE, "README.md"), encoding="utf-8") as f:
         LONG_DESCRIPTION = "\n" + f.read()
 except FileNotFoundError:
     LONG_DESCRIPTION = DESCRIPTION
@@ -92,7 +91,7 @@ class UploadCommand(Command):
     @staticmethod
     def status(string):
         """Prints things in bold."""
-        print("\033[1m{0}\033[0m".format(string))
+        print("\033[1m{}\033[0m".format(string))
 
     def initialize_options(self):
         pass
@@ -108,13 +107,13 @@ class UploadCommand(Command):
             pass
 
         self.status("Building Source and Wheel (universal) distribution…")
-        os.system("{0} setup.py sdist bdist_wheel --universal".format(sys.executable))
+        os.system("{} setup.py sdist bdist_wheel --universal".format(sys.executable))
 
         self.status("Uploading the package to PyPI via Twine…")
         os.system("twine upload dist/*")
 
         self.status("Pushing git tags…")
-        os.system("git tag v{0}".format(ABOUT["__version__"]))
+        os.system("git tag v{}".format(ABOUT["__version__"]))
         os.system("git push --tags")
 
         sys.exit()

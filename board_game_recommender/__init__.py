@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """Board game recommenders."""
 
 from board_game_recommender.__version__ import VERSION, __version__

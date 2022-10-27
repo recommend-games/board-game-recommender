@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """Version."""
 
 VERSION = (3, 1, 0)

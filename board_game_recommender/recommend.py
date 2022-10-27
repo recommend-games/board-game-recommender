@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """Board game recommenders."""
 
 import csv
