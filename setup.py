@@ -4,7 +4,6 @@
 
 # Template from https://github.com/navdeep-G/setup.py
 
-import io
 import os
 import sys
 from shutil import rmtree
