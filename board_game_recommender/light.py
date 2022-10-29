@@ -69,6 +69,9 @@ class LightGamesRecommender(BaseGamesRecommender):
     def __init__(
         self: "LightGamesRecommender",
         data: CollaborativeFilteringData,
+        *,
+        user_id: str = "bgg_user_name",
+        item_id: str = "bgg_id",
     ) -> None:
         self.data = data
 
@@ -83,6 +86,9 @@ class LightGamesRecommender(BaseGamesRecommender):
         self.items_indexes = dict(zip(data.items_labels, range(len(data.items_labels))))
         self.items_linear_terms = data.items_linear_terms
         self.items_factors = data.items_factors
+
+        self.user_id = user_id
+        self.item_id = item_id
 
         LOGGER.info(
             "Loaded light recommender with %d users and %d items",
@@ -100,7 +106,7 @@ class LightGamesRecommender(BaseGamesRecommender):
     ) -> "LightGamesRecommender":
         """Create a LightGamesRecommender from a Turi Create model."""
         data = turi_create_to_numpy(model=model, user_id=user_id, item_id=item_id)
-        return cls(data=data)
+        return cls(data=data, user_id=user_id, item_id=item_id)
 
     def to_npz(self: "LightGamesRecommender", file_path: Union[Path, str]) -> None:
         """Save data into an .npz file."""
@@ -110,10 +116,13 @@ class LightGamesRecommender(BaseGamesRecommender):
     def from_npz(
         cls: Type["LightGamesRecommender"],
         file_path: Union[Path, str],
+        *,
+        user_id: str = "bgg_user_name",
+        item_id: str = "bgg_id",
     ) -> "LightGamesRecommender":
         """Load data from an .npz file."""
         data = CollaborativeFilteringData.from_npz(file_path)
-        return cls(data)
+        return cls(data=data, user_id=user_id, item_id=item_id)
 
     @property
     def known_games(self: "LightGamesRecommender") -> FrozenSet[int]:
@@ -159,10 +168,10 @@ class LightGamesRecommender(BaseGamesRecommender):
         )
 
         result = pd.DataFrame(
-            index=pd.Index(data=self.items_labels, name="bgg_id"),
+            index=pd.Index(data=self.items_labels, name=self.item_id),
             columns=pd.MultiIndex.from_product(
                 iterables=[users, ["score"]],
-                names=["bgg_user_name", None],
+                names=[self.user_id, None],
             ),
             data=scores.T,
         )
@@ -171,9 +180,8 @@ class LightGamesRecommender(BaseGamesRecommender):
             ascending=False,
         )
         result = result.T.unstack(level=0).T.reset_index()
-        result["name"] = None
 
-        return result[["bgg_user_name", "rank", "name", "bgg_id", "score"]]
+        return result[[self.user_id, "rank", self.item_id, "score"]]
 
     def recommend_similar(
         self: "LightGamesRecommender",
