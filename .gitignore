@@ -107,3 +107,4 @@ recommender/
 .bga*/
 .bgg*/
 *.ipynb
+*.npz
