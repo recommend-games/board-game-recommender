@@ -159,19 +159,21 @@ class LightGamesRecommender(BaseGamesRecommender):
         )
 
         result = pd.DataFrame(
-            index=self.items_labels,
-            columns=pd.MultiIndex.from_product([users, ["score"]]),
+            index=pd.Index(data=self.items_labels, name="bgg_id"),
+            columns=pd.MultiIndex.from_product(
+                iterables=[users, ["score"]],
+                names=["bgg_user_name", None],
+            ),
             data=scores.T,
         )
         result[pd.MultiIndex.from_product([users, ["rank"]])] = result.rank(
             method="min",
             ascending=False,
-        ).astype(int)
+        )
+        result = result.T.unstack(level=0).T.reset_index()
+        result["name"] = None
 
-        if len(users) == 1:
-            result.sort_values((users[0], "rank"), inplace=True)
-
-        return result[pd.MultiIndex.from_product([users, ["score", "rank"]])]
+        return result[["bgg_user_name", "rank", "name", "bgg_id", "score"]]
 
     def recommend_similar(
         self: "LightGamesRecommender",
