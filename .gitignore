@@ -104,6 +104,7 @@ results
 feeds/
 recommender/
 .tc*/
-.bga*/
-.bgg*/
+.bga*
+.bgg*
 *.ipynb
+*.npz
