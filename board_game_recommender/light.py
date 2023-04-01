@@ -185,8 +185,16 @@ class LightGamesRecommender(BaseGamesRecommender):
         games: Iterable[int],
         **kwargs,
     ):
-        # TODO based on cosine similarity of latent factors
-        raise NotImplementedError
+        """Finds games similar to the given games based on cosine similarity of latent factors."""
+        games = list(games)
+        indexes = [self.items_indexes[game] for game in games]
+        game_factors = self.items_factors[:, indexes]
+        dot_product = game_factors.T @ self.items_factors
+        game_norms = np.linalg.norm(game_factors, axis=0)
+        item_norms = np.linalg.norm(self.items_factors, axis=0)
+        prod_norm = np.array([game_norm * item_norms for game_norm in game_norms])
+        similarity = dot_product / prod_norm
+        return pd.DataFrame(data=similarity.T, index=self.items_labels, columns=games)
 
 
 def turi_create_to_numpy(
