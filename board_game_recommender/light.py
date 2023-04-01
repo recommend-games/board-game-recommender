@@ -186,15 +186,32 @@ class LightGamesRecommender(BaseGamesRecommender):
         **kwargs,
     ):
         """Finds games similar to the given games based on cosine similarity of latent factors."""
+
         games = list(games)
-        indexes = [self.items_indexes[game] for game in games]
-        game_factors = self.items_factors[:, indexes]
+        game_ids = np.array([self.items_indexes[game] for game in games])
+        game_factors = self.items_factors[:, game_ids]
+
         dot_product = game_factors.T @ self.items_factors
         game_norms = np.linalg.norm(game_factors, axis=0)
         item_norms = np.linalg.norm(self.items_factors, axis=0)
         prod_norm = np.array([game_norm * item_norms for game_norm in game_norms])
-        similarity = dot_product / prod_norm
-        return pd.DataFrame(data=similarity.T, index=self.items_labels, columns=games)
+
+        scores = dot_product / prod_norm
+
+        result = pd.DataFrame(
+            index=self.items_labels,
+            columns=pd.MultiIndex.from_product([games, ["score"]]),
+            data=scores.T,
+        )
+        result[pd.MultiIndex.from_product([games, ["rank"]])] = result.rank(
+            method="min",
+            ascending=False,
+        ).astype(int)
+
+        if len(games) == 1:
+            result.sort_values((games[0], "rank"), inplace=True)
+
+        return result[pd.MultiIndex.from_product([games, ["score", "rank"]])]
 
 
 def turi_create_to_numpy(
