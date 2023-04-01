@@ -185,6 +185,7 @@ class LightGamesRecommender(BaseGamesRecommender):
         games: Iterable[int],
         **kwargs,
     ):
+        # TODO based on cosine similarity of latent factors
         raise NotImplementedError
 
 
