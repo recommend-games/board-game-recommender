@@ -1,6 +1,18 @@
-# -*- coding: utf-8 -*-
+"""Board game recommenders."""
 
-"""Board game recommender."""
+from board_game_recommender.__version__ import VERSION, __version__
+from board_game_recommender.base import BaseGamesRecommender
 
-from .__version__ import VERSION, __version__
-from .recommend import BGARecommender, BGGRecommender, GamesRecommender
+try:
+    from board_game_recommender.light import LightGamesRecommender
+except ImportError:
+    pass
+
+try:
+    from board_game_recommender.recommend import (
+        BGARecommender,
+        BGGRecommender,
+        GamesRecommender,
+    )
+except ImportError:
+    pass

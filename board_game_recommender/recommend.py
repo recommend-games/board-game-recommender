@@ -1,21 +1,19 @@
-# -*- coding: utf-8 -*-
-
-""" recommend games """
+"""Board game recommenders."""
 
 import csv
 import logging
 import os
-import tempfile
 import sys
+import tempfile
 
 # from datetime import date
-from typing import Any, Dict, Optional, Tuple, Type
-
-from pytility import arg_to_iter, clear_list
+from typing import Any, Dict, FrozenSet, Iterable, Optional, Tuple, Type
 
 import turicreate as tc
+from pytility import arg_to_iter, clear_list
 
-from .utils import (
+from board_game_recommender.base import BaseGamesRecommender, GameKeyType, UserKeyType
+from board_game_recommender.utils import (
     condense_csv,
     filter_sframe,
     find_best_num_factors,
@@ -83,7 +81,7 @@ def make_cluster(data, item_id, target, target_dtype=str):
     return clusters.filter(lambda x: x is not None and len(x) > 1)
 
 
-class GamesRecommender:
+class GamesRecommender(BaseGamesRecommender):
     """games recommender"""
 
     logger = logging.getLogger("GamesRecommender")
@@ -114,7 +112,7 @@ class GamesRecommender:
     _cooperatives = None
 
     def __init__(
-        self,
+        self: "GamesRecommender",
         model,
         similarity_model=None,
         games=None,
@@ -135,7 +133,7 @@ class GamesRecommender:
             self._compilations = compilations
 
     @property
-    def rated_games(self):
+    def rated_games(self: "GamesRecommender") -> FrozenSet[GameKeyType]:
         """rated games"""
         if self._rated_games is None:
             self._rated_games = frozenset(
@@ -144,7 +142,7 @@ class GamesRecommender:
         return self._rated_games
 
     @property
-    def known_games(self):
+    def known_games(self: "GamesRecommender") -> FrozenSet[GameKeyType]:
         """known games"""
         if self._known_games is None:
             self._known_games = (
@@ -155,7 +153,7 @@ class GamesRecommender:
         return self._known_games
 
     @property
-    def known_users(self):
+    def known_users(self: "GamesRecommender") -> FrozenSet[UserKeyType]:
         """known users"""
         if self._known_users is None:
             self._known_users = frozenset(
@@ -166,14 +164,14 @@ class GamesRecommender:
         return self._known_users
 
     @property
-    def num_games(self):
+    def num_games(self: "GamesRecommender") -> int:
         """total number of games known to the recommender"""
         if self._num_games is None:
             self._num_games = len(self.known_games)
         return self._num_games
 
     @property
-    def clusters(self):
+    def clusters(self: "GamesRecommender"):
         """game implementation clusters"""
         if self._clusters is None:
             self._clusters = make_cluster(
@@ -185,7 +183,7 @@ class GamesRecommender:
         return self._clusters
 
     @property
-    def compilations(self):
+    def compilations(self: "GamesRecommender"):
         """compilation games"""
         if self._compilations is None:
             self._compilations = (
@@ -198,7 +196,7 @@ class GamesRecommender:
         return self._compilations
 
     @property
-    def cooperatives(self):
+    def cooperatives(self: "GamesRecommender"):
         """cooperative games"""
         if self._cooperatives is None:
             self._cooperatives = (
@@ -210,11 +208,11 @@ class GamesRecommender:
             )
         return self._cooperatives
 
-    def filter_games(self, **filters):
+    def filter_games(self: "GamesRecommender", **filters):
         """return games filtered by given criteria"""
         return filter_sframe(self.games, **filters)
 
-    def cluster(self, game_id):
+    def cluster(self: "GamesRecommender", game_id):
         """get implementation cluster for a given game"""
 
         # pylint: disable=len-as-condition
@@ -231,7 +229,7 @@ class GamesRecommender:
 
         return self._game_clusters.get(game_id) or (game_id,)
 
-    def _process_games(self, games=None, games_filters=None):
+    def _process_games(self: "GamesRecommender", games=None, games_filters=None):
         games = (
             games[self.id_field].astype(self.id_type, True)
             if isinstance(games, tc.SFrame)
@@ -268,7 +266,7 @@ class GamesRecommender:
         return games
 
     def _process_exclude(
-        self,
+        self: "GamesRecommender",
         users,
         exclude=None,
         exclude_known=True,
@@ -324,7 +322,7 @@ class GamesRecommender:
         return exclude
 
     def _post_process_games(
-        self,
+        self: "GamesRecommender",
         games,
         columns,
         join_on=None,
@@ -348,13 +346,14 @@ class GamesRecommender:
         return games.sort(sort_by, ascending=ascending)[columns]
 
     # pylint: disable=no-self-use
-    def process_user_id(self, user_id):
+    def process_user_id(self: "GamesRecommender", user_id):
         """process user ID"""
         return user_id or None
 
     def recommend(
-        self,
-        users=None,
+        self: "GamesRecommender",
+        users: Iterable[UserKeyType],
+        *,
         similarity_model=False,
         games=None,
         games_filters=None,
@@ -367,22 +366,35 @@ class GamesRecommender:
         columns=None,
         star_percentiles=None,
         **kwargs,
-    ):
+    ) -> tc.SFrame:
         """recommend games"""
 
         users = [self.process_user_id(user) for user in arg_to_iter(users)] or [None]
+        self.logger.info("Calculating recommendations for %d users", len(users))
 
         items = kwargs.pop("items", None)
         assert games is None or items is None, "cannot use <games> and <items> together"
         games = items if games is None else games
         games = self._process_games(games, games_filters)
+        if games is not None:
+            self.logger.info("Restrict recommendations to %d games", len(games))
         exclude = self._process_exclude(
-            users, exclude, exclude_known, exclude_clusters, exclude_compilations
+            users,
+            exclude,
+            exclude_known,
+            exclude_clusters,
+            exclude_compilations,
         )
+        if exclude is not None:
+            self.logger.info(
+                "Exclude %d game-user pairs from recommendations",
+                len(exclude),
+            )
 
         kwargs["k"] = (
             kwargs.get("k", self.num_games) if num_games is None else num_games
         )
+        self.logger.info("Recommending %d games per user", kwargs["k"])
 
         columns = list(arg_to_iter(columns)) or ["rank", "name", self.id_field, "score"]
         if len(users) > 1 and self.user_id_field not in columns:
@@ -393,8 +405,7 @@ class GamesRecommender:
             if similarity_model and self.similarity_model
             else self.model
         )
-
-        self.logger.debug("making recommendations using %s", model)
+        self.logger.info("Making recommendations using <%s>", model)
 
         recommendations = model.recommend(
             users=users,
@@ -403,6 +414,7 @@ class GamesRecommender:
             exclude_known=exclude_known,
             **kwargs,
         )
+        self.logger.info("Calculated %d recommendations", len(recommendations))
 
         del users, items, games, exclude, model
 
@@ -418,15 +430,16 @@ class GamesRecommender:
         )
 
     def recommend_similar(
-        self,
-        games=None,
+        self: "GamesRecommender",
+        games: Iterable[GameKeyType],
+        *,
         items=None,
         games_filters=None,
         threshold=0.001,
         num_games=None,
         columns=None,
         **kwargs,
-    ):
+    ) -> tc.SFrame:
         """recommend games similar to given ones"""
 
         games = list(arg_to_iter(games))
@@ -457,7 +470,14 @@ class GamesRecommender:
             games=recommendations, columns=columns, join_on=self.id_field
         )
 
-    def similar_games(self, games, num_games=10, columns=None):
+    def similar_games(
+        self: "GamesRecommender",
+        games: Iterable[GameKeyType],
+        *,
+        num_games=10,
+        columns=None,
+        **kwargs,
+    ) -> tc.SFrame:
         """find similar games"""
 
         games = list(arg_to_iter(games))
@@ -482,7 +502,7 @@ class GamesRecommender:
         )
 
     def lead_game(
-        self,
+        self: "GamesRecommender",
         game_id,
         user=None,
         exclude_known=False,
@@ -525,7 +545,7 @@ class GamesRecommender:
         return ranked[self.id_field][0] if ranked else game_id
 
     def save(
-        self,
+        self: "GamesRecommender",
         path,
         dir_model="recommender",
         dir_similarity="similarity",

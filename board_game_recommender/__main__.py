@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
-""" main script """
+"""Main script & CLI entry point."""
 
 import argparse
 import logging
 import os
 import sys
 
-from .recommend import BGARecommender, BGGRecommender
+from board_game_recommender.recommend import BGARecommender, BGGRecommender
 
 LOGGER = logging.getLogger(__name__)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -7,13 +7,19 @@ verify_ssl = true
 python_version = "3.8"
 
 [packages]
+numpy = "*"
+pandas = "*"
 pytility = "*"
+scipy = "*"
 turicreate = "*"
 
 [dev-packages]
-black = "==21.9b0"
+black = "*"
+ipython = "*"
+jupyterlab = "*"
+jupytext = "*"
 mypy = "*"
+nb-black = "*"
 pre-commit = "*"
 pylint = "*"
 twine = "*"
-ipython = "*"
