@@ -192,15 +192,29 @@ class LightGamesRecommender(BaseGamesRecommender):
         self: "LightGamesRecommender",
         games: Iterable[int],
         **kwargs,
-    ):
-        raise NotImplementedError
+    ) -> pd.DataFrame:
+        """
+        Recommend games similar to the given games based on cosine similarity of latent factors.
+        """
+
+        games = list(games)
+        game_ids = np.array([self.items_indexes[game] for game in games])
+        game_factors = self.items_factors[:, game_ids]
+
+        scores = cosine_similarity(game_factors, self.items_factors).mean(axis=0)
+
+        result = pd.DataFrame(index=self.items_labels, data={"score": scores})
+        result["rank"] = result["score"].rank(method="min", ascending=False).astype(int)
+        result.sort_values("rank", inplace=True)
+
+        return result
 
     def similar_games(
         self: "LightGamesRecommender",
         games: Iterable[int],
         **kwargs,
-    ):
-        """Finds games similar to the given games based on cosine similarity of latent factors."""
+    ) -> pd.DataFrame:
+        """Find games similar to the given games based on cosine similarity of latent factors."""
 
         games = list(games)
         game_ids = np.array([self.items_indexes[game] for game in games])
