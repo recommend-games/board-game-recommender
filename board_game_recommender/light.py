@@ -21,6 +21,21 @@ RecommenderModel = Union[
 ]
 
 
+def cosine_similarity(matrix_1: np.ndarray, matrix_2: np.ndarray) -> np.ndarray:
+    """
+    Calculates the cosine similarity between two matrices.
+
+    The input matrices need to be of shape (m,n) and (m,l); the result shape will be (n,l).
+    """
+
+    dot_product = matrix_1.T @ matrix_2  # (n,l)
+    matrix_1_norm = np.linalg.norm(matrix_1, axis=0)  # (n,)
+    matrix_2_norm = np.linalg.norm(matrix_2, axis=0)  # (l,)
+    outer_prod_norm = np.outer(matrix_1_norm, matrix_2_norm)  # (n,l)
+
+    return dot_product / outer_prod_norm  # (n,l)
+
+
 @dataclass(frozen=True)
 class CollaborativeFilteringData:
     """Labels, vectors and matrices for linear collaborative filtering models."""
@@ -191,12 +206,7 @@ class LightGamesRecommender(BaseGamesRecommender):
         game_ids = np.array([self.items_indexes[game] for game in games])
         game_factors = self.items_factors[:, game_ids]
 
-        dot_product = game_factors.T @ self.items_factors
-        game_norms = np.linalg.norm(game_factors, axis=0)
-        item_norms = np.linalg.norm(self.items_factors, axis=0)
-        prod_norm = np.outer(game_norms, item_norms)
-
-        scores = dot_product / prod_norm
+        scores = cosine_similarity(game_factors, self.items_factors)
 
         result = pd.DataFrame(
             index=self.items_labels,
