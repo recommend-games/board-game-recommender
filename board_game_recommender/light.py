@@ -194,7 +194,7 @@ class LightGamesRecommender(BaseGamesRecommender):
         dot_product = game_factors.T @ self.items_factors
         game_norms = np.linalg.norm(game_factors, axis=0)
         item_norms = np.linalg.norm(self.items_factors, axis=0)
-        prod_norm = np.array([game_norm * item_norms for game_norm in game_norms])
+        prod_norm = np.outer(game_norms, item_norms)
 
         scores = dot_product / prod_norm
 
