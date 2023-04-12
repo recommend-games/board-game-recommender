@@ -21,21 +21,6 @@ RecommenderModel = Union[
 ]
 
 
-def cosine_similarity(matrix_1: np.ndarray, matrix_2: np.ndarray) -> np.ndarray:
-    """
-    Calculates the cosine similarity between two matrices.
-
-    The input matrices need to be of shape (m,n) and (m,l); the result shape will be (n,l).
-    """
-
-    dot_product = matrix_1.T @ matrix_2  # (n,l)
-    matrix_1_norm = np.linalg.norm(matrix_1, axis=0)  # (n,)
-    matrix_2_norm = np.linalg.norm(matrix_2, axis=0)  # (l,)
-    outer_prod_norm = np.outer(matrix_1_norm, matrix_2_norm)  # (n,l)
-
-    return dot_product / outer_prod_norm  # (n,l)
-
-
 @dataclass(frozen=True)
 class CollaborativeFilteringData:
     """Labels, vectors and matrices for linear collaborative filtering models."""
@@ -236,6 +221,21 @@ class LightGamesRecommender(BaseGamesRecommender):
             result.sort_values((games[0], "rank"), inplace=True)
 
         return result[pd.MultiIndex.from_product([games, ["score", "rank"]])]
+
+
+def cosine_similarity(matrix_1: np.ndarray, matrix_2: np.ndarray) -> np.ndarray:
+    """
+    Calculates the cosine similarity between two matrices.
+
+    The input matrices need to be of shape (m,n) and (m,l); the result shape will be (n,l).
+    """
+
+    dot_product = matrix_1.T @ matrix_2  # (n,l)
+    matrix_1_norm = np.linalg.norm(matrix_1, axis=0)  # (n,)
+    matrix_2_norm = np.linalg.norm(matrix_2, axis=0)  # (l,)
+    outer_prod_norm = np.outer(matrix_1_norm, matrix_2_norm)  # (n,l)
+
+    return dot_product / outer_prod_norm  # (n,l)
 
 
 def turi_create_to_numpy(
