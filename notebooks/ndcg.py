@@ -13,13 +13,12 @@
 #     name: python3
 # ---
 
-import turicreate as tc
-from pytility import clear_list
-from sklearn.metrics import ndcg_score
-
 # %%
 from board_game_recommender import BGGRecommender
 from board_game_recommender.utils import filter_sframe
+from pytility import clear_list
+from sklearn.metrics import ndcg_score
+import turicreate as tc
 
 # %load_ext nb_black
 # %load_ext lab_black
