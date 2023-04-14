@@ -14,6 +14,7 @@
 # ---
 
 # %%
+from functools import partial
 import polars as pl
 from sklearn.metrics import ndcg_score
 import turicreate as tc
@@ -71,13 +72,9 @@ model = tc.ranking_factorization_recommender.create(
     verbose=True,
 )
 
-# %%
-y_true = data_test["bgg_user_rating"].to_numpy().reshape((-1, 25))
-y_true.shape
-
 
 # %%
-def recommend_from_pl(data):
+def recommend_from_pl(data, model):
     user = data["bgg_user_name"][0]
     sa = model.recommend(
         users=[user],
@@ -90,8 +87,14 @@ def recommend_from_pl(data):
 
 
 # %%
-recommendations = data_test.groupby("bgg_user_name").apply(recommend_from_pl)
-y_score = recommendations.to_numpy().reshape((-1, 25))
+def calculate_ndcg(data, model, k=25):
+    y_true = data["bgg_user_rating"].to_numpy().reshape((-1, k))
+    recommendations = data.groupby("bgg_user_name").apply(
+        partial(recommend_from_pl, model=model)
+    )
+    y_score = recommendations.to_numpy().reshape((-1, k))
+    return ndcg_score(y_true, y_score)
+
 
 # %%
-ndcg_score(y_true, y_score)
+calculate_ndcg(data=data_test, model=model, k=25)
