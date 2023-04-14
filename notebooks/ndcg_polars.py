@@ -33,10 +33,13 @@ ratings = (
             & (pl.arange(0, pl.count()).shuffle().over("bgg_user_name") < 25)
         ).alias("is_test_row"),
     )
+    .collect()
 )
 
 # %%
-train_test = ratings.collect().partition_by("is_test_row", as_dict=True)
+train_test = ratings.partition_by("is_test_row", as_dict=True)
 data_train = train_test[False]
+data_train.drop_in_place("is_test_row")
 data_test = train_test[True]
+data_test.drop_in_place("is_test_row")
 data_train.shape, data_test.shape
