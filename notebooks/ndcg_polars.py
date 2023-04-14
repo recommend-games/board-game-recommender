@@ -43,3 +43,7 @@ data_train.drop_in_place("is_test_row")
 data_test = train_test[True]
 data_test.drop_in_place("is_test_row")
 data_train.shape, data_test.shape
+
+# %%
+data_train.write_csv("ratings_train.csv")
+data_test.write_csv("ratings_test.csv")
