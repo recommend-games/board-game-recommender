@@ -15,6 +15,7 @@
 
 # %%
 import polars as pl
+import turicreate as tc
 
 # %load_ext nb_black
 # %load_ext lab_black
@@ -47,3 +48,19 @@ data_train.shape, data_test.shape
 # %%
 data_train.write_csv("ratings_train.csv")
 data_test.write_csv("ratings_test.csv")
+del train_test, data_train, data_test
+
+# %%
+ratings = tc.SFrame.read_csv("ratings_train.csv")
+ratings
+
+# %%
+model = tc.ranking_factorization_recommender.create(
+    observation_data=ratings,
+    user_id="bgg_user_name",
+    item_id="bgg_id",
+    target="bgg_user_rating",
+    num_factors=32,
+    max_iterations=10,
+    verbose=True,
+)
