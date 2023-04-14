@@ -37,4 +37,6 @@ ratings = (
 
 # %%
 train_test = ratings.collect().partition_by("is_test_row", as_dict=True)
-train_test[False].shape, train_test[True].shape
+data_train = train_test[False]
+data_test = train_test[True]
+data_train.shape, data_test.shape
