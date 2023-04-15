@@ -24,6 +24,11 @@ import turicreate as tc
 # %load_ext lab_black
 
 # %%
+THRESHOLD_POWER_USERS = 100
+NUM_LABELS = 25
+TOP_K = 10
+
+# %%
 ratings = (
     pl.read_ndjson("../../board-game-data/scraped/bgg_RatingItem.jl")
     .lazy()
@@ -33,8 +38,8 @@ ratings = (
         "bgg_user_name",
         "bgg_user_rating",
         (
-            (pl.col("bgg_id").count().over("bgg_user_name") >= 100)
-            & (pl.arange(0, pl.count()).shuffle().over("bgg_user_name") < 25)
+            (pl.col("bgg_id").count().over("bgg_user_name") >= THRESHOLD_POWER_USERS)
+            & (pl.arange(0, pl.count()).shuffle().over("bgg_user_name") < NUM_LABELS)
         ).alias("is_test_row"),
     )
     .collect()
@@ -73,13 +78,13 @@ def recommend_from_pl(data, model):
 
 
 # %%
-def calculate_ndcg(data, model, k=25):
-    y_true = data["bgg_user_rating"].to_numpy().reshape((-1, k))
+def calculate_ndcg(data, model, n_labels=NUM_LABELS, k=None):
+    y_true = data["bgg_user_rating"].to_numpy().reshape((-1, n_labels))
     recommendations = data.groupby("bgg_user_name").apply(
         partial(recommend_from_pl, model=model)
     )
-    y_score = recommendations.to_numpy().reshape((-1, k))
-    return ndcg_score(y_true, y_score)
+    y_score = recommendations.to_numpy().reshape((-1, n_labels))
+    return ndcg_score(y_true, y_score, k=k)
 
 
 # %%
@@ -96,9 +101,10 @@ for num_factors in (4, 8, 16, 32, 64, 128):
         item_id="bgg_id",
         target="bgg_user_rating",
         num_factors=num_factors,
-        max_iterations=100,
+        max_iterations=10,
+        verbose=False,
     )
-    ndcg = calculate_ndcg(data=data_test, model=tc_model, k=25)
+    ndcg = calculate_ndcg(data=data_test, model=tc_model, n_labels=NUM_LABELS, k=TOP_K)
     print(ndcg)
     results[num_factors] = {"num_factors": num_factors, "model": model, "ndcg": ndcg}
 
@@ -106,9 +112,6 @@ for num_factors in (4, 8, 16, 32, 64, 128):
 {k: v["ndcg"] for k, v in results.items()}
 
 # %%
-results[8]["model"].recommend(["markus shepherd"])
-
-# %%
-y_true = data_test["bgg_user_rating"].to_numpy().reshape((-1, 25))
+y_true = data_test["bgg_user_rating"].to_numpy().reshape((-1, NUM_LABELS))
 y_rand = np.random.random(y_true.shape)
-ndcg_score(y_true, y_rand)
+ndcg_score(y_true, y_rand, k=TOP_K)
