@@ -106,7 +106,7 @@ for num_factors in (4, 8, 16, 32, 64, 128):
     )
     ndcg = calculate_ndcg(data=data_test, model=tc_model, n_labels=NUM_LABELS, k=TOP_K)
     print(ndcg)
-    results[num_factors] = {"num_factors": num_factors, "model": model, "ndcg": ndcg}
+    results[num_factors] = {"num_factors": num_factors, "model": tc_model, "ndcg": ndcg}
 
 # %%
 {k: v["ndcg"] for k, v in results.items()}
