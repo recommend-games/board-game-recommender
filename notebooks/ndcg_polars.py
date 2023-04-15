@@ -90,13 +90,13 @@ results = {}
 for num_factors in (4, 8, 16, 32, 64, 128):
     print(f"{num_factors=}")
     tc_model = tc.ranking_factorization_recommender.create(
-    observation_data=ratings,
-    user_id="bgg_user_name",
-    item_id="bgg_id",
-    target="bgg_user_rating",
-    num_factors=num_factors,
-    max_iterations=100,
-)
+        observation_data=ratings,
+        user_id="bgg_user_name",
+        item_id="bgg_id",
+        target="bgg_user_rating",
+        num_factors=num_factors,
+        max_iterations=100,
+    )
     ndcg = calculate_ndcg(data=data_test, model=tc_model, k=25)
     print(ndcg)
-    results[num_factors]={'num_factors':num_factors, 'model': model, 'ndcg': ndcg}
+    results[num_factors] = {"num_factors": num_factors, "model": model, "ndcg": ndcg}
