@@ -15,6 +15,7 @@
 
 # %%
 from functools import partial
+import numpy as np
 import polars as pl
 from sklearn.metrics import ndcg_score
 import turicreate as tc
@@ -100,3 +101,14 @@ for num_factors in (4, 8, 16, 32, 64, 128):
     ndcg = calculate_ndcg(data=data_test, model=tc_model, k=25)
     print(ndcg)
     results[num_factors] = {"num_factors": num_factors, "model": model, "ndcg": ndcg}
+
+# %%
+{k: v["ndcg"] for k, v in results.items()}
+
+# %%
+results[8]["model"].recommend(["markus shepherd"])
+
+# %%
+y_true = data_test["bgg_user_rating"].to_numpy().reshape((-1, 25))
+y_rand = np.random.random(y_true.shape)
+ndcg_score(y_true, y_rand)
