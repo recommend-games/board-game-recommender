@@ -90,7 +90,7 @@ def calculate_ndcg(data, model, *, transformer=None, n_labels=NUM_LABELS, k=None
     recommendations = data.groupby("bgg_user_name").apply(
         partial(recommend_from_pl, model=model)
     )
-    y_score = recommendations.view()
+    y_score = recommendations.to_numpy()
     return ndcg_score(
         y_true=y_true.reshape((-1, n_labels)),
         y_score=y_score.reshape((-1, n_labels)),
