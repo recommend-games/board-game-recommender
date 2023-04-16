@@ -7,12 +7,14 @@ verify_ssl = true
 python_version = "3.8"
 
 [packages]
+matplotlib = "*"
 numpy = "*"
 pandas = "*"
 polars = "*"
 pytility = "*"
 scikit-learn = "*"
 scipy = "*"
+seaborn = "*"
 turicreate = "*"
 
 [dev-packages]
