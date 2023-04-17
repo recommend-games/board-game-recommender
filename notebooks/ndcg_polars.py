@@ -115,13 +115,30 @@ for num_factors in (4, 8, 16, 32, 64, 128):
         max_iterations=10,
         verbose=False,
     )
-    ndcg = calculate_ndcg(data=data_test, model=tc_model, transformer=None, n_labels=NUM_LABELS, k=TOP_K,)
-    ndcg_transformed = calculate_ndcg(data=data_test, model=tc_model, transformer=qt, n_labels=NUM_LABELS, k=TOP_K,)
+    ndcg = calculate_ndcg(
+        data=data_test,
+        model=tc_model,
+        transformer=None,
+        n_labels=NUM_LABELS,
+        k=TOP_K,
+    )
+    ndcg_transformed = calculate_ndcg(
+        data=data_test,
+        model=tc_model,
+        transformer=qt,
+        n_labels=NUM_LABELS,
+        k=TOP_K,
+    )
     print(ndcg, ndcg_transformed)
-    results[num_factors] = {"num_factors": num_factors, "model": tc_model, "ndcg": ndcg, "ndcg_transformed": ndcg_transformed,}
+    results[num_factors] = {
+        "num_factors": num_factors,
+        "model": tc_model,
+        "ndcg": ndcg,
+        "ndcg_transformed": ndcg_transformed,
+    }
 
 # %%
-{k: (v["ndcg"], v['ndcg_transformed']) for k, v in results.items()}
+{k: (v["ndcg"], v["ndcg_transformed"]) for k, v in results.items()}
 
 # %%
 y_true = data_test["bgg_user_rating"].to_numpy().reshape((-1, NUM_LABELS))
