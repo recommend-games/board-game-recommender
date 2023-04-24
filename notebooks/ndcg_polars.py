@@ -45,6 +45,13 @@ exp_transformer = FunctionTransformer(lambda x: np.exp2(x) - 1)
 
 
 # %%
+def true_scores(data, *, transformer=None, n_labels=NUM_LABELS):
+    y_true = data["bgg_user_rating"].view()
+    if transformer is not None:
+        y_true = transformer.transform(y_true.reshape(-1, 1))
+    return y_true.reshape((-1, n_labels))
+
+
 def recommend_from_pl(data, model):
     user = data["bgg_user_name"][0]
     sa = model.recommend(
@@ -57,25 +64,16 @@ def recommend_from_pl(data, model):
     return pl.DataFrame(data={"score": sa.to_numpy()})
 
 
-# %%
-def calculate_ndcg(data, model, *, transformer=None, n_labels=NUM_LABELS, k=None):
-    y_true = data["bgg_user_rating"].view()
-    if transformer is not None:
-        y_true = transformer.transform(y_true.reshape(-1, 1))
+def recommendation_scores(data, model, *, n_labels=NUM_LABELS):
     recommendations = data.groupby("bgg_user_name").apply(
         partial(recommend_from_pl, model=model)
     )
-    y_score = recommendations.to_numpy()
-    return ndcg_score(
-        y_true=y_true.reshape((-1, n_labels)),
-        y_score=y_score.reshape((-1, n_labels)),
-        k=k,
-    )
+    return recommendations.to_numpy().reshape((-1, n_labels))
 
 
 # %%
 results = {}
-for num_factors in (8,):  # (4, 8, 16, 32, 64, 128)
+for num_factors in (4, 8, 16, 32, 64, 128):
     print(f"{num_factors=}")
     tc_model = tc.ranking_factorization_recommender.create(
         observation_data=data_train,
@@ -86,30 +84,42 @@ for num_factors in (8,):  # (4, 8, 16, 32, 64, 128)
         max_iterations=10,
         verbose=False,
     )
-    ndcg = calculate_ndcg(
-        data=data_test,
-        model=tc_model,
-        transformer=None,
-        n_labels=NUM_LABELS,
+    print("Done training.")
+    y_score = recommendation_scores(data=data_test, model=tc_model, n_labels=NUM_LABELS)
+
+    ndcg = ndcg_score(
+        y_true=true_scores(
+            data_test,
+            transformer=None,
+            n_labels=NUM_LABELS,
+        ),
+        y_score=y_score,
         k=TOP_K,
     )
     print(f"{ndcg=:.5f}")
-    ndcg_quantile = calculate_ndcg(
-        data=data_test,
-        model=tc_model,
-        transformer=quantile_transformer,
-        n_labels=NUM_LABELS,
+
+    ndcg_quantile = ndcg_score(
+        y_true=true_scores(
+            data_test,
+            transformer=quantile_transformer,
+            n_labels=NUM_LABELS,
+        ),
+        y_score=y_score,
         k=TOP_K,
     )
     print(f"{ndcg_quantile=:.5f}")
-    ndcg_exp = calculate_ndcg(
-        data=data_test,
-        model=tc_model,
-        transformer=exp_transformer,
-        n_labels=NUM_LABELS,
+
+    ndcg_exp = ndcg_score(
+        y_true=true_scores(
+            data_test,
+            transformer=exp_transformer,
+            n_labels=NUM_LABELS,
+        ),
+        y_score=y_score,
         k=TOP_K,
     )
     print(f"{ndcg_exp=:.5f}")
+
     results[num_factors] = {
         "num_factors": num_factors,
         "model": tc_model,
@@ -120,20 +130,38 @@ for num_factors in (8,):  # (4, 8, 16, 32, 64, 128)
     print()
 
 # %%
-y_true = data_test["bgg_user_rating"].to_numpy().reshape((-1, NUM_LABELS))
+y_true = true_scores(
+    data_test,
+    transformer=None,
+    n_labels=NUM_LABELS,
+)
 y_rand = np.random.random(y_true.shape)
-ndcg_score(y_true, y_rand, k=TOP_K)
 
-# %%
-y_true = quantile_transformer.transform(
-    data_test["bgg_user_rating"].view().reshape(-1, 1)
-).reshape((-1, NUM_LABELS))
-y_rand = np.random.random(y_true.shape)
-ndcg_score(y_true, y_rand, k=TOP_K)
+ndcg = ndcg_score(
+    y_true=y_true,
+    y_score=y_rand,
+    k=TOP_K,
+)
+print(f"{ndcg=:.5f}")
 
-# %%
-y_true = exp_transformer.transform(
-    data_test["bgg_user_rating"].view().reshape(-1, 1)
-).reshape((-1, NUM_LABELS))
-y_rand = np.random.random(y_true.shape)
-ndcg_score(y_true, y_rand, k=TOP_K)
+ndcg_quantile = ndcg_score(
+    y_true=true_scores(
+        data_test,
+        transformer=quantile_transformer,
+        n_labels=NUM_LABELS,
+    ),
+    y_score=y_rand,
+    k=TOP_K,
+)
+print(f"{ndcg_quantile=:.5f}")
+
+ndcg_exp = ndcg_score(
+    y_true=true_scores(
+        data_test,
+        transformer=exp_transformer,
+        n_labels=NUM_LABELS,
+    ),
+    y_score=y_rand,
+    k=TOP_K,
+)
+print(f"{ndcg_exp=:.5f}")
