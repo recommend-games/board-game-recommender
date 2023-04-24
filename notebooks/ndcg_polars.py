@@ -25,7 +25,7 @@ import turicreate as tc
 # %load_ext lab_black
 
 # %%
-NUM_LABELS = 25
+NUM_LABELS = 100
 TOP_K = 10
 
 # %%

@@ -20,8 +20,8 @@ import polars as pl
 # %load_ext lab_black
 
 # %%
-THRESHOLD_POWER_USERS = 100
-NUM_LABELS = 25
+THRESHOLD_POWER_USERS = 200
+NUM_LABELS = 100
 
 # %%
 ratings = (
