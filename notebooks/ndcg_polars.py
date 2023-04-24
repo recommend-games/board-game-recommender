@@ -18,7 +18,7 @@ from functools import partial
 import numpy as np
 import polars as pl
 from sklearn.metrics import ndcg_score
-from sklearn.preprocessing import QuantileTransformer
+from sklearn.preprocessing import FunctionTransformer, QuantileTransformer
 import turicreate as tc
 
 # %load_ext nb_black
@@ -31,8 +31,7 @@ TOP_K = 10
 
 # %%
 ratings = (
-    pl.read_ndjson("../../board-game-data/scraped/bgg_RatingItem.jl")
-    .lazy()
+    pl.scan_ndjson("../../board-game-data/scraped/bgg_RatingItem.jl")
     .filter(pl.col("bgg_user_rating").is_not_null())
     .select(
         "bgg_id",
@@ -62,6 +61,10 @@ data_train.shape, data_test.shape
 # %%
 qt = QuantileTransformer()
 qt.fit(data_train["bgg_user_rating"].view().reshape(-1, 1))
+
+# %%
+et = FunctionTransformer(np.exp)
+st = FunctionTransformer(np.square)
 
 # %%
 data_train.write_csv("ratings_train.csv")
@@ -122,23 +125,39 @@ for num_factors in (4, 8, 16, 32, 64, 128):
         n_labels=NUM_LABELS,
         k=TOP_K,
     )
-    ndcg_transformed = calculate_ndcg(
+    print(f"{ndcg=:.5f}")
+    ndcg_quantile = calculate_ndcg(
         data=data_test,
         model=tc_model,
         transformer=qt,
         n_labels=NUM_LABELS,
         k=TOP_K,
     )
-    print(ndcg, ndcg_transformed)
+    print(f"{ndcg_quantile=:.5f}")
+    ndcg_exp = calculate_ndcg(
+        data=data_test,
+        model=tc_model,
+        transformer=et,
+        n_labels=NUM_LABELS,
+        k=TOP_K,
+    )
+    print(f"{ndcg_exp=:.5f}")
+    ndcg_square = calculate_ndcg(
+        data=data_test,
+        model=tc_model,
+        transformer=st,
+        n_labels=NUM_LABELS,
+        k=TOP_K,
+    )
+    print(f"{ndcg_square=:.5f}")
     results[num_factors] = {
         "num_factors": num_factors,
         "model": tc_model,
         "ndcg": ndcg,
-        "ndcg_transformed": ndcg_transformed,
+        "ndcg_quantile": ndcg_quantile,
+        "ndcg_exp": ndcg_exp,
+        "ndcg_square": ndcg_square,
     }
-
-# %%
-{k: (v["ndcg"], v["ndcg_transformed"]) for k, v in results.items()}
 
 # %%
 y_true = data_test["bgg_user_rating"].to_numpy().reshape((-1, NUM_LABELS))
@@ -147,6 +166,20 @@ ndcg_score(y_true, y_rand, k=TOP_K)
 
 # %%
 y_true = qt.transform(data_test["bgg_user_rating"].view().reshape(-1, 1)).reshape(
+    (-1, NUM_LABELS)
+)
+y_rand = np.random.random(y_true.shape)
+ndcg_score(y_true, y_rand, k=TOP_K)
+
+# %%
+y_true = et.transform(data_test["bgg_user_rating"].view().reshape(-1, 1)).reshape(
+    (-1, NUM_LABELS)
+)
+y_rand = np.random.random(y_true.shape)
+ndcg_score(y_true, y_rand, k=TOP_K)
+
+# %%
+y_true = st.transform(data_test["bgg_user_rating"].view().reshape(-1, 1)).reshape(
     (-1, NUM_LABELS)
 )
 y_rand = np.random.random(y_true.shape)
