@@ -22,7 +22,6 @@ import polars as pl
 # %%
 THRESHOLD_POWER_USERS = 100
 NUM_LABELS = 25
-TOP_K = 10
 
 # %%
 ratings = (
