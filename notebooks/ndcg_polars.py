@@ -65,8 +65,9 @@ def recommend_from_pl(data, model):
 
 
 def recommendation_scores(data, model, *, n_labels=NUM_LABELS):
-    recommendations = data.groupby("bgg_user_name").apply(
-        partial(recommend_from_pl, model=model)
+    recommendations = pl.concat(
+        recommend_from_pl(data[start : start + n_labels], model)
+        for start in range(0, len(data), n_labels)
     )
     return recommendations.to_numpy().reshape((-1, n_labels))
 
