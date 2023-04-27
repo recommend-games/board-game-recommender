@@ -131,6 +131,64 @@ for num_factors in (4, 8, 16, 32, 64, 128):
     print()
 
 # %%
+results = {}
+for num_factors in (2, 4, 8, 16, 32):
+    print(f"{num_factors=}")
+    tc_model = tc.factorization_recommender.create(
+        observation_data=data_train,
+        user_id="bgg_user_name",
+        item_id="bgg_id",
+        target="bgg_user_rating",
+        num_factors=num_factors,
+        max_iterations=100,
+        verbose=False,
+    )
+    print("Done training.")
+    y_score = recommendation_scores(data=data_test, model=tc_model, n_labels=NUM_LABELS)
+
+    ndcg = ndcg_score(
+        y_true=true_scores(
+            data_test,
+            transformer=None,
+            n_labels=NUM_LABELS,
+        ),
+        y_score=y_score,
+        k=TOP_K,
+    )
+    print(f"{ndcg=:.5f}")
+
+    ndcg_quantile = ndcg_score(
+        y_true=true_scores(
+            data_test,
+            transformer=quantile_transformer,
+            n_labels=NUM_LABELS,
+        ),
+        y_score=y_score,
+        k=TOP_K,
+    )
+    print(f"{ndcg_quantile=:.5f}")
+
+    ndcg_exp = ndcg_score(
+        y_true=true_scores(
+            data_test,
+            transformer=exp_transformer,
+            n_labels=NUM_LABELS,
+        ),
+        y_score=y_score,
+        k=TOP_K,
+    )
+    print(f"{ndcg_exp=:.5f}")
+
+    results[num_factors] = {
+        "num_factors": num_factors,
+        "model": tc_model,
+        "ndcg": ndcg,
+        "ndcg_quantile": ndcg_quantile,
+        "ndcg_exp": ndcg_exp,
+    }
+    print()
+
+# %%
 print("random scores")
 y_true = true_scores(
     data_test,
