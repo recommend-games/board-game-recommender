@@ -35,9 +35,6 @@ data_train.shape
 data_test = pl.read_csv("ratings_test.csv")
 data_test.shape
 
-# %%
-exp_transformer = FunctionTransformer(lambda x: np.exp2(x) - 1)
-
 
 # %%
 def true_scores(data, *, transformer=None, n_labels=NUM_LABELS):
@@ -67,8 +64,36 @@ def recommendation_scores(data, model, *, n_labels=NUM_LABELS):
     return recommendations.to_numpy().reshape((-1, n_labels))
 
 
+def print_scores(data, y_score, *, k=TOP_K, n_labels=NUM_LABELS):
+    ndcg = ndcg_score(
+        y_true=true_scores(
+            data,
+            transformer=None,
+            n_labels=n_labels,
+        ),
+        y_score=y_score,
+        k=k,
+    )
+    print(f"{ndcg=:.5f}")
+
+    ndcg_exp = ndcg_score(
+        y_true=true_scores(
+            data,
+            transformer=FunctionTransformer(lambda x: np.exp2(x) - 1),
+            n_labels=n_labels,
+        ),
+        y_score=y_score,
+        k=k,
+    )
+    print(f"{ndcg_exp=:.5f}")
+
+    return {
+        "ndcg": ndcg,
+        "ndcg_exp": ndcg_exp,
+    }
+
+
 # %%
-results = {}
 for num_factors in (8, 16, 32):
     print(f"{num_factors=}")
     tc_model = tc.ranking_factorization_recommender.create(
@@ -81,36 +106,8 @@ for num_factors in (8, 16, 32):
         verbose=False,
     )
     print("Done training.")
-    y_score = recommendation_scores(data=data_test, model=tc_model, n_labels=NUM_LABELS)
-
-    ndcg = ndcg_score(
-        y_true=true_scores(
-            data_test,
-            transformer=None,
-            n_labels=NUM_LABELS,
-        ),
-        y_score=y_score,
-        k=TOP_K,
-    )
-    print(f"{ndcg=:.5f}")
-
-    ndcg_exp = ndcg_score(
-        y_true=true_scores(
-            data_test,
-            transformer=exp_transformer,
-            n_labels=NUM_LABELS,
-        ),
-        y_score=y_score,
-        k=TOP_K,
-    )
-    print(f"{ndcg_exp=:.5f}")
-
-    results[num_factors] = {
-        "num_factors": num_factors,
-        "model": tc_model,
-        "ndcg": ndcg,
-        "ndcg_exp": ndcg_exp,
-    }
+    y_rec = recommendation_scores(data=data_test, model=tc_model, n_labels=NUM_LABELS)
+    print_scores(data=data_test, y_score=y_rec, k=TOP_K, n_labels=NUM_LABELS)
     print()
 
 # %%
@@ -127,61 +124,11 @@ for num_factors in (8, 16, 32):
         verbose=False,
     )
     print("Done training.")
-    y_score = recommendation_scores(data=data_test, model=tc_model, n_labels=NUM_LABELS)
-
-    ndcg = ndcg_score(
-        y_true=true_scores(
-            data_test,
-            transformer=None,
-            n_labels=NUM_LABELS,
-        ),
-        y_score=y_score,
-        k=TOP_K,
-    )
-    print(f"{ndcg=:.5f}")
-
-    ndcg_exp = ndcg_score(
-        y_true=true_scores(
-            data_test,
-            transformer=exp_transformer,
-            n_labels=NUM_LABELS,
-        ),
-        y_score=y_score,
-        k=TOP_K,
-    )
-    print(f"{ndcg_exp=:.5f}")
-
-    results[num_factors] = {
-        "num_factors": num_factors,
-        "model": tc_model,
-        "ndcg": ndcg,
-        "ndcg_exp": ndcg_exp,
-    }
+    y_rec = recommendation_scores(data=data_test, model=tc_model, n_labels=NUM_LABELS)
+    print_scores(data=data_test, y_score=y_rec, k=TOP_K, n_labels=NUM_LABELS)
     print()
 
 # %%
 print("random scores")
-y_true = true_scores(
-    data_test,
-    transformer=None,
-    n_labels=NUM_LABELS,
-)
-y_rand = np.random.random(y_true.shape)
-
-ndcg = ndcg_score(
-    y_true=y_true,
-    y_score=y_rand,
-    k=TOP_K,
-)
-print(f"{ndcg=:.5f}")
-
-ndcg_exp = ndcg_score(
-    y_true=true_scores(
-        data_test,
-        transformer=exp_transformer,
-        n_labels=NUM_LABELS,
-    ),
-    y_score=y_rand,
-    k=TOP_K,
-)
-print(f"{ndcg_exp=:.5f}")
+y_rand = np.random.random(y_rec.shape)
+print_scores(data=data_test, y_score=y_rand, k=TOP_K, n_labels=NUM_LABELS)
