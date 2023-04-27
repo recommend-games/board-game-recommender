@@ -14,11 +14,10 @@
 # ---
 
 # %%
-from functools import partial
 import numpy as np
 import polars as pl
 from sklearn.metrics import ndcg_score
-from sklearn.preprocessing import FunctionTransformer, QuantileTransformer
+from sklearn.preprocessing import FunctionTransformer
 import turicreate as tc
 
 # %load_ext nb_black
@@ -35,10 +34,6 @@ data_train.shape
 # %%
 data_test = pl.read_csv("ratings_test.csv")
 data_test.shape
-
-# %%
-quantile_transformer = QuantileTransformer()
-quantile_transformer.fit(data_train["bgg_user_rating"].to_numpy().reshape(-1, 1))
 
 # %%
 exp_transformer = FunctionTransformer(lambda x: np.exp2(x) - 1)
@@ -99,17 +94,6 @@ for num_factors in (8, 16, 32):
     )
     print(f"{ndcg=:.5f}")
 
-    ndcg_quantile = ndcg_score(
-        y_true=true_scores(
-            data_test,
-            transformer=quantile_transformer,
-            n_labels=NUM_LABELS,
-        ),
-        y_score=y_score,
-        k=TOP_K,
-    )
-    print(f"{ndcg_quantile=:.5f}")
-
     ndcg_exp = ndcg_score(
         y_true=true_scores(
             data_test,
@@ -125,7 +109,6 @@ for num_factors in (8, 16, 32):
         "num_factors": num_factors,
         "model": tc_model,
         "ndcg": ndcg,
-        "ndcg_quantile": ndcg_quantile,
         "ndcg_exp": ndcg_exp,
     }
     print()
@@ -157,17 +140,6 @@ for num_factors in (8, 16, 32):
     )
     print(f"{ndcg=:.5f}")
 
-    ndcg_quantile = ndcg_score(
-        y_true=true_scores(
-            data_test,
-            transformer=quantile_transformer,
-            n_labels=NUM_LABELS,
-        ),
-        y_score=y_score,
-        k=TOP_K,
-    )
-    print(f"{ndcg_quantile=:.5f}")
-
     ndcg_exp = ndcg_score(
         y_true=true_scores(
             data_test,
@@ -183,7 +155,6 @@ for num_factors in (8, 16, 32):
         "num_factors": num_factors,
         "model": tc_model,
         "ndcg": ndcg,
-        "ndcg_quantile": ndcg_quantile,
         "ndcg_exp": ndcg_exp,
     }
     print()
@@ -203,17 +174,6 @@ ndcg = ndcg_score(
     k=TOP_K,
 )
 print(f"{ndcg=:.5f}")
-
-ndcg_quantile = ndcg_score(
-    y_true=true_scores(
-        data_test,
-        transformer=quantile_transformer,
-        n_labels=NUM_LABELS,
-    ),
-    y_score=y_rand,
-    k=TOP_K,
-)
-print(f"{ndcg_quantile=:.5f}")
 
 ndcg_exp = ndcg_score(
     y_true=true_scores(
