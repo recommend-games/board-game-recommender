@@ -82,7 +82,7 @@ for num_factors in (4, 8, 16, 32, 64, 128):
         item_id="bgg_id",
         target="bgg_user_rating",
         num_factors=num_factors,
-        max_iterations=10,
+        max_iterations=100,
         verbose=False,
     )
     print("Done training.")
@@ -131,6 +131,7 @@ for num_factors in (4, 8, 16, 32, 64, 128):
     print()
 
 # %%
+print("random scores")
 y_true = true_scores(
     data_test,
     transformer=None,
