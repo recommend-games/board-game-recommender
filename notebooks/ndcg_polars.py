@@ -74,7 +74,7 @@ def recommendation_scores(data, model, *, n_labels=NUM_LABELS):
 
 # %%
 results = {}
-for num_factors in (4, 8, 16, 32, 64, 128):
+for num_factors in (8, 16, 32):
     print(f"{num_factors=}")
     tc_model = tc.ranking_factorization_recommender.create(
         observation_data=data_train,
@@ -132,7 +132,7 @@ for num_factors in (4, 8, 16, 32, 64, 128):
 
 # %%
 results = {}
-for num_factors in (2, 4, 8, 16, 32):
+for num_factors in (8, 16, 32):
     print(f"{num_factors=}")
     tc_model = tc.factorization_recommender.create(
         observation_data=data_train,
