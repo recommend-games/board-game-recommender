@@ -178,7 +178,20 @@ class LightGamesRecommender(BaseGamesRecommender):
         users: Iterable[str],
         games: Iterable[int],
     ) -> np.ndarray:
-        raise NotImplementedError
+        """Calculate recommendations for certain users and games as a numpy array."""
+
+        users = list(users)
+        user_ids = np.array([self.users_indexes[user] for user in users])
+
+        games = list(games)
+        game_ids = np.array([self.items_indexes[game] for game in games])
+
+        return (
+            self.users_factors[user_ids] @ self.items_factors[:, game_ids]
+            + self.users_linear_terms[user_ids].reshape(len(user_ids), 1)
+            + self.items_linear_terms[game_ids]
+            + self.intercept
+        )
 
     def recommend_similar(
         self: "LightGamesRecommender",
