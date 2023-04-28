@@ -9,6 +9,7 @@ import tempfile
 # from datetime import date
 from typing import Any, Dict, FrozenSet, Iterable, Optional, Tuple, Type
 
+import numpy as np
 import turicreate as tc
 from pytility import arg_to_iter, clear_list
 
@@ -427,6 +428,13 @@ class GamesRecommender(BaseGamesRecommender):
             star_percentiles=star_percentiles,
             ascending=ascending,
         )
+
+    def recommend_as_numpy(
+        self: "GamesRecommender",
+        users: Iterable[str],
+        games: Iterable[int],
+    ) -> np.ndarray:
+        raise NotImplementedError
 
     def recommend_similar(
         self: "GamesRecommender",

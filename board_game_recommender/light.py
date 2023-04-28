@@ -173,6 +173,13 @@ class LightGamesRecommender(BaseGamesRecommender):
 
         return result[pd.MultiIndex.from_product([users, ["score", "rank"]])]
 
+    def recommend_as_numpy(
+        self: "LightGamesRecommender",
+        users: Iterable[str],
+        games: Iterable[int],
+    ) -> np.ndarray:
+        raise NotImplementedError
+
     def recommend_similar(
         self: "LightGamesRecommender",
         games: Iterable[int],
