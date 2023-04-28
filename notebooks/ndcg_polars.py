@@ -46,22 +46,23 @@ def true_scores(data, *, transformer=None, n_labels=NUM_LABELS):
 
 def recommend_from_pl(data, model):
     user = data["bgg_user_name"][0]
-    sa = model.recommend(
+    rec = model.recommend(
         users=[user],
         items=data["bgg_id"].to_numpy(),
         k=len(data),
         exclude_known=False,
     ).sort("bgg_id")["score"]
-    assert len(data) == len(sa)
-    return pl.DataFrame(data={"score": sa.to_numpy()})
+    assert len(data) == len(rec)
+    return rec.to_numpy()
 
 
 def recommendation_scores(data, model, *, n_labels=NUM_LABELS):
-    recommendations = pl.concat(
-        recommend_from_pl(data[start : start + n_labels], model)
-        for start in range(0, len(data), n_labels)
+    return np.array(
+        [
+            recommend_from_pl(data[start : start + n_labels], model)
+            for start in range(0, len(data), n_labels)
+        ]
     )
-    return recommendations.to_numpy().reshape((-1, n_labels))
 
 
 def print_scores(data, y_score, *, k=TOP_K, n_labels=NUM_LABELS):
