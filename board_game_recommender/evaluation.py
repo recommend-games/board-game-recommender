@@ -1,10 +1,13 @@
+"""TODO."""
+
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Tuple, Union
+from typing import Dict, Iterable, Tuple, Union
 
 import numpy as np
 import polars as pl
+from sklearn.metrics import ndcg_score
 
 from board_game_recommender.base import BaseGamesRecommender
 
@@ -59,7 +62,50 @@ class RecommenderMetrics:
 def calculate_metrics(
     recommender: BaseGamesRecommender,
     test_data: RecommenderTestData,
+    *,
+    k_values: Union[None, int, Iterable[int]],
 ) -> RecommenderMetrics:
     """TODO."""
 
-    raise NotImplementedError
+    y_true = test_data.ratings
+    y_pred = np.array(
+        [
+            recommender.recommend_as_numpy(users=(user,), games=games)[0, :]
+            for user, games in zip(test_data.user_ids, test_data.game_ids)
+        ]
+    )
+
+    if y_true.shape != y_pred.shape:
+        raise ValueError(
+            f"Shape of ratings ({y_true.shape}) does not match "
+            + f"shape of predictions ({y_pred.shape})"
+        )
+
+    if k_values is None:
+        k_values = frozenset()
+    elif isinstance(k_values, int):
+        k_values = frozenset({k_values})
+    else:
+        k_values = frozenset(k_values)
+
+    k_values = sorted(k_values | {y_true.shape[-1]})
+    ndcg = {}
+
+    for k in k_values:
+        ndcg[k] = ndcg_score(
+            y_true=y_true,
+            y_score=y_pred,
+            k=k,
+        )
+
+    y_true = np.exp2(y_true) - 1
+    ndcg_exp = {}
+
+    for k in k_values:
+        ndcg_exp[k] = ndcg_score(
+            y_true=y_true,
+            y_score=y_pred,
+            k=k,
+        )
+
+    return RecommenderMetrics(ndcg=ndcg, ndcg_exp=ndcg_exp)
