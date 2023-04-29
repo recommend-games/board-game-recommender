@@ -26,12 +26,12 @@ class CollaborativeFilteringData:
     """Labels, vectors and matrices for linear collaborative filtering models."""
 
     intercept: float
-    users_labels: np.ndarray
-    users_linear_terms: np.ndarray
-    users_factors: np.ndarray
-    items_labels: np.ndarray
-    items_linear_terms: np.ndarray
-    items_factors: np.ndarray
+    users_labels: np.ndarray  # (num_users,)
+    users_linear_terms: np.ndarray  # (num_users,)
+    users_factors: np.ndarray  # (num_users, num_factors)
+    items_labels: np.ndarray  # (num_items,)
+    items_linear_terms: np.ndarray  # (num_items,)
+    items_factors: np.ndarray  # (num_factors, num_items)
 
     def to_npz(self: "CollaborativeFilteringData", file_path: Union[Path, str]) -> None:
         """Save data into an .npz file."""
@@ -141,6 +141,36 @@ class LightGamesRecommender(BaseGamesRecommender):
     def num_users(self: "LightGamesRecommender") -> int:
         return len(self.users_labels)
 
+    def _recommendation_scores(
+        self: "LightGamesRecommender",
+        users: Optional[List[str]] = None,
+        games: Optional[List[int]] = None,
+    ) -> np.ndarray:
+        """Calculate recommendations scores for certain users and games."""
+
+        if users:
+            user_ids = np.array([self.users_indexes[user] for user in users])
+            user_factors = self.users_factors[user_ids]
+            users_linear_terms = self.users_linear_terms[user_ids].reshape(-1, 1)
+        else:
+            user_factors = self.users_factors
+            users_linear_terms = self.users_linear_terms.reshape(-1, 1)
+
+        if games:
+            game_ids = np.array([self.items_indexes[game] for game in games])
+            items_factors = self.items_factors[:, game_ids]
+            items_linear_terms = self.items_linear_terms[game_ids].reshape(1, -1)
+        else:
+            items_factors = self.items_factors
+            items_linear_terms = self.items_linear_terms.reshape(1, -1)
+
+        return (
+            user_factors @ items_factors  # (num_users, num_items)
+            + users_linear_terms  # (num_users, 1)
+            + items_linear_terms  # (1, num_items)
+            + self.intercept  # (1,)
+        )
+
     def recommend(
         self: "LightGamesRecommender",
         users: Iterable[str],
@@ -149,14 +179,7 @@ class LightGamesRecommender(BaseGamesRecommender):
         """Calculate recommendations for certain users."""
 
         users = list(users)
-        user_ids = np.array([self.users_indexes[user] for user in users])
-
-        scores = (
-            self.users_factors[user_ids] @ self.items_factors
-            + self.users_linear_terms[user_ids].reshape(len(user_ids), 1)
-            + self.items_linear_terms
-            + self.intercept
-        )
+        scores = self._recommendation_scores(users=users)
 
         result = pd.DataFrame(
             index=self.items_labels,
@@ -181,17 +204,8 @@ class LightGamesRecommender(BaseGamesRecommender):
         """Calculate recommendations for certain users and games as a numpy array."""
 
         users = list(users)
-        user_ids = np.array([self.users_indexes[user] for user in users])
-
         games = list(games)
-        game_ids = np.array([self.items_indexes[game] for game in games])
-
-        return (
-            self.users_factors[user_ids] @ self.items_factors[:, game_ids]
-            + self.users_linear_terms[user_ids].reshape(len(user_ids), 1)
-            + self.items_linear_terms[game_ids]
-            + self.intercept
-        )
+        return self._recommendation_scores(users=users, games=games)
 
     def recommend_similar(
         self: "LightGamesRecommender",
