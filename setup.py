@@ -50,7 +50,7 @@ REQUIRED = ("numpy",)
 
 # What packages are optional?
 EXTRAS = {
-    "evaluation": ("scikit-learn",),
+    "evaluation": ("polars", "scikit-learn"),
     "full": ("pytility", "turicreate"),
     "light": ("pandas",),
     "trust": ("scipy",),
