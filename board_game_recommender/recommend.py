@@ -434,7 +434,39 @@ class GamesRecommender(BaseGamesRecommender):
         users: Iterable[str],
         games: Iterable[int],
     ) -> np.ndarray:
-        raise NotImplementedError
+        """Calculate recommendations for certain users and games as a numpy array."""
+
+        users = list(users)
+        users_sf = tc.SFrame(
+            {
+                self.user_id_field: users,
+                "sort_users": range(len(users)),
+            }
+        )
+
+        games = list(games)
+        games_sf = tc.SFrame(
+            {
+                self.id_field: games,
+                "sort_games": range(len(games)),
+            }
+        )
+
+        recommendations = self.model.recommend(
+            users=users,
+            items=games,
+            exclude_known=False,
+            k=len(games),
+        )
+
+        assert len(recommendations) == len(users) * len(games)
+
+        result = (
+            recommendations.join(users_sf)
+            .join(games_sf)
+            .sort(["sort_users", "sort_games"])
+        )
+        return result["score"].to_numpy().reshape(len(users), len(games))
 
     def recommend_similar(
         self: "GamesRecommender",
