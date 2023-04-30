@@ -2,10 +2,15 @@
 
 import logging
 import os
+from dataclasses import asdict
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Iterable, Optional, Tuple, Union
 
 import polars as pl
+import turicreate as tc
+
+from board_game_recommender.evaluation import calculate_metrics, load_test_data
+from board_game_recommender.recommend import BGGRecommender
 
 LOGGER = logging.getLogger(__name__)
 PATH = Union[str, os.PathLike]
@@ -80,3 +85,86 @@ def ratings_train_test_split(
         data_test.write_csv(path_out_test)
 
     return data_train, data_test
+
+
+def find_best_num_factors(
+    *,
+    path_train: PATH,
+    path_test: PATH,
+    num_factors_list: Iterable[int],
+    metric_name: str = "ndcg_exp",
+    k_value: int = 10,
+    ratings_per_user: int = 100,
+    user_id_key: str = "bgg_user_name",
+    game_id_key: str = "bgg_id",
+    ratings_key: str = "bgg_user_rating",
+    max_iterations: int = 25,
+    verbose: bool = False,
+) -> int:
+    """Hyperparameter tuning."""
+
+    path_train = Path(path_train).resolve()
+    path_test = Path(path_test).resolve()
+    num_factors_list = sorted(num_factors_list)
+
+    LOGGER.info(
+        "Reading training data from <%s> and test data from <%s>",
+        path_train,
+        path_test,
+    )
+
+    train = tc.SFrame.read_csv(path_train)
+    test = load_test_data(
+        path=path_test,
+        ratings_per_user=ratings_per_user,
+        user_id_key=user_id_key,
+        game_id_key=game_id_key,
+        ratings_key=ratings_key,
+    )
+
+    LOGGER.info(
+        "Hyperparameter tuning on %d training and %d test rows with the following factors: %s",
+        len(train),
+        test.ratings.shape[0] * test.ratings.shape[1],
+        num_factors_list,
+    )
+
+    all_metrics = {}
+
+    for num_factors in num_factors_list:
+        LOGGER.info(
+            "Training model with %d latent factors on training data",
+            num_factors,
+        )
+        model = tc.ranking_factorization_recommender.create(
+            observation_data=train,
+            user_id=user_id_key,
+            item_id=game_id_key,
+            target=ratings_key,
+            num_factors=num_factors,
+            max_iterations=max_iterations,
+            verbose=verbose,
+        )
+        LOGGER.info("Done training.")
+
+        recommender = BGGRecommender(model=model)
+        metrics = calculate_metrics(
+            recommender=recommender,
+            test_data=test,
+            k_values=k_value,
+        )
+        all_metrics[num_factors] = metrics
+        LOGGER.info("Metrics: %r", metrics)
+
+    scores = {
+        num_factors: asdict(metrics)[metric_name][k_value]
+        for num_factors, metrics in all_metrics.items()
+    }
+    best = max(scores.items(), key=lambda x: x[1])
+    LOGGER.info(
+        "The best <%s> of %.5f was achieved with %d latent factors",
+        metric_name,
+        best[1],
+        best[0],
+    )
+    return best[0]

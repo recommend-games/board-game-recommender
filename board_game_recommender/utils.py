@@ -7,8 +7,6 @@ import sys
 
 import turicreate as tc
 
-from pytility import arg_to_iter
-
 csv.field_size_limit(sys.maxsize)
 
 LOGGER = logging.getLogger(__name__)
@@ -141,63 +139,3 @@ def format_from_path(path):
     except Exception:
         pass
     return None
-
-
-def find_best_num_factors(
-    observation_data,
-    user_id,
-    item_id,
-    target,
-    num_factors_list,
-    item_data=None,
-    max_iterations=25,
-    max_num_users=1_000,
-    item_test_proportion=0.2,
-    verbose=False,
-):
-    """Hyperparameter tuning."""
-
-    train, test = tc.recommender.util.random_split_by_user(
-        dataset=observation_data,
-        user_id=user_id,
-        item_id=item_id,
-        max_num_users=max_num_users,
-        item_test_proportion=item_test_proportion,
-    )
-    LOGGER.info(
-        "Hyperparameter tuning on %d train and %d test rows", len(train), len(test)
-    )
-
-    models = {}
-    for num_factors in arg_to_iter(num_factors_list):
-        LOGGER.info(
-            "Training model with %d latent factors on training data", num_factors
-        )
-        models[num_factors] = tc.ranking_factorization_recommender.create(
-            observation_data=train,
-            user_id=user_id,
-            item_id=item_id,
-            target=target,
-            num_factors=num_factors,
-            item_data=item_data,
-            max_iterations=max_iterations,
-            verbose=verbose,
-        )
-    models = tuple(models.items())
-
-    results = tc.recommender.util.compare_models(
-        dataset=test,
-        models=[model[1] for model in models],
-        model_names=[f"{model[0]} factors" for model in models],
-        metric="rmse",
-        target=target,
-        verbose=verbose,
-    )
-    results = {
-        model[0]: result["rmse_overall"] for model, result in zip(models, results)
-    }
-
-    best = min(results.items(), key=lambda x: x[1])
-    LOGGER.info("The smallest RMSE was %.3f with %d factors", best[1], best[0])
-
-    return best[0]
