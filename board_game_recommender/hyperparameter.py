@@ -54,6 +54,7 @@ def ratings_train_test_split(
         "is_test_row",
         as_dict=True,
     )
+    del ratings
 
     data_train = train_test[False]
     data_train.drop_in_place("is_test_row")
@@ -62,6 +63,7 @@ def ratings_train_test_split(
     data_test = train_test[True]
     data_test.drop_in_place("is_test_row")
     data_test = data_test.sort("bgg_user_name", "bgg_id")
+    del train_test
 
     LOGGER.info(
         "Split into %d training and %d test rows",
