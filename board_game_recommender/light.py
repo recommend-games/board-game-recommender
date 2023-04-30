@@ -157,8 +157,8 @@ class LightGamesRecommender(BaseGamesRecommender):
             users_linear_terms = self.users_linear_terms.reshape(-1, 1)
 
         if games:
-            # FIXME Unknown games will cause a key error. Instead, use the user's
-            # average predicted rating (user + global bias) for unknow games.
+            # TODO Unknown games will cause a key error. Instead, use the user's
+            # average predicted rating (user + global bias) for unknown games. (#57)
             game_ids = np.array([self.items_indexes[game] for game in games])
             items_factors = self.items_factors[:, game_ids]
             items_linear_terms = self.items_linear_terms[game_ids].reshape(1, -1)
