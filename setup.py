@@ -46,12 +46,13 @@ REQUIRES_PYTHON = ">=3.7.0,<3.9.0"
 VERSION = None  # will be read from __version__.py
 
 # What packages are required for this module to be executed?
-REQUIRED = ()
+REQUIRED = ("numpy",)
 
 # What packages are optional?
 EXTRAS = {
+    "evaluation": ("polars", "scikit-learn"),
     "full": ("pytility", "turicreate"),
-    "light": ("numpy", "pandas"),
+    "light": ("pandas",),
     "trust": ("scipy",),
 }
 

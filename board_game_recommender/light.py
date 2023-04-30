@@ -26,12 +26,12 @@ class CollaborativeFilteringData:
     """Labels, vectors and matrices for linear collaborative filtering models."""
 
     intercept: float
-    users_labels: np.ndarray
-    users_linear_terms: np.ndarray
-    users_factors: np.ndarray
-    items_labels: np.ndarray
-    items_linear_terms: np.ndarray
-    items_factors: np.ndarray
+    users_labels: np.ndarray  # (num_users,)
+    users_linear_terms: np.ndarray  # (num_users,)
+    users_factors: np.ndarray  # (num_users, num_factors)
+    items_labels: np.ndarray  # (num_items,)
+    items_linear_terms: np.ndarray  # (num_items,)
+    items_factors: np.ndarray  # (num_factors, num_items)
 
     def to_npz(self: "CollaborativeFilteringData", file_path: Union[Path, str]) -> None:
         """Save data into an .npz file."""
@@ -141,6 +141,38 @@ class LightGamesRecommender(BaseGamesRecommender):
     def num_users(self: "LightGamesRecommender") -> int:
         return len(self.users_labels)
 
+    def _recommendation_scores(
+        self: "LightGamesRecommender",
+        users: Optional[List[str]] = None,
+        games: Optional[List[int]] = None,
+    ) -> np.ndarray:
+        """Calculate recommendations scores for certain users and games."""
+
+        if users:
+            user_ids = np.array([self.users_indexes[user] for user in users])
+            user_factors = self.users_factors[user_ids]
+            users_linear_terms = self.users_linear_terms[user_ids].reshape(-1, 1)
+        else:
+            user_factors = self.users_factors
+            users_linear_terms = self.users_linear_terms.reshape(-1, 1)
+
+        if games:
+            # TODO Unknown games will cause a key error. Instead, use the user's
+            # average predicted rating (user + global bias) for unknown games. (#57)
+            game_ids = np.array([self.items_indexes[game] for game in games])
+            items_factors = self.items_factors[:, game_ids]
+            items_linear_terms = self.items_linear_terms[game_ids].reshape(1, -1)
+        else:
+            items_factors = self.items_factors
+            items_linear_terms = self.items_linear_terms.reshape(1, -1)
+
+        return (
+            user_factors @ items_factors  # (num_users, num_items)
+            + users_linear_terms  # (num_users, 1)
+            + items_linear_terms  # (1, num_items)
+            + self.intercept  # (1,)
+        )
+
     def recommend(
         self: "LightGamesRecommender",
         users: Iterable[str],
@@ -149,14 +181,7 @@ class LightGamesRecommender(BaseGamesRecommender):
         """Calculate recommendations for certain users."""
 
         users = list(users)
-        user_ids = np.array([self.users_indexes[user] for user in users])
-
-        scores = (
-            self.users_factors[user_ids] @ self.items_factors
-            + self.users_linear_terms[user_ids].reshape(len(user_ids), 1)
-            + self.items_linear_terms
-            + self.intercept
-        )
+        scores = self._recommendation_scores(users=users)
 
         result = pd.DataFrame(
             index=self.items_labels,
@@ -173,19 +198,80 @@ class LightGamesRecommender(BaseGamesRecommender):
 
         return result[pd.MultiIndex.from_product([users, ["score", "rank"]])]
 
+    def recommend_as_numpy(
+        self: "LightGamesRecommender",
+        users: Iterable[str],
+        games: Iterable[int],
+    ) -> np.ndarray:
+        """Calculate recommendations for certain users and games as a numpy array."""
+
+        users = list(users)
+        games = list(games)
+        return self._recommendation_scores(users=users, games=games)
+
     def recommend_similar(
         self: "LightGamesRecommender",
         games: Iterable[int],
         **kwargs,
-    ):
-        raise NotImplementedError
+    ) -> pd.DataFrame:
+        """
+        Recommend games similar to the given games based on cosine similarity of latent factors.
+        """
+
+        games = list(games)
+        game_ids = np.array([self.items_indexes[game] for game in games])
+        game_factors = self.items_factors[:, game_ids]
+
+        scores = cosine_similarity(game_factors, self.items_factors).mean(axis=0)
+
+        result = pd.DataFrame(index=self.items_labels, data={"score": scores})
+        result["rank"] = result["score"].rank(method="min", ascending=False).astype(int)
+        result.sort_values("rank", inplace=True)
+
+        return result
 
     def similar_games(
         self: "LightGamesRecommender",
         games: Iterable[int],
         **kwargs,
-    ):
-        raise NotImplementedError
+    ) -> pd.DataFrame:
+        """Find games similar to the given games based on cosine similarity of latent factors."""
+
+        games = list(games)
+        game_ids = np.array([self.items_indexes[game] for game in games])
+        game_factors = self.items_factors[:, game_ids]
+
+        scores = cosine_similarity(game_factors, self.items_factors)
+
+        result = pd.DataFrame(
+            index=self.items_labels,
+            columns=pd.MultiIndex.from_product([games, ["score"]]),
+            data=scores.T,
+        )
+        result[pd.MultiIndex.from_product([games, ["rank"]])] = result.rank(
+            method="min",
+            ascending=False,
+        ).astype(int)
+
+        if len(games) == 1:
+            result.sort_values((games[0], "rank"), inplace=True)
+
+        return result[pd.MultiIndex.from_product([games, ["score", "rank"]])]
+
+
+def cosine_similarity(matrix_1: np.ndarray, matrix_2: np.ndarray) -> np.ndarray:
+    """
+    Calculates the cosine similarity between two matrices.
+
+    The input matrices need to be of shape (m,n) and (m,l); the result shape will be (n,l).
+    """
+
+    dot_product = matrix_1.T @ matrix_2  # (n,l)
+    matrix_1_norm = np.linalg.norm(matrix_1, axis=0)  # (n,)
+    matrix_2_norm = np.linalg.norm(matrix_2, axis=0)  # (l,)
+    outer_prod_norm = np.outer(matrix_1_norm, matrix_2_norm)  # (n,l)
+
+    return dot_product / outer_prod_norm  # (n,l)
 
 
 def turi_create_to_numpy(
