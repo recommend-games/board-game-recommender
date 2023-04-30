@@ -106,5 +106,6 @@ recommender/
 .tc*/
 .bga*
 .bgg*
+*.csv
 *.ipynb
 *.npz

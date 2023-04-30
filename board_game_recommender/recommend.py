@@ -9,6 +9,7 @@ import tempfile
 # from datetime import date
 from typing import Any, Dict, FrozenSet, Iterable, Optional, Tuple, Type
 
+import numpy as np
 import turicreate as tc
 from pytility import arg_to_iter, clear_list
 
@@ -427,6 +428,45 @@ class GamesRecommender(BaseGamesRecommender):
             star_percentiles=star_percentiles,
             ascending=ascending,
         )
+
+    def recommend_as_numpy(
+        self: "GamesRecommender",
+        users: Iterable[str],
+        games: Iterable[int],
+    ) -> np.ndarray:
+        """Calculate recommendations for certain users and games as a numpy array."""
+
+        users = list(users)
+        users_sf = tc.SFrame(
+            {
+                self.user_id_field: users,
+                "sort_users": range(len(users)),
+            }
+        )
+
+        games = list(games)
+        games_sf = tc.SFrame(
+            {
+                self.id_field: games,
+                "sort_games": range(len(games)),
+            }
+        )
+
+        recommendations = self.model.recommend(
+            users=users,
+            items=games,
+            exclude_known=False,
+            k=len(games),
+        )
+
+        assert len(recommendations) == len(users) * len(games)
+
+        result = (
+            recommendations.join(users_sf)
+            .join(games_sf)
+            .sort(["sort_users", "sort_games"])
+        )
+        return result["score"].to_numpy().reshape(len(users), len(games))
 
     def recommend_similar(
         self: "GamesRecommender",
