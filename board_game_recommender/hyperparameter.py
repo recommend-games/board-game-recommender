@@ -3,7 +3,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, Optional, Tuple, Union
 
 import polars as pl
 
@@ -14,19 +14,19 @@ PATH = Union[str, os.PathLike]
 def ratings_train_test_split(
     *,
     path_in: PATH,
-    path_out_train: PATH,
-    path_out_test: PATH,
+    path_out_train: Optional[PATH],
+    path_out_test: Optional[PATH],
     threshold_power_users: int = 200,
     num_test_rows: int = 100,
     user_id_key: str = "bgg_user_name",
     game_id_key: str = "bgg_id",
     ratings_key: str = "bgg_user_rating",
-) -> None:
+) -> Tuple[pl.DataFrame, pl.DataFrame]:
     """Split the given ratings into train and test data."""
 
     path_in = Path(path_in).resolve()
-    path_out_train = Path(path_out_train).resolve()
-    path_out_test = Path(path_out_test).resolve()
+    path_out_train = Path(path_out_train).resolve() if path_out_train else None
+    path_out_test = Path(path_out_test).resolve() if path_out_test else None
 
     LOGGER.info(
         "Reading ratings from <%s>, sampling %d rows from users with at least %d ratings",
@@ -69,8 +69,12 @@ def ratings_train_test_split(
         len(data_test),
     )
 
-    LOGGER.info("Writing training data to <%s>", path_out_train)
-    data_train.write_csv(path_out_train)
-    LOGGER.info("Writing test data to <%s>", path_out_test)
-    data_test.write_csv(path_out_test)
-    LOGGER.info("Done.")
+    if path_out_train:
+        LOGGER.info("Writing training data to <%s>", path_out_train)
+        data_train.write_csv(path_out_train)
+
+    if path_out_test:
+        LOGGER.info("Writing test data to <%s>", path_out_test)
+        data_test.write_csv(path_out_test)
+
+    return data_train, data_test
