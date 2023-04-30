@@ -1,4 +1,4 @@
-"""TODO."""
+"""Evaluate recommender models."""
 
 import logging
 from dataclasses import dataclass
@@ -16,7 +16,7 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class RecommenderTestData:
-    """TODO."""
+    """Test data for recommender model evaluation."""
 
     user_ids: Tuple[str, ...]
     game_ids: np.ndarray
@@ -30,7 +30,7 @@ def load_test_data(
     game_id_key: str = "bgg_id",
     ratings_key: str = "bgg_user_rating",
 ) -> RecommenderTestData:
-    """TODO."""
+    """Load RecommenderTestData from CSV."""
 
     path = Path(path).resolve()
     LOGGER.info("Loading test data from <%s>…", path)
@@ -53,7 +53,7 @@ def load_test_data(
 
 @dataclass(frozen=True)
 class RecommenderMetrics:
-    """TODO."""
+    """Recommender model evaluation metrics."""
 
     ndcg: Dict[int, float]
     ndcg_exp: Dict[int, float]
@@ -65,7 +65,7 @@ def calculate_metrics(
     *,
     k_values: Union[None, int, Iterable[int]],
 ) -> RecommenderMetrics:
-    """TODO."""
+    """Calculate RecommenderMetrics for given recommender model and RecommenderTestData."""
 
     y_true = test_data.ratings
     y_pred = np.array(
