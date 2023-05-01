@@ -225,7 +225,9 @@ def hyperparameter_tuning(
 
 
 def _parse_args():
-    parser = argparse.ArgumentParser(description="TODO")
+    parser = argparse.ArgumentParser(
+        description="Find the best number of latent factors for a collaborative filtering model",
+    )
     parser.add_argument("ratings", help="path to ratings in JSON lines format")
     parser.add_argument(
         "--num-factors",
