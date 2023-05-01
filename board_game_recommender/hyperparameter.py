@@ -116,7 +116,7 @@ def find_best_num_factors(
         path_test,
     )
 
-    train = tc.SFrame.read_csv(path_train)
+    train = tc.SFrame.read_csv(str(path_train))
     test = load_test_data(
         path=path_test,
         ratings_per_user=ratings_per_user,
