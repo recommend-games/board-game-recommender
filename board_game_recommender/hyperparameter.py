@@ -4,6 +4,7 @@ import logging
 import os
 from dataclasses import asdict
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Dict, Iterable, Optional, Tuple, Union
 
 import polars as pl
@@ -168,3 +169,54 @@ def find_best_num_factors(
         best[0],
     )
     return best[0]
+
+
+def hyperparameter_tuning(
+    *,
+    ratings_path: PATH,
+    num_factors_list: Iterable[int],
+    metric_name: str = "ndcg_exp",
+    k_value: int = 10,
+    threshold_power_users: int = 200,
+    num_test_rows: int = 100,
+    user_id_key: str = "bgg_user_name",
+    game_id_key: str = "bgg_id",
+    ratings_key: str = "bgg_user_rating",
+    max_iterations: int = 25,
+    verbose: bool = False,
+) -> int:
+    """Run hyperparameter tuning."""
+
+    num_factors_list = sorted(num_factors_list)
+
+    with TemporaryDirectory() as dir_out:
+        path_out = Path(dir_out).resolve()
+        LOGGER.info("Using temporary dir <%s>", path_out)
+
+        path_out_train = path_out / "train.csv"
+        path_out_test = path_out / "test.csv"
+
+        ratings_train_test_split(
+            path_in=ratings_path,
+            path_out_train=path_out_train,
+            path_out_test=path_out_test,
+            threshold_power_users=threshold_power_users,
+            num_test_rows=num_test_rows,
+            user_id_key=user_id_key,
+            game_id_key=game_id_key,
+            ratings_key=ratings_key,
+        )
+
+        return find_best_num_factors(
+            path_train=path_out_train,
+            path_test=path_out_test,
+            num_factors_list=num_factors_list,
+            metric_name=metric_name,
+            k_value=k_value,
+            ratings_per_user=num_test_rows,
+            user_id_key=user_id_key,
+            game_id_key=game_id_key,
+            ratings_key=ratings_key,
+            max_iterations=max_iterations,
+            verbose=verbose,
+        )
