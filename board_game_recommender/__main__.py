@@ -17,20 +17,25 @@ def _parse_args():
     parser = argparse.ArgumentParser(description="train board game recommender model")
     parser.add_argument("users", nargs="*", help="users to be recommended games")
     parser.add_argument(
-        "--bga", "-b", action="store_true", help="use Board Game Atlas data"
+        "--bga",
+        "-b",
+        action="store_true",
+        help="use Board Game Atlas data",
     )
     parser.add_argument("--model", "-m", help="model directory")
     parser.add_argument("--train", "-t", action="store_true", help="train a new model")
     parser.add_argument(
         "--num-factors",
         "-n",
-        nargs="+",
         type=int,
         default=32,
         help="number of latent factors",
     )
     parser.add_argument(
-        "--similarity", "-s", action="store_true", help="train a new similarity model"
+        "--similarity",
+        "-s",
+        action="store_true",
+        help="train a new similarity model",
     )
     parser.add_argument("--games-file", "-G", help="games file")
     parser.add_argument("--ratings-file", "-R", help="ratings file")
@@ -41,7 +46,11 @@ def _parse_args():
         help="game features to use in recommender model",
     )
     parser.add_argument(
-        "--num-rec", "-r", type=int, default=10, help="number of games to recommend"
+        "--num-rec",
+        "-r",
+        type=int,
+        default=10,
+        help="number of games to recommend",
     )
     parser.add_argument(
         "--max-iterations",
@@ -51,13 +60,24 @@ def _parse_args():
         help="maximal number of training steps",
     )
     parser.add_argument(
-        "--diversity", "-d", type=float, default=0, help="diversity in recommendations"
+        "--diversity",
+        "-d",
+        type=float,
+        default=0,
+        help="diversity in recommendations",
     )
     parser.add_argument(
-        "--cooperative", "-c", action="store_true", help="recommend cooperative games"
+        "--cooperative",
+        "-c",
+        action="store_true",
+        help="recommend cooperative games",
     )
     parser.add_argument(
-        "--games", "-g", type=int, nargs="+", help="restrict to these games"
+        "--games",
+        "-g",
+        type=int,
+        nargs="+",
+        help="restrict to these games",
     )
     parser.add_argument("--players", "-p", type=int, help="player count")
     parser.add_argument("--complexity", "-C", type=float, nargs="+", help="complexity")
@@ -89,19 +109,27 @@ def _main():
         model_cls = BGARecommender
         model_dir = args.model or os.path.join(BASE_DIR, ".bga")
         games_file = args.games_file or os.path.join(
-            BASE_DIR, "results", "bga_GameItem.jl"
+            BASE_DIR,
+            "results",
+            "bga_GameItem.jl",
         )
         ratings_file = args.ratings_file or os.path.join(
-            BASE_DIR, "results", "bga_RatingItem.jl"
+            BASE_DIR,
+            "results",
+            "bga_RatingItem.jl",
         )
     else:
         model_cls = BGGRecommender
         model_dir = args.model or os.path.join(BASE_DIR, ".bgg")
         games_file = args.games_file or os.path.join(
-            BASE_DIR, "results", "bgg_GameItem.jl"
+            BASE_DIR,
+            "results",
+            "bgg_GameItem.jl",
         )
         ratings_file = args.ratings_file or os.path.join(
-            BASE_DIR, "results", "bgg_RatingItem.jl"
+            BASE_DIR,
+            "results",
+            "bgg_RatingItem.jl",
         )
 
     games_filters = {}
