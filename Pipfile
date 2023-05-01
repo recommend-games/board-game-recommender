@@ -20,7 +20,6 @@ turicreate = "*"
 [dev-packages]
 black = "*"
 ipython = "*"
-jupyter = "*"
 jupyterlab = "*"
 jupytext = "*"
 mypy = "*"

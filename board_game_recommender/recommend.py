@@ -60,7 +60,10 @@ def make_cluster(data, item_id, target, target_dtype=str):
         )
 
         tdata = tdata.stack(
-            column_name=tar, new_column_name=tar, new_column_type=tdt, drop_na=True
+            column_name=tar,
+            new_column_name=tar,
+            new_column_type=tdt,
+            drop_na=True,
         )
 
         if not tdata:
@@ -75,7 +78,8 @@ def make_cluster(data, item_id, target, target_dtype=str):
 
     components_model = tc.connected_components.create(graph)
     clusters = components_model.component_id.groupby(
-        "component_id", {"cluster": tc.aggregate.CONCAT("__id")}
+        "component_id",
+        {"cluster": tc.aggregate.CONCAT("__id")},
     )["cluster"]
 
     return clusters.filter(lambda x: x is not None and len(x) > 1)
@@ -278,14 +282,16 @@ class GamesRecommender(BaseGamesRecommender):
                 if not user:
                     continue
                 rated = self.ratings.filter_by([user], self.user_id_field)[
-                    self.id_field, self.user_id_field
+                    self.id_field,
+                    self.user_id_field,
                 ]
                 exclude = rated.copy() if exclude is None else exclude.append(rated)
                 del rated
 
         if exclude_clusters and exclude:
             grouped = exclude.groupby(
-                self.user_id_field, {"game_ids": tc.aggregate.CONCAT(self.id_field)}
+                self.user_id_field,
+                {"game_ids": tc.aggregate.CONCAT(self.id_field)},
             )
             for user, game_ids in zip(grouped[self.user_id_field], grouped["game_ids"]):
                 game_ids = frozenset(game_ids)
@@ -301,7 +307,9 @@ class GamesRecommender(BaseGamesRecommender):
                     {
                         self.id_field: tc.SArray(list(game_ids), dtype=self.id_type),
                         self.user_id_field: tc.SArray.from_const(
-                            user, len(game_ids), self.user_id_type
+                            user,
+                            len(game_ids),
+                            self.user_id_type,
                         ),
                     }
                 )
@@ -314,7 +322,9 @@ class GamesRecommender(BaseGamesRecommender):
             comp = tc.SFrame({self.id_field: self.compilations})
             for user in users:
                 comp[self.user_id_field] = tc.SArray.from_const(
-                    user, len(self.compilations), self.user_id_type
+                    user,
+                    len(self.compilations),
+                    self.user_id_type,
                 )
                 exclude = comp.copy() if exclude is None else exclude.append(comp)
             del comp
@@ -494,7 +504,9 @@ class GamesRecommender(BaseGamesRecommender):
         self.logger.debug("recommending games similar to %s using %s", games, model)
 
         recommendations = model.recommend_from_interactions(
-            observed_items=games, items=items, **kwargs
+            observed_items=games,
+            items=items,
+            **kwargs,
         )
 
         recommendations = (
@@ -506,7 +518,9 @@ class GamesRecommender(BaseGamesRecommender):
         del games, items, model
 
         return self._post_process_games(
-            games=recommendations, columns=columns, join_on=self.id_field
+            games=recommendations,
+            columns=columns,
+            join_on=self.id_field,
         )
 
     def similar_games(
@@ -710,8 +724,10 @@ class GamesRecommender(BaseGamesRecommender):
         cls,
         games,
         ratings,
+        *,
         side_data_columns=None,
         similarity_model=False,
+        num_factors=32,
         max_iterations=100,
         verbose=False,
         defaults=True,
@@ -733,18 +749,24 @@ class GamesRecommender(BaseGamesRecommender):
         if cls.id_field not in side_data_columns:
             side_data_columns.append(cls.id_field)
         if len(side_data_columns) > 1:
-            LOGGER.info("using game side features: %r", side_data_columns)
+            cls.logger.info("using game side features: %r", side_data_columns)
             item_data = all_games[side_data_columns].dropna()
         else:
             item_data = None
 
         ratings_filtered = ratings.filter_by(games[cls.id_field], cls.id_field)
 
+        cls.logger.info(
+            "Using %d latent factors in collaborative filtering",
+            num_factors,
+        )
+
         model = tc.ranking_factorization_recommender.create(
             observation_data=ratings_filtered,
             user_id=cls.user_id_field,
             item_id=cls.id_field,
             target=cls.rating_id_field,
+            num_factors=num_factors,
             item_data=item_data,
             max_iterations=max_iterations,
             verbose=verbose,
@@ -764,7 +786,10 @@ class GamesRecommender(BaseGamesRecommender):
         )
 
         return cls(
-            model=model, similarity_model=sim_model, games=all_games, ratings=ratings
+            model=model,
+            similarity_model=sim_model,
+            games=all_games,
+            ratings=ratings,
         )
 
     @classmethod
@@ -778,7 +803,9 @@ class GamesRecommender(BaseGamesRecommender):
         cls.logger.info("condensed %d games into <%s>", num_games, csv_cond)
 
         games = tc.SFrame.read_csv(
-            csv_cond, column_type_hints=columns, usecols=columns.keys()
+            csv_cond,
+            column_type_hints=columns,
+            usecols=columns.keys(),
         )
 
         try:
@@ -789,13 +816,15 @@ class GamesRecommender(BaseGamesRecommender):
         if cls.compilation_field in columns:
             # pylint: disable=unexpected-keyword-arg
             games[cls.compilation_field] = games[cls.compilation_field].apply(
-                bool, skip_na=False
+                bool,
+                skip_na=False,
             )
 
         if cls.cooperative_field in columns:
             # pylint: disable=unexpected-keyword-arg
             games[cls.cooperative_field] = games[cls.cooperative_field].apply(
-                bool, skip_na=False
+                bool,
+                skip_na=False,
             )
 
         return games
@@ -816,12 +845,14 @@ class GamesRecommender(BaseGamesRecommender):
         if cls.compilation_field in games.column_names():
             # pylint: disable=unexpected-keyword-arg
             games[cls.compilation_field] = games[cls.compilation_field].apply(
-                bool, skip_na=False
+                bool,
+                skip_na=False,
             )
 
         if cls.cooperative_field in games.column_names():
             games[cls.cooperative_field] = games[cls.cooperative_field].apply(
-                bool, skip_na=False
+                bool,
+                skip_na=False,
             )
 
         return games
@@ -838,7 +869,9 @@ class GamesRecommender(BaseGamesRecommender):
 
         columns = cls.columns_ratings if columns is None else columns
         ratings = tc.SFrame.read_csv(
-            ratings_csv, column_type_hints=columns, usecols=columns.keys()
+            ratings_csv,
+            column_type_hints=columns,
+            usecols=columns.keys(),
         ).dropna()
 
         return cls.process_ratings(ratings, **kwargs)
@@ -862,6 +895,7 @@ class GamesRecommender(BaseGamesRecommender):
         ratings_columns=None,
         side_data_columns=None,
         similarity_model=False,
+        num_factors=32,
         max_iterations=100,
         verbose=False,
         defaults=True,
@@ -875,18 +909,23 @@ class GamesRecommender(BaseGamesRecommender):
         else:
             orient = "records" if games_format == "json" else "lines"
             games = cls.load_games_json(
-                games_json=games_file, columns=games_columns, orient=orient
+                games_json=games_file,
+                columns=games_columns,
+                orient=orient,
             )
 
         ratings_format = format_from_path(ratings_file)
         if ratings_format == "csv":
             ratings = cls.load_ratings_csv(
-                ratings_csv=ratings_file, columns=ratings_columns
+                ratings_csv=ratings_file,
+                columns=ratings_columns,
             )
         else:
             orient = "records" if ratings_format == "json" else "lines"
             ratings = cls.load_ratings_json(
-                ratings_json=ratings_file, columns=ratings_columns, orient=orient
+                ratings_json=ratings_file,
+                columns=ratings_columns,
+                orient=orient,
             )
 
         return cls.train(
@@ -894,6 +933,7 @@ class GamesRecommender(BaseGamesRecommender):
             ratings=ratings,
             side_data_columns=side_data_columns,
             similarity_model=similarity_model,
+            num_factors=num_factors,
             max_iterations=max_iterations,
             verbose=verbose,
             defaults=defaults,
@@ -981,7 +1021,8 @@ class BGGRecommender(GamesRecommender):
         if kwargs.get("dedupe") and cls.rating_id_field in ratings.column_names():
             ratings = ratings.unstack(cls.rating_id_field, "ratings")
             ratings[cls.rating_id_field] = ratings["ratings"].apply(
-                lambda x: x[-1], dtype=float
+                lambda x: x[-1],
+                dtype=float,
             )
             del ratings["ratings"]
 
