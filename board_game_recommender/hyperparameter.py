@@ -1,7 +1,9 @@
 """Methods for hyperparameter tuning."""
 
+import argparse
 import logging
 import os
+import sys
 from dataclasses import asdict
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -24,9 +26,9 @@ def ratings_train_test_split(
     path_out_test: Optional[PATH],
     threshold_power_users: int = 200,
     num_test_rows: int = 100,
-    user_id_key: str = "bgg_user_name",
-    game_id_key: str = "bgg_id",
-    ratings_key: str = "bgg_user_rating",
+    user_id_key: str = BGGRecommender.user_id_field,
+    game_id_key: str = BGGRecommender.id_field,
+    ratings_key: str = BGGRecommender.rating_id_field,
 ) -> Tuple[pl.DataFrame, pl.DataFrame]:
     """Split the given ratings into train and test data."""
 
@@ -96,9 +98,9 @@ def find_best_num_factors(
     metric_name: str = "ndcg_exp",
     k_value: int = 10,
     ratings_per_user: int = 100,
-    user_id_key: str = "bgg_user_name",
-    game_id_key: str = "bgg_id",
-    ratings_key: str = "bgg_user_rating",
+    user_id_key: str = BGGRecommender.user_id_field,
+    game_id_key: str = BGGRecommender.id_field,
+    ratings_key: str = BGGRecommender.rating_id_field,
     max_iterations: int = 25,
     verbose: bool = False,
 ) -> int:
@@ -179,9 +181,9 @@ def hyperparameter_tuning(
     k_value: int = 10,
     threshold_power_users: int = 200,
     num_test_rows: int = 100,
-    user_id_key: str = "bgg_user_name",
-    game_id_key: str = "bgg_id",
-    ratings_key: str = "bgg_user_rating",
+    user_id_key: str = BGGRecommender.user_id_field,
+    game_id_key: str = BGGRecommender.id_field,
+    ratings_key: str = BGGRecommender.rating_id_field,
     max_iterations: int = 25,
     verbose: bool = False,
 ) -> int:
@@ -220,3 +222,112 @@ def hyperparameter_tuning(
             max_iterations=max_iterations,
             verbose=verbose,
         )
+
+
+def _parse_args():
+    parser = argparse.ArgumentParser(description="TODO")
+    parser.add_argument("ratings", help="path to ratings in JSON lines format")
+    parser.add_argument(
+        "--num-factors",
+        "-n",
+        nargs="+",
+        type=int,
+        default=(32,),
+        help="number of latent factors to try out",
+    )
+    parser.add_argument(
+        "--metric",
+        "-m",
+        default="ndcg_exp",
+        choices=("ndcg", "ndcg_exp"),
+        help="target metric to choose the best model",
+    )
+    parser.add_argument(
+        "--k-value",
+        "-k",
+        type=int,
+        default=10,
+        help="use the top k recommendations for evaluation",
+    )
+    parser.add_argument(
+        "--power-users",
+        "-p",
+        type=int,
+        default=200,
+        help="users with at least this many ratings will be included in the test set",
+    )
+    parser.add_argument(
+        "--test-rows",
+        "-t",
+        type=int,
+        default=100,
+        help="number of test rows per (power) user",
+    )
+    parser.add_argument(
+        "--user-id-key",
+        "-u",
+        default=BGGRecommender.user_id_field,
+        help="User ID field in the ratings file",
+    )
+    parser.add_argument(
+        "--game-id-key",
+        "-g",
+        default=BGGRecommender.id_field,
+        help="Game ID field in the ratings file",
+    )
+    parser.add_argument(
+        "--ratings-key",
+        "-r",
+        default=BGGRecommender.rating_id_field,
+        help="Ratings field in the ratings file",
+    )
+    parser.add_argument(
+        "--max-iterations",
+        "-M",
+        type=int,
+        default=100,
+        help="maximal number of training steps",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="count",
+        default=0,
+        help="log level (repeat for more verbosity)",
+    )
+
+    return parser.parse_args()
+
+
+def _main():
+    args = _parse_args()
+
+    logging.basicConfig(
+        stream=sys.stdout,
+        level=logging.DEBUG if args.verbose > 0 else logging.INFO,
+        format="%(asctime)s %(levelname)-8.8s [%(name)s:%(lineno)s] %(message)s",
+    )
+
+    LOGGER.info(args)
+
+    best_num_factors = hyperparameter_tuning(
+        ratings_path=args.ratings,
+        num_factors_list=args.num_factors,
+        metric_name=args.metric,
+        k_value=args.k_value,
+        threshold_power_users=args.power_users,
+        num_test_rows=args.test_rows,
+        user_id_key=args.user_id_key,
+        game_id_key=args.game_id_key,
+        ratings_key=args.ratings_key,
+        max_iterations=args.max_iterations,
+        verbose=bool(args.verbose),
+    )
+
+    # TODO log results to MLflow
+
+    LOGGER.info("The best number of latent factors is: %d", best_num_factors)
+
+
+if __name__ == "__main__":
+    _main()
