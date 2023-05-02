@@ -355,7 +355,6 @@ class GamesRecommender(BaseGamesRecommender):
 
         return games.sort(sort_by, ascending=ascending)[columns]
 
-    # pylint: disable=no-self-use
     def process_user_id(self: "GamesRecommender", user_id):
         """process user ID"""
         return user_id or None
