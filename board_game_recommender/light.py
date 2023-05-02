@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from board_game_recommender.base import BaseGamesRecommender
+from board_game_recommender.baseline import dataframe_from_scores
 
 LOGGER = logging.getLogger(__name__)
 
@@ -182,21 +183,7 @@ class LightGamesRecommender(BaseGamesRecommender):
 
         users = list(users)
         scores = self._recommendation_scores(users=users)
-
-        result = pd.DataFrame(
-            index=self.items_labels,
-            columns=pd.MultiIndex.from_product([users, ["score"]]),
-            data=scores.T,
-        )
-        result[pd.MultiIndex.from_product([users, ["rank"]])] = result.rank(
-            method="min",
-            ascending=False,
-        ).astype(int)
-
-        if len(users) == 1:
-            result.sort_values((users[0], "rank"), inplace=True)
-
-        return result[pd.MultiIndex.from_product([users, ["score", "rank"]])]
+        return dataframe_from_scores(users, self.items_labels, scores)
 
     def recommend_as_numpy(
         self: "LightGamesRecommender",
@@ -242,21 +229,7 @@ class LightGamesRecommender(BaseGamesRecommender):
         game_factors = self.items_factors[:, game_ids]
 
         scores = cosine_similarity(game_factors, self.items_factors)
-
-        result = pd.DataFrame(
-            index=self.items_labels,
-            columns=pd.MultiIndex.from_product([games, ["score"]]),
-            data=scores.T,
-        )
-        result[pd.MultiIndex.from_product([games, ["rank"]])] = result.rank(
-            method="min",
-            ascending=False,
-        ).astype(int)
-
-        if len(games) == 1:
-            result.sort_values((games[0], "rank"), inplace=True)
-
-        return result[pd.MultiIndex.from_product([games, ["score", "rank"]])]
+        return dataframe_from_scores(games, self.items_labels, scores)
 
 
 def cosine_similarity(matrix_1: np.ndarray, matrix_2: np.ndarray) -> np.ndarray:
