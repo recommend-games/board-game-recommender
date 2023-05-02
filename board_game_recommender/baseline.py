@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import FrozenSet, Iterable, List, Optional, Union
+from typing import Any, FrozenSet, Iterable, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -11,6 +11,25 @@ from board_game_recommender.base import BaseGamesRecommender
 
 LOGGER = logging.getLogger(__name__)
 PATH = Union[str, os.PathLike]
+
+
+def dataframe_from_scores(users: List[Any], games: Iterable[Any], scores: np.ndarray):
+    """TODO."""
+
+    result = pd.DataFrame(
+        index=list(games),
+        columns=pd.MultiIndex.from_product([users, ["score"]]),
+        data=scores.T,
+    )
+    result[pd.MultiIndex.from_product([users, ["rank"]])] = result.rank(
+        method="min",
+        ascending=False,
+    ).astype(int)
+
+    if len(users) == 1:
+        result.sort_values((users[0], "rank"), inplace=True)
+
+    return result[pd.MultiIndex.from_product([users, ["score", "rank"]])]
 
 
 class RandomGamesRecommender(BaseGamesRecommender):
@@ -47,20 +66,7 @@ class RandomGamesRecommender(BaseGamesRecommender):
         games = list(games)
         scores = self._recommendation_scores(users=len(users), games=len(games))
 
-        result = pd.DataFrame(
-            index=games,
-            columns=pd.MultiIndex.from_product([users, ["score"]]),
-            data=scores.T,
-        )
-        result[pd.MultiIndex.from_product([users, ["rank"]])] = result.rank(
-            method="min",
-            ascending=False,
-        ).astype(int)
-
-        if len(users) == 1:
-            result.sort_values((users[0], "rank"), inplace=True)
-
-        return result[pd.MultiIndex.from_product([users, ["score", "rank"]])]
+        return dataframe_from_scores(users, games, scores)
 
     def recommend_as_numpy(
         self,
@@ -161,21 +167,7 @@ class PopularGamesRecommender(BaseGamesRecommender):
 
         users = list(users)
         scores = self._recommendation_scores(users=len(users))
-
-        result = pd.DataFrame(
-            index=self.data.index,
-            columns=pd.MultiIndex.from_product([users, ["score"]]),
-            data=scores.T,
-        )
-        result[pd.MultiIndex.from_product([users, ["rank"]])] = result.rank(
-            method="min",
-            ascending=False,
-        ).astype(int)
-
-        if len(users) == 1:
-            result.sort_values((users[0], "rank"), inplace=True)
-
-        return result[pd.MultiIndex.from_product([users, ["score", "rank"]])]
+        return dataframe_from_scores(users, self.data.index, scores)
 
     def recommend_as_numpy(
         self,
