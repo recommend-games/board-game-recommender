@@ -18,7 +18,7 @@ def dataframe_from_scores(
     index: Iterable[Any],
     scores: np.ndarray,
 ) -> pd.DataFrame:
-    """TODO."""
+    """Creates a Pandas DataFrame out of raw recommendation scores."""
 
     result = pd.DataFrame(
         index=list(index),
@@ -103,12 +103,12 @@ class PopularGamesRecommender(BaseGamesRecommender):
 
     @classmethod
     def train(cls, ratings: pd.DataFrame) -> "PopularGamesRecommender":
-        """TODO."""
+        """Train the recommender from ratings data."""
         raise NotImplementedError
 
     @classmethod
     def train_from_csv(cls, ratings_file: PATH) -> "PopularGamesRecommender":
-        """TODO."""
+        """Train the recommender from a ratings file in CSV format."""
         ratings = pd.read_csv(ratings_file)
         return cls.train(
             ratings[
@@ -122,7 +122,7 @@ class PopularGamesRecommender(BaseGamesRecommender):
 
     @classmethod
     def train_from_json_lines(cls, ratings_file: PATH) -> "PopularGamesRecommender":
-        """TODO."""
+        """Train the recommender from a ratings file in JSON lines format."""
         ratings = pd.read_json(ratings_file, orient="records", lines=True)
         return cls.train(
             ratings[
@@ -190,25 +190,22 @@ class PopularGamesRecommender(BaseGamesRecommender):
 
 
 class PopularMeanGamesRecommender(PopularGamesRecommender):
-    """TODO."""
+    """Recommend games by their mean rating score."""
 
     @classmethod
     def train(cls, ratings: pd.DataFrame) -> "PopularMeanGamesRecommender":
-        """TODO."""
         data = ratings.groupby(cls.id_field, sort=False)[cls.rating_id_field].mean()
         return cls(data=data)
 
 
 class PopularBayesianGamesRecommender(PopularGamesRecommender):
-    """TODO."""
+    """Recommend games by their Bayesian average rating score."""
 
     ratings_per_dummy: float = 10_000
     dummy_rating: Optional[float] = 5.5
 
     @classmethod
     def train(cls, ratings: pd.DataFrame) -> "PopularBayesianGamesRecommender":
-        """TODO."""
-
         num_dummies = len(ratings) / cls.ratings_per_dummy
         dummy_rating = (
             ratings[cls.rating_id_field].mean()
@@ -231,10 +228,9 @@ class PopularBayesianGamesRecommender(PopularGamesRecommender):
 
 
 class PopularNumRatingsGamesRecommender(PopularGamesRecommender):
-    """TODO."""
+    """Recommend games by their number of ratings."""
 
     @classmethod
     def train(cls, ratings: pd.DataFrame) -> "PopularNumRatingsGamesRecommender":
-        """TODO."""
         data = ratings.groupby(cls.id_field, sort=False).size()
         return cls(data=data)
