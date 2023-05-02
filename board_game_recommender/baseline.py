@@ -164,7 +164,6 @@ class PopularGamesRecommender(BaseGamesRecommender):
         **kwargs,
     ) -> pd.DataFrame:
         """Popular recommendations for certain users."""
-
         users = list(users)
         scores = self._recommendation_scores(users=len(users))
         return dataframe_from_scores(users, self.data.index, scores)
@@ -193,4 +192,30 @@ class PopularMeanGamesRecommender(PopularGamesRecommender):
     def train(cls, ratings: pd.DataFrame) -> "PopularMeanGamesRecommender":
         """TODO."""
         data = ratings.groupby(cls.id_field, sort=False)[cls.rating_id_field].mean()
+        return cls(data=data)
+
+
+class PopularBayesianGamesRecommender(PopularGamesRecommender):
+    """TODO."""
+
+    ratings_per_dummy: float = 10_000
+    dummy_rating: Optional[float] = 5.5
+
+    @classmethod
+    def train(cls, ratings: pd.DataFrame) -> "PopularBayesianGamesRecommender":
+        """TODO."""
+
+        num_dummies = len(ratings) / cls.ratings_per_dummy
+        dummy_rating = (
+            ratings[cls.rating_id_field].mean()
+            if cls.dummy_rating is None
+            else cls.dummy_rating
+        )
+
+        stats = ratings.groupby("bgg_id")["bgg_user_rating"].agg(["size", "mean"])
+
+        data = (stats["mean"] * stats["size"] + dummy_rating * num_dummies) / (
+            stats["size"] + num_dummies
+        )
+
         return cls(data=data)
