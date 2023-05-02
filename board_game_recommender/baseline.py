@@ -13,7 +13,11 @@ LOGGER = logging.getLogger(__name__)
 PATH = Union[str, os.PathLike]
 
 
-def dataframe_from_scores(columns: List[Any], index: Iterable[Any], scores: np.ndarray):
+def dataframe_from_scores(
+    columns: List[Any],
+    index: Iterable[Any],
+    scores: np.ndarray,
+) -> pd.DataFrame:
     """TODO."""
 
     result = pd.DataFrame(
@@ -230,7 +234,7 @@ class PopularNumRatingsGamesRecommender(PopularGamesRecommender):
     """TODO."""
 
     @classmethod
-    def train(cls, ratings: pd.DataFrame) -> "PopularMeanGamesRecommender":
+    def train(cls, ratings: pd.DataFrame) -> "PopularNumRatingsGamesRecommender":
         """TODO."""
         data = ratings.groupby(cls.id_field, sort=False).size()
         return cls(data=data)
