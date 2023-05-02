@@ -1,7 +1,8 @@
 """Baseline recommender models."""
 
 import logging
-from typing import FrozenSet, Iterable, List, Optional
+import os
+from typing import FrozenSet, Iterable, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -9,6 +10,7 @@ import pandas as pd
 from board_game_recommender.base import BaseGamesRecommender
 
 LOGGER = logging.getLogger(__name__)
+PATH = Union[str, os.PathLike]
 
 
 class RandomGamesRecommender(BaseGamesRecommender):
@@ -97,6 +99,39 @@ class PopularGamesRecommender(BaseGamesRecommender):
     def __init__(self, data: pd.Series) -> None:
         self.data = data
 
+    @classmethod
+    def train(cls, ratings: pd.DataFrame) -> "PopularGamesRecommender":
+        """TODO."""
+        raise NotImplementedError
+
+    @classmethod
+    def train_from_csv(cls, ratings_file: PATH) -> "PopularGamesRecommender":
+        """TODO."""
+        ratings = pd.read_csv(ratings_file)
+        return cls.train(
+            ratings[
+                [
+                    cls.id_field,
+                    cls.user_id_field,
+                    cls.rating_id_field,
+                ]
+            ]
+        )
+
+    @classmethod
+    def train_from_json_lines(cls, ratings_file: PATH) -> "PopularGamesRecommender":
+        """TODO."""
+        ratings = pd.read_json(ratings_file, orient="records", lines=True)
+        return cls.train(
+            ratings[
+                [
+                    cls.id_field,
+                    cls.user_id_field,
+                    cls.rating_id_field,
+                ]
+            ]
+        )
+
     @property
     def known_games(self) -> FrozenSet[int]:
         if self._known_games is not None:
@@ -175,11 +210,7 @@ class PopularMeanGamesRecommender(PopularGamesRecommender):
     """TODO."""
 
     @classmethod
-    def train(
-        cls,
-        *,
-        ratings: pd.DataFrame,
-    ) -> "PopularMeanGamesRecommender":
+    def train(cls, ratings: pd.DataFrame) -> "PopularMeanGamesRecommender":
         """TODO."""
         data = ratings.groupby(cls.id_field, sort=False)[cls.rating_id_field].mean()
         return cls(data=data)
