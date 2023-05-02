@@ -28,16 +28,8 @@ class RandomGamesRecommender(BaseGamesRecommender):
         return frozenset()
 
     @property
-    def num_games(self) -> int:
-        return 0
-
-    @property
     def known_users(self) -> FrozenSet[str]:
         return frozenset()
-
-    @property
-    def num_users(self) -> int:
-        return 0
 
     def _recommendation_scores(self, users: int, games: int) -> np.ndarray:
         """Random scores."""
@@ -150,10 +142,6 @@ class PopularGamesRecommender(BaseGamesRecommender):
     @property
     def known_users(self) -> FrozenSet[str]:
         return frozenset()
-
-    @property
-    def num_users(self) -> int:
-        return 0
 
     def _recommendation_scores(
         self,
