@@ -13,23 +13,23 @@ LOGGER = logging.getLogger(__name__)
 PATH = Union[str, os.PathLike]
 
 
-def dataframe_from_scores(users: List[Any], games: Iterable[Any], scores: np.ndarray):
+def dataframe_from_scores(columns: List[Any], index: Iterable[Any], scores: np.ndarray):
     """TODO."""
 
     result = pd.DataFrame(
-        index=list(games),
-        columns=pd.MultiIndex.from_product([users, ["score"]]),
+        index=list(index),
+        columns=pd.MultiIndex.from_product([columns, ["score"]]),
         data=scores.T,
     )
-    result[pd.MultiIndex.from_product([users, ["rank"]])] = result.rank(
+    result[pd.MultiIndex.from_product([columns, ["rank"]])] = result.rank(
         method="min",
         ascending=False,
     ).astype(int)
 
-    if len(users) == 1:
-        result.sort_values((users[0], "rank"), inplace=True)
+    if len(columns) == 1:
+        result.sort_values((columns[0], "rank"), inplace=True)
 
-    return result[pd.MultiIndex.from_product([users, ["score", "rank"]])]
+    return result[pd.MultiIndex.from_product([columns, ["score", "rank"]])]
 
 
 class RandomGamesRecommender(BaseGamesRecommender):
