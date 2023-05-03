@@ -1,8 +1,10 @@
 """Light recommender model, without the heavy Turi Create dependency."""
 
 import logging
+from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from random import randrange
 from typing import TYPE_CHECKING, FrozenSet, Iterable, List, Optional, Type, Union
 
 import numpy as np
@@ -75,13 +77,21 @@ class LightGamesRecommender(BaseGamesRecommender):
 
         self.intercept: float = data.intercept
 
+        num_users = len(data.users_labels)
         self.users_labels: List[str] = list(data.users_labels)
-        self.users_indexes = dict(zip(data.users_labels, range(len(data.users_labels))))
+        self.users_indexes = defaultdict(
+            lambda: randrange(num_users),
+            zip(data.users_labels, range(num_users)),
+        )
         self.users_linear_terms = data.users_linear_terms
         self.users_factors = data.users_factors
 
+        num_items = len(data.items_labels)
         self.items_labels: List[int] = list(data.items_labels)
-        self.items_indexes = dict(zip(data.items_labels, range(len(data.items_labels))))
+        self.items_indexes = defaultdict(
+            lambda: randrange(num_items),
+            zip(data.items_labels, range(num_items)),
+        )
         self.items_linear_terms = data.items_linear_terms
         self.items_factors = data.items_factors
 
