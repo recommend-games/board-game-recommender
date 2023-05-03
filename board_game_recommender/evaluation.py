@@ -82,7 +82,7 @@ def calculate_metrics(
             + f"shape of predictions ({y_pred.shape})"
         )
 
-    rmse = np.sqrt(np.square(y_true - y_pred).mean())
+    rmse = float(np.sqrt(np.square(y_true - y_pred).mean()))
 
     if k_values is None:
         k_values = frozenset()
