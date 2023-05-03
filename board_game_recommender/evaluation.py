@@ -57,6 +57,7 @@ class RecommenderMetrics:
 
     ndcg: Dict[int, float]
     ndcg_exp: Dict[int, float]
+    rmse: float
 
 
 def calculate_metrics(
@@ -80,6 +81,8 @@ def calculate_metrics(
             f"Shape of ratings ({y_true.shape}) does not match "
             + f"shape of predictions ({y_pred.shape})"
         )
+
+    rmse = np.sqrt(np.square(y_true - y_pred).mean())
 
     if k_values is None:
         k_values = frozenset()
@@ -108,4 +111,4 @@ def calculate_metrics(
             k=k,
         )
 
-    return RecommenderMetrics(ndcg=ndcg, ndcg_exp=ndcg_exp)
+    return RecommenderMetrics(ndcg=ndcg, ndcg_exp=ndcg_exp, rmse=rmse)
