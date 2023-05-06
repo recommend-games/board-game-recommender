@@ -69,6 +69,7 @@ def calculate_metrics(
     """Calculate RecommenderMetrics for given recommender model and RecommenderTestData."""
 
     y_true = test_data.ratings
+    # TODO factor out as prediction_scores(recommender, test_data)
     y_pred = np.array(
         [
             recommender.recommend_as_numpy(users=(user,), games=games)[0, :]
