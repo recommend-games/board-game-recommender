@@ -73,6 +73,55 @@ def prediction_scores(
     )
 
 
+def effective_catalog_size(
+    test_data: RecommenderTestData,
+    y_pred: np.ndarray,
+) -> np.ndarray:
+    """Calculate the effective catalog size (ECS)."""
+
+    assert len(test_data.user_ids) == len(y_pred)
+    assert test_data.game_ids.shape == y_pred.shape
+
+    df = pl.DataFrame(
+        data={
+            "user_id": np.repeat(test_data.user_ids, y_pred.shape[-1]),
+            "game_id": test_data.game_ids.reshape(-1),
+            "prediction": y_pred.reshape(-1),
+        }
+    )
+    df = df.with_columns(
+        prediction_rank=pl.col("prediction")
+        .rank(method="random", descending=True)
+        .over("user_id")
+    )
+
+    predicted_ranks = (
+        df.groupby("game_id", "prediction_rank")
+        .count()
+        .sort("game_id", "prediction_rank")
+    )
+    cum_predicted_ranks = predicted_ranks.select(
+        "game_id",
+        "prediction_rank",
+        pl.col("count").cumsum().over("game_id"),
+    )
+    pivoted = (
+        cum_predicted_ranks.pivot(
+            columns="game_id",
+            index="prediction_rank",
+            values="count",
+            aggregate_function=None,
+        )
+        .sort("prediction_rank")
+        .fill_null(strategy="forward")
+        .fill_null(0)
+    )
+    pos_counts = pivoted.drop("prediction_rank").to_numpy()
+    probs = pos_counts / pos_counts.sum(axis=1).reshape((100, 1))
+    ranks = np.argsort(-1 * pos_counts).argsort() + 1
+    return 2 * np.sum(probs * ranks, axis=1) + 1
+
+
 def calculate_metrics(
     recommender: BaseGamesRecommender,
     test_data: RecommenderTestData,
