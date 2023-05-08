@@ -159,6 +159,7 @@ class PopularGamesRecommender(BaseGamesRecommender):
         games: Optional[List[int]] = None,
     ) -> np.ndarray:
         """Popularity scores."""
+        # TODO Some default value for unknown games (#57)
         scores = self.data.loc[games] if games else self.data
         return np.tile(scores.to_numpy(), [users, 1])
 
