@@ -58,6 +58,7 @@ class RecommenderMetrics:
     ndcg: Dict[int, float]
     ndcg_exp: Dict[int, float]
     rmse: float
+    effective_catalog_size: Dict[int, float]
 
 
 def prediction_scores(
@@ -152,6 +153,10 @@ def calculate_metrics(
         k_values = frozenset(k_values)
 
     k_values = sorted(k_values | {y_true.shape[-1]})
+
+    ecs_all = effective_catalog_size(test_data, y_pred)
+    ecs = {k: ecs_all[k - 1] for k in k_values}
+
     ndcg = {}
 
     for k in k_values:
@@ -171,4 +176,9 @@ def calculate_metrics(
             k=k,
         )
 
-    return RecommenderMetrics(ndcg=ndcg, ndcg_exp=ndcg_exp, rmse=rmse)
+    return RecommenderMetrics(
+        ndcg=ndcg,
+        ndcg_exp=ndcg_exp,
+        rmse=rmse,
+        effective_catalog_size=ecs,
+    )
