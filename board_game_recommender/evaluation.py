@@ -58,6 +58,7 @@ class RecommenderMetrics:
     ndcg: Dict[int, float]
     ndcg_exp: Dict[int, float]
     rmse: float
+    effective_catalog_size: Dict[int, float]
 
 
 def prediction_scores(
@@ -71,6 +72,58 @@ def prediction_scores(
             for user, games in zip(test_data.user_ids, test_data.game_ids)
         ]
     )
+
+
+def effective_catalog_size(
+    test_data: RecommenderTestData,
+    y_pred: np.ndarray,
+) -> np.ndarray:
+    """Calculate the effective catalog size (ECS)."""
+
+    assert len(test_data.user_ids) == len(y_pred)
+    assert test_data.game_ids.shape == y_pred.shape
+
+    pos_counts = (
+        pl.LazyFrame(
+            data={
+                "user_id": np.repeat(test_data.user_ids, y_pred.shape[-1]),
+                "game_id": test_data.game_ids.reshape(-1),
+                "prediction": y_pred.reshape(-1),
+            }
+        )
+        .with_columns(
+            prediction_rank=pl.col("prediction")
+            .rank(method="random", descending=True)
+            .over("user_id")
+        )
+        .groupby("game_id", "prediction_rank")
+        .count()
+        .sort("game_id", "prediction_rank")
+        .select(
+            "game_id",
+            "prediction_rank",
+            pl.col("count").cumsum().over("game_id"),
+        )
+        .collect()
+        .pivot(
+            columns="game_id",
+            index="prediction_rank",
+            values="count",
+            aggregate_function=None,
+        )
+        .lazy()
+        .sort("prediction_rank")
+        .fill_null(strategy="forward")
+        .fill_null(0)
+        .drop("prediction_rank")
+        .collect()
+        .to_numpy()
+    )
+
+    probs = pos_counts / pos_counts.sum(axis=1).reshape((-1, 1))
+    ranks = np.argsort(-1 * pos_counts).argsort() + 1
+
+    return 2 * np.sum(probs * ranks, axis=1) + 1
 
 
 def calculate_metrics(
@@ -100,6 +153,10 @@ def calculate_metrics(
         k_values = frozenset(k_values)
 
     k_values = sorted(k_values | {y_true.shape[-1]})
+
+    ecs_all = effective_catalog_size(test_data, y_pred)
+    ecs = {k: ecs_all[k - 1] for k in k_values}
+
     ndcg = {}
 
     for k in k_values:
@@ -119,4 +176,9 @@ def calculate_metrics(
             k=k,
         )
 
-    return RecommenderMetrics(ndcg=ndcg, ndcg_exp=ndcg_exp, rmse=rmse)
+    return RecommenderMetrics(
+        ndcg=ndcg,
+        ndcg_exp=ndcg_exp,
+        rmse=rmse,
+        effective_catalog_size=ecs,
+    )
