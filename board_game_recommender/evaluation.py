@@ -60,6 +60,19 @@ class RecommenderMetrics:
     rmse: float
 
 
+def prediction_scores(
+    recommender: BaseGamesRecommender,
+    test_data: RecommenderTestData,
+) -> np.ndarray:
+    """Calculate the predicted scores from the recommender for the given test data."""
+    return np.array(
+        [
+            recommender.recommend_as_numpy(users=(user,), games=games)[0, :]
+            for user, games in zip(test_data.user_ids, test_data.game_ids)
+        ]
+    )
+
+
 def calculate_metrics(
     recommender: BaseGamesRecommender,
     test_data: RecommenderTestData,
@@ -69,12 +82,7 @@ def calculate_metrics(
     """Calculate RecommenderMetrics for given recommender model and RecommenderTestData."""
 
     y_true = test_data.ratings
-    y_pred = np.array(
-        [
-            recommender.recommend_as_numpy(users=(user,), games=games)[0, :]
-            for user, games in zip(test_data.user_ids, test_data.game_ids)
-        ]
-    )
+    y_pred = prediction_scores(recommender, test_data)
 
     if y_true.shape != y_pred.shape:
         raise ValueError(
