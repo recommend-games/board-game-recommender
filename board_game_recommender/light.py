@@ -4,7 +4,6 @@ import logging
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from random import randrange
 from typing import TYPE_CHECKING, FrozenSet, Iterable, List, Optional, Type, Union
 
 import numpy as np
@@ -75,25 +74,35 @@ class LightGamesRecommender(BaseGamesRecommender):
     ) -> None:
         self.data = data
 
+        assert data.users_factors.shape[-1] == data.items_factors.shape[0]
+        num_factors = data.items_factors.shape[0]
+        # TODO check other dimensions as well (num_users and num_items)
+
         self.intercept: float = data.intercept
 
         num_users = len(data.users_labels)
         self.users_labels: List[str] = list(data.users_labels)
         self.users_indexes = defaultdict(
-            lambda: randrange(num_users),
+            lambda: -1,
             zip(data.users_labels, range(num_users)),
         )
-        self.users_linear_terms = data.users_linear_terms
-        self.users_factors = data.users_factors
+        self.users_linear_terms = np.concatenate((data.users_linear_terms, np.zeros(1)))
+        self.users_factors = np.concatenate(
+            (data.users_factors, np.zeros((1, num_factors))),
+            axis=0,
+        )
 
         num_items = len(data.items_labels)
         self.items_labels: List[int] = list(data.items_labels)
         self.items_indexes = defaultdict(
-            lambda: randrange(num_items),
+            lambda: -1,
             zip(data.items_labels, range(num_items)),
         )
-        self.items_linear_terms = data.items_linear_terms
-        self.items_factors = data.items_factors
+        self.items_linear_terms = np.concatenate((data.items_linear_terms, np.zeros(1)))
+        self.items_factors = np.concatenate(
+            (data.items_factors, np.zeros((num_factors, 1))),
+            axis=1,
+        )
 
         LOGGER.info(
             "Loaded light recommender with %d users and %d items",
@@ -161,24 +170,22 @@ class LightGamesRecommender(BaseGamesRecommender):
 
         if users:
             user_ids = np.array([self.users_indexes[user] for user in users])
-            user_factors = self.users_factors[user_ids]
+            users_factors = self.users_factors[user_ids]
             users_linear_terms = self.users_linear_terms[user_ids].reshape(-1, 1)
         else:
-            user_factors = self.users_factors
-            users_linear_terms = self.users_linear_terms.reshape(-1, 1)
+            users_factors = self.users_factors[:-1, :]
+            users_linear_terms = self.users_linear_terms[:-1].reshape(-1, 1)
 
         if games:
-            # TODO Unknown games will cause a key error. Instead, use the user's
-            # average predicted rating (user + global bias) for unknown games. (#57)
             game_ids = np.array([self.items_indexes[game] for game in games])
             items_factors = self.items_factors[:, game_ids]
             items_linear_terms = self.items_linear_terms[game_ids].reshape(1, -1)
         else:
-            items_factors = self.items_factors
-            items_linear_terms = self.items_linear_terms.reshape(1, -1)
+            items_factors = self.items_factors[:, :-1]
+            items_linear_terms = self.items_linear_terms[:-1].reshape(1, -1)
 
         return (
-            user_factors @ items_factors  # (num_users, num_items)
+            users_factors @ items_factors  # (num_users, num_items)
             + users_linear_terms  # (num_users, 1)
             + items_linear_terms  # (1, num_items)
             + self.intercept  # (1,)
@@ -219,7 +226,9 @@ class LightGamesRecommender(BaseGamesRecommender):
         game_ids = np.array([self.items_indexes[game] for game in games])
         game_factors = self.items_factors[:, game_ids]
 
-        scores = cosine_similarity(game_factors, self.items_factors).mean(axis=0)
+        scores = cosine_similarity(game_factors, self.items_factors[:, :-1]).mean(
+            axis=0
+        )
 
         result = pd.DataFrame(index=self.items_labels, data={"score": scores})
         result["rank"] = result["score"].rank(method="min", ascending=False).astype(int)
@@ -238,7 +247,7 @@ class LightGamesRecommender(BaseGamesRecommender):
         game_ids = np.array([self.items_indexes[game] for game in games])
         game_factors = self.items_factors[:, game_ids]
 
-        scores = cosine_similarity(game_factors, self.items_factors)
+        scores = cosine_similarity(game_factors, self.items_factors[:, :-1])
         return dataframe_from_scores(games, self.items_labels, scores)
 
 
