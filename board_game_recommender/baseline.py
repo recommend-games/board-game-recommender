@@ -2,7 +2,8 @@
 
 import logging
 import os
-from typing import Any, FrozenSet, Iterable, List, Optional, Union
+from collections import defaultdict
+from typing import Any, Dict, FrozenSet, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -96,10 +97,28 @@ class PopularGamesRecommender(BaseGamesRecommender):
     user_id_field: str = "bgg_user_name"
     rating_id_field: str = "bgg_user_rating"
 
+    scores: Dict[int, float]
+    raw_scores: np.ndarray
+    default_value: float
+    game_ids: Tuple[int, ...]
+
     _known_games: Optional[FrozenSet[int]] = None
 
-    def __init__(self, data: pd.Series) -> None:
-        self.data = data
+    def __init__(
+        self,
+        game_ids: Iterable[int],
+        scores: np.ndarray,
+        default_value: Optional[float] = None,
+    ) -> None:
+        self.default_value = (
+            default_value if default_value is not None else scores.mean()
+        )
+        self.raw_scores = scores
+        self.game_ids = tuple(game_ids)
+        self.scores = defaultdict(
+            self.default_factory,
+            zip(self.game_ids, self.raw_scores),
+        )
 
     @classmethod
     def train(cls, ratings: pd.DataFrame) -> "PopularGamesRecommender":
@@ -138,7 +157,7 @@ class PopularGamesRecommender(BaseGamesRecommender):
     def known_games(self) -> FrozenSet[int]:
         if self._known_games is not None:
             return self._known_games
-        self._known_games = frozenset(self.data.index)
+        self._known_games = frozenset(self.game_ids)
         return self._known_games
 
     @property
@@ -147,11 +166,15 @@ class PopularGamesRecommender(BaseGamesRecommender):
 
     @property
     def num_games(self) -> int:
-        return len(self.data)
+        return len(self.game_ids)
 
     @property
     def known_users(self) -> FrozenSet[str]:
         return frozenset()
+
+    def default_factory(self) -> float:
+        """Default value for unknown games."""
+        return self.default_value
 
     def _recommendation_scores(
         self,
@@ -159,9 +182,12 @@ class PopularGamesRecommender(BaseGamesRecommender):
         games: Optional[List[int]] = None,
     ) -> np.ndarray:
         """Popularity scores."""
-        # TODO Some default value for unknown games (#57)
-        scores = self.data.loc[games] if games else self.data
-        return np.tile(scores.to_numpy(), [users, 1])
+        scores = (
+            np.array([self.scores[game_id] for game_id in games])
+            if games
+            else self.raw_scores
+        )
+        return np.tile(scores, [users, 1])
 
     def recommend(
         self,
@@ -171,7 +197,7 @@ class PopularGamesRecommender(BaseGamesRecommender):
         """Popular recommendations for certain users."""
         users = list(users)
         scores = self._recommendation_scores(users=len(users))
-        return dataframe_from_scores(users, self.data.index, scores)
+        return dataframe_from_scores(users, self.game_ids, scores)
 
     def recommend_as_numpy(
         self,
@@ -196,7 +222,11 @@ class PopularMeanGamesRecommender(PopularGamesRecommender):
     @classmethod
     def train(cls, ratings: pd.DataFrame) -> "PopularMeanGamesRecommender":
         data = ratings.groupby(cls.id_field, sort=False)[cls.rating_id_field].mean()
-        return cls(data=data)
+        return cls(
+            game_ids=data.index,
+            scores=data.to_numpy(),
+            default_value=ratings[cls.rating_id_field].mean(),
+        )
 
 
 class PopularBayesianGamesRecommender(PopularGamesRecommender):
@@ -225,7 +255,11 @@ class PopularBayesianGamesRecommender(PopularGamesRecommender):
             stats["size"] + num_dummies
         )
 
-        return cls(data=data)
+        return cls(
+            game_ids=data.index,
+            scores=data.to_numpy(),
+            default_value=dummy_rating,
+        )
 
 
 class PopularNumRatingsGamesRecommender(PopularGamesRecommender):
@@ -234,4 +268,4 @@ class PopularNumRatingsGamesRecommender(PopularGamesRecommender):
     @classmethod
     def train(cls, ratings: pd.DataFrame) -> "PopularNumRatingsGamesRecommender":
         data = ratings.groupby(cls.id_field, sort=False).size()
-        return cls(data=data)
+        return cls(game_ids=data.index, scores=data.to_numpy())
