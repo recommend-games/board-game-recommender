@@ -106,6 +106,34 @@ class LightFMGamesRecommender(BaseGamesRecommender):
 
         return cls(model=model, users_labels=user_labels, items_labels=item_labels)
 
+    @classmethod
+    def train_from_csv(cls, ratings_file: PATH) -> "LightFMGamesRecommender":
+        """Train the recommender from a ratings file in CSV format."""
+        ratings = pd.read_csv(ratings_file)
+        return cls.train(
+            ratings[
+                [
+                    cls.id_field,
+                    cls.user_id_field,
+                    cls.rating_id_field,
+                ]
+            ]
+        )
+
+    @classmethod
+    def train_from_json_lines(cls, ratings_file: PATH) -> "LightFMGamesRecommender":
+        """Train the recommender from a ratings file in JSON lines format."""
+        ratings = pd.read_json(ratings_file, orient="records", lines=True)
+        return cls.train(
+            ratings[
+                [
+                    cls.id_field,
+                    cls.user_id_field,
+                    cls.rating_id_field,
+                ]
+            ]
+        )
+
     @property
     def known_games(self) -> FrozenSet[int]:
         if self._known_games is not None:
