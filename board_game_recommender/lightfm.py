@@ -44,6 +44,10 @@ def dataframe_to_matrix(
 class LightFMGamesRecommender(BaseGamesRecommender):
     """TODO."""
 
+    id_field: str = "bgg_id"
+    user_id_field: str = "bgg_user_name"
+    rating_id_field: str = "bgg_user_rating"
+
     _known_games: Optional[FrozenSet[int]] = None
     _known_users: Optional[FrozenSet[str]] = None
 
@@ -90,9 +94,9 @@ class LightFMGamesRecommender(BaseGamesRecommender):
 
         ratings_matrix, user_labels, item_labels = dataframe_to_matrix(
             data=ratings,
-            user_col="bgg_user_name",
-            item_col="bgg_id",
-            rating_col="bgg_user_rating",
+            user_col=cls.user_id_field,
+            item_col=cls.id_field,
+            rating_col=cls.rating_id_field,
         )
 
         # FIXME more model params
