@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Dict, FrozenSet, Iterable, List, Optional, Union
+from typing import Dict, FrozenSet, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -16,35 +16,29 @@ LOGGER = logging.getLogger(__name__)
 PATH = Union[str, os.PathLike]
 
 
-def train(ratings_file: PATH) -> tuple:
+def dataframe_to_matrix(
+    data: pd.DataFrame,
+    *,
+    user_col: str,
+    item_col: str,
+    rating_col: str,
+) -> Tuple[coo_matrix, List[str], List[int]]:
     """TODO."""
 
-    ratings = pd.read_csv(ratings_file)
-    ratings.dropna(inplace=True)
-    LOGGER.info("Loaded %d ratings from <%s>", len(ratings), ratings_file)
+    user_cat = pd.Categorical(data[user_col])
+    user_labels = list(user_cat.categories)
+    user_ids = user_cat.codes
 
-    ratings["bgg_id"] = pd.Categorical(ratings["bgg_id"])
-    ratings["bgg_user_name"] = pd.Categorical(ratings["bgg_user_name"])
-    ratings["user_id"] = ratings["bgg_user_name"].cat.codes
-    ratings["item_id"] = ratings["bgg_id"].cat.codes
+    item_cat = pd.Categorical(data[item_col])
+    item_labels = list(item_cat.categories)
+    item_ids = item_cat.codes
 
-    users_labels = list(ratings["bgg_user_name"].cat.categories)
-    num_users = len(users_labels)
-    users_indexes = dict(zip(users_labels, range(num_users)))
-
-    items_labels = list(ratings["bgg_id"].cat.categories)
-    num_items = len(items_labels)
-    items_indexes = dict(zip(items_labels, range(num_items)))
-
-    ratings_matrix = coo_matrix(
-        (ratings["bgg_user_rating"], (ratings["user_id"], ratings["item_id"])),
-        shape=(num_users, num_items),
+    matrix = coo_matrix(
+        (data[rating_col], (user_ids, item_ids)),
+        shape=(len(user_labels), len(item_labels)),
     )
 
-    model = LightFM()
-    model.fit(ratings_matrix)
-
-    return model, users_labels, users_indexes, items_labels, items_indexes
+    return matrix, user_labels, item_labels
 
 
 class LightFMGamesRecommender(BaseGamesRecommender):
@@ -82,6 +76,31 @@ class LightFMGamesRecommender(BaseGamesRecommender):
             self.num_users,
             self.num_games,
         )
+
+    @classmethod
+    def train(
+        cls,
+        ratings: pd.DataFrame,
+        *,
+        num_factors=32,
+        max_iterations=100,
+        verbose=False,
+    ) -> "LightFMGamesRecommender":
+        """TODO."""
+
+        ratings_matrix, user_labels, item_labels = dataframe_to_matrix(
+            data=ratings,
+            user_col="bgg_user_name",
+            item_col="bgg_id",
+            rating_col="bgg_user_rating",
+        )
+
+        # FIXME more model params
+        model = LightFM()
+        # FIXME more training params
+        model.fit(ratings_matrix)
+
+        return cls(model=model, users_labels=user_labels, items_labels=item_labels)
 
     @property
     def known_games(self) -> FrozenSet[int]:
