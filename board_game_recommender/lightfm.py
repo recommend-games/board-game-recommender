@@ -27,11 +27,11 @@ def dataframe_to_matrix(
 
     user_cat = pd.Categorical(data[user_col])
     user_labels = list(user_cat.categories)
-    user_ids = user_cat.codes
+    user_ids = list(user_cat.codes)
 
     item_cat = pd.Categorical(data[item_col])
     item_labels = list(item_cat.categories)
-    item_ids = item_cat.codes
+    item_ids = list(item_cat.codes)
 
     matrix = coo_matrix(
         (data[rating_col], (user_ids, item_ids)),
@@ -110,6 +110,7 @@ class LightFMGamesRecommender(BaseGamesRecommender):
     def train_from_csv(cls, ratings_file: PATH) -> "LightFMGamesRecommender":
         """Train the recommender from a ratings file in CSV format."""
         ratings = pd.read_csv(ratings_file)
+        ratings.dropna(inplace=True)
         return cls.train(
             ratings[
                 [
@@ -124,6 +125,7 @@ class LightFMGamesRecommender(BaseGamesRecommender):
     def train_from_json_lines(cls, ratings_file: PATH) -> "LightFMGamesRecommender":
         """Train the recommender from a ratings file in JSON lines format."""
         ratings = pd.read_json(ratings_file, orient="records", lines=True)
+        ratings.dropna(inplace=True)
         return cls.train(
             ratings[
                 [
