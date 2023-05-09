@@ -2,6 +2,8 @@
 
 import logging
 import os
+from collections import defaultdict
+from random import randrange
 from typing import Dict, FrozenSet, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -59,20 +61,17 @@ class LightFMGamesRecommender(BaseGamesRecommender):
     ) -> None:
         self.model = model
 
+        # TODO better default values for unknown users and games
         self.users_labels: List[str] = list(users_labels)
-        self.users_indexes: Dict[str, int] = dict(
-            zip(
-                self.users_labels,
-                range(self.num_users),
-            )
+        self.users_indexes: Dict[str, int] = defaultdict(
+            lambda: randrange(self.num_users),
+            zip(self.users_labels, range(self.num_users)),
         )
 
         self.items_labels: List[int] = list(items_labels)
-        self.items_indexes: Dict[int, int] = dict(
-            zip(
-                self.items_labels,
-                range(self.num_games),
-            )
+        self.items_indexes: Dict[int, int] = defaultdict(
+            lambda: randrange(self.num_games),
+            zip(self.items_labels, range(self.num_games)),
         )
 
         LOGGER.info(
