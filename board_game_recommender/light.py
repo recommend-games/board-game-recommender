@@ -196,6 +196,20 @@ class LightGamesRecommender(BaseGamesRecommender):
             + self.intercept  # (1,)
         )
 
+    def _game_scores(
+        self: "LightGamesRecommender",
+        games: Optional[List[int]] = None,
+    ) -> np.ndarray:
+        """Calculate average game scores from bias terms."""
+
+        if games:
+            game_ids = np.array([self.items_indexes[game] for game in games])
+            items_linear_terms = self.items_linear_terms[game_ids]
+        else:
+            items_linear_terms = self.items_linear_terms[:-1]
+
+        return items_linear_terms + self.intercept
+
     def recommend(
         self: "LightGamesRecommender",
         users: Iterable[str],
@@ -226,7 +240,11 @@ class LightGamesRecommender(BaseGamesRecommender):
         """Calculate recommendations for a group of users."""
 
         users = list(users)
-        scores = self._recommendation_scores(users=users, avg_users=True)
+        scores = (
+            self._recommendation_scores(users=users, avg_users=True)
+            if users
+            else self._game_scores()
+        )
         return dataframe_from_scores(["_all"], self.items_labels, scores)
 
     def recommend_group_as_numpy(
@@ -238,7 +256,11 @@ class LightGamesRecommender(BaseGamesRecommender):
 
         users = list(users)
         games = list(games)
-        return self._recommendation_scores(users=users, games=games, avg_users=True)
+        return (
+            self._recommendation_scores(users=users, games=games, avg_users=True)
+            if users
+            else self._game_scores(games).reshape(1, -1)
+        )
 
     def recommend_similar(
         self: "LightGamesRecommender",
