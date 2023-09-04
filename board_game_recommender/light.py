@@ -165,6 +165,7 @@ class LightGamesRecommender(BaseGamesRecommender):
         self: "LightGamesRecommender",
         users: Optional[List[str]] = None,
         games: Optional[List[int]] = None,
+        avg_users: bool = False,
     ) -> np.ndarray:
         """Calculate recommendations scores for certain users and games."""
 
@@ -175,6 +176,10 @@ class LightGamesRecommender(BaseGamesRecommender):
         else:
             users_factors = self.users_factors[:-1, :]
             users_linear_terms = self.users_linear_terms[:-1].reshape(-1, 1)
+
+        if avg_users:
+            users_factors = users_factors.mean(axis=0).reshape(1, -1)
+            users_linear_terms = users_linear_terms.mean(axis=0).reshape(1, 1)
 
         if games:
             game_ids = np.array([self.items_indexes[game] for game in games])
@@ -190,6 +195,20 @@ class LightGamesRecommender(BaseGamesRecommender):
             + items_linear_terms  # (1, num_items)
             + self.intercept  # (1,)
         )
+
+    def _game_scores(
+        self: "LightGamesRecommender",
+        games: Optional[List[int]] = None,
+    ) -> np.ndarray:
+        """Calculate average game scores from bias terms."""
+
+        if games:
+            game_ids = np.array([self.items_indexes[game] for game in games])
+            items_linear_terms = self.items_linear_terms[game_ids]
+        else:
+            items_linear_terms = self.items_linear_terms[:-1]
+
+        return items_linear_terms + self.intercept
 
     def recommend(
         self: "LightGamesRecommender",
@@ -212,6 +231,36 @@ class LightGamesRecommender(BaseGamesRecommender):
         users = list(users)
         games = list(games)
         return self._recommendation_scores(users=users, games=games)
+
+    def recommend_group(
+        self: "LightGamesRecommender",
+        users: Iterable[str],
+        **kwargs,
+    ) -> pd.DataFrame:
+        """Calculate recommendations for a group of users."""
+
+        users = list(users)
+        scores = (
+            self._recommendation_scores(users=users, avg_users=True)
+            if users
+            else self._game_scores()
+        )
+        return dataframe_from_scores(["_all"], self.items_labels, scores)
+
+    def recommend_group_as_numpy(
+        self: "LightGamesRecommender",
+        users: Iterable[str],
+        games: Iterable[int],
+    ) -> np.ndarray:
+        """Calculate recommendations for a group of users and games as a numpy array."""
+
+        users = list(users)
+        games = list(games)
+        return (
+            self._recommendation_scores(users=users, games=games, avg_users=True)
+            if users
+            else self._game_scores(games).reshape(1, -1)
+        )
 
     def recommend_similar(
         self: "LightGamesRecommender",
