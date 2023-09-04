@@ -477,6 +477,84 @@ class GamesRecommender(BaseGamesRecommender):
         )
         return result["score"].to_numpy().reshape(len(users), len(games))
 
+    def recommend_group(
+        self: "GamesRecommender",
+        users: Iterable[UserKeyType],
+        *,
+        games=None,
+        games_filters=None,
+        exclude=None,
+        exclude_clusters=True,
+        exclude_compilations=True,
+        ascending=True,
+        star_percentiles=None,
+        **kwargs,
+    ) -> tc.SFrame:
+        """Recommend games for a group of users."""
+
+        users = [self.process_user_id(user) for user in arg_to_iter(users)] or [None]
+        self.logger.info("Calculating recommendations for %d users", len(users))
+
+        items = kwargs.pop("items", None)
+        assert games is None or items is None, "cannot use <games> and <items> together"
+        games = items if games is None else games
+        games = self._process_games(games, games_filters)
+        if games is not None:
+            self.logger.info("Restrict recommendations to %d games", len(games))
+        exclude = self._process_exclude(
+            users,
+            exclude,
+            False,
+            exclude_clusters,
+            exclude_compilations,
+        )
+        if exclude is not None:
+            self.logger.info(
+                "Exclude %d game-user pairs from recommendations",
+                len(exclude),
+            )
+
+        kwargs["k"] = self.num_games
+
+        recommendations = (
+            self.model.recommend(
+                users=users,
+                items=games,
+                exclude=exclude,
+                exclude_known=False,
+                **kwargs,
+            )
+            .groupby(
+                key_column_names="bgg_id",
+                operations={"score": tc.aggregate.MEAN("score")},
+            )
+            .sort("score", ascending=False)
+        )
+
+        recommendations["rank"] = range(1, len(recommendations) + 1)
+
+        self.logger.info("Calculated %d recommendations", len(recommendations))
+
+        del users, items, games, exclude
+
+        return self._post_process_games(
+            games=recommendations,
+            columns=["rank", "name", self.id_field, "score"],
+            join_on=self.id_field,
+            sort_by="rank",
+            star_percentiles=star_percentiles,
+            ascending=ascending,
+        )
+
+    def recommend_group_as_numpy(
+        self: "GamesRecommender",
+        users: Iterable[str],
+        games: Iterable[int],
+    ) -> np.ndarray:
+        """Calculate recommendations for a group of users and games as a numpy array."""
+
+        raise NotImplementedError
+
     def recommend_similar(
         self: "GamesRecommender",
         games: Iterable[GameKeyType],
