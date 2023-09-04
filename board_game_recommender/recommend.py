@@ -553,7 +553,29 @@ class GamesRecommender(BaseGamesRecommender):
     ) -> np.ndarray:
         """Calculate recommendations for a group of users and games as a numpy array."""
 
-        raise NotImplementedError
+        users = list(users)
+        games = list(games)
+        games_sf = tc.SFrame(
+            {
+                self.id_field: games,
+                "sort_games": range(len(games)),
+            }
+        )
+
+        recommendations = self.model.recommend(
+            users=users,
+            items=games,
+            exclude_known=False,
+            k=len(games),
+        ).groupby(
+            key_column_names=self.id_field,
+            operations={"score": tc.aggregate.MEAN("score")},
+        )
+
+        assert len(recommendations) == len(games)
+
+        result = recommendations.join(games_sf).sort("sort_games")
+        return result["score"].to_numpy().reshape(1, len(games))
 
     def recommend_similar(
         self: "GamesRecommender",
