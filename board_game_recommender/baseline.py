@@ -73,6 +73,19 @@ class RandomGamesRecommender(BaseGamesRecommender):
 
         return dataframe_from_scores(users, games, scores)
 
+    def recommend_group(
+        self,
+        users: Iterable[str],
+        games: Iterable[int],
+        **kwargs,
+    ) -> pd.DataFrame:
+        """Random recommendations for a group of users."""
+
+        games = list(games)
+        scores = self._recommendation_scores(users=1, games=len(games))
+
+        return dataframe_from_scores(["_all"], games, scores)
+
     def recommend_as_numpy(
         self,
         users: Iterable[str],
@@ -82,6 +95,15 @@ class RandomGamesRecommender(BaseGamesRecommender):
         users = list(users)
         games = list(games)
         return self._recommendation_scores(users=len(users), games=len(games))
+
+    def recommend_group_as_numpy(
+        self,
+        users: Iterable[str],
+        games: Iterable[int],
+    ) -> np.ndarray:
+        """Random recommendations for a group of users and games as a numpy array."""
+        games = list(games)
+        return self._recommendation_scores(users=1, games=len(games))
 
     def recommend_similar(self, games: Iterable[int], **kwargs) -> pd.DataFrame:
         raise NotImplementedError
