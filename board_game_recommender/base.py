@@ -52,12 +52,28 @@ class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
         """Recommend games for given users."""
 
     @abstractmethod
+    def recommend_group(
+        self: "BaseGamesRecommender",
+        users: Iterable[UserKeyType],
+        **kwargs,
+    ) -> DataFrame:
+        """Recommend games for given group of users."""
+
+    @abstractmethod
     def recommend_as_numpy(
         self: "BaseGamesRecommender",
         users: Iterable[UserKeyType],
         games: Iterable[GameKeyType],
     ) -> np.ndarray:
         """Recommend games for given users and games as a numpy array."""
+
+    @abstractmethod
+    def recommend_group_as_numpy(
+        self: "BaseGamesRecommender",
+        users: Iterable[UserKeyType],
+        games: Iterable[GameKeyType],
+    ) -> np.ndarray:
+        """Recommend games for given group of users and games as a numpy array."""
 
     @abstractmethod
     def recommend_similar(
