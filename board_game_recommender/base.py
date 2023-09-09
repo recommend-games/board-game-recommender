@@ -1,7 +1,15 @@
 """Abstract base recommender class."""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, AbstractSet, Generic, Iterable, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    AbstractSet,
+    Generic,
+    Iterable,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 
