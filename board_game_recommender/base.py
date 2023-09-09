@@ -90,3 +90,30 @@ class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
         **kwargs,
     ) -> DataFrame:
         """Find games similar to the given ones."""
+
+    def recommend_random_games(
+        self: "BaseGamesRecommender",
+        users: Iterable[UserKeyType],
+        games: Iterable[GameKeyType],
+        *,
+        num_games: int = 1,
+        random_seed: Optional[int] = None,
+    ) -> np.ndarray:
+        """
+        Select random games based on recommendations for a given group of
+        users and games as a numpy array.
+        """
+
+        users = list(users)
+        games = list(games)
+
+        weights = self.recommend_group_as_numpy(users, games).reshape(-1)
+        weights = np.exp(weights)
+
+        rng = np.random.default_rng(seed=random_seed)
+        return rng.choice(
+            a=games,
+            size=num_games,
+            replace=False,
+            p=weights / weights.sum(),
+        )
