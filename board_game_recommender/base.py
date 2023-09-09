@@ -99,7 +99,7 @@ class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
     ) -> DataFrame:
         """Find games similar to the given ones."""
 
-    def recommend_random_games(
+    def recommend_random_games_as_numpy(
         self: "BaseGamesRecommender",
         users: Iterable[UserKeyType],
         games: Iterable[GameKeyType],
