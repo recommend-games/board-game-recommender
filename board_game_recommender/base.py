@@ -115,13 +115,16 @@ class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
         users = list(users)
         games = list(games)
 
+        if not games:
+            return np.array([])
+
         weights = self.recommend_group_as_numpy(users, games).reshape(-1)
         weights = np.exp(weights)
 
         rng = np.random.default_rng(seed=random_seed)
         return rng.choice(
             a=games,
-            size=num_games,
+            size=min(num_games, len(games)),
             replace=False,
             p=weights / weights.sum(),
         )
