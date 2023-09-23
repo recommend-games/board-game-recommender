@@ -118,6 +118,7 @@ class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
         if not games:
             return np.array([])
 
+        # TODO: allow for different weighting schemes
         weights = self.recommend_group_as_numpy(users, games).reshape(-1)
         weights = np.exp(weights)
 
