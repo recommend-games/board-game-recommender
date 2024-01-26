@@ -97,6 +97,7 @@ ENV/
 ._*
 bin/
 include/
+lightning_logs/
 share/
 pip-selfcheck.json
 
