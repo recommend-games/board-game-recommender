@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Dict, Tuple, Type
+from typing import Dict, Iterable, Tuple, Type
 
 import lightning
 import numpy as np
@@ -19,23 +19,31 @@ class CollaborativeFilteringModel(lightning.LightningModule):
     def __init__(
         self,
         *,
-        num_users: int,
-        num_items: int,
+        users: Iterable[str],
+        games: Iterable[int],
         embedding_dim: int = 32,
         learning_rate: float = 1e-3,
     ):
         super().__init__()
-        self.user_embedding = nn.Embedding(num_users, embedding_dim)
-        self.item_embedding = nn.Embedding(num_items, embedding_dim)
+
+        self.users = np.array(list(users), dtype=np.str_)
+        self.user_ids = {user: i for i, user in enumerate(self.users)}
+        self.games = np.array(list(games), dtype=np.int32)
+        self.game_ids = {game: i for i, game in enumerate(self.games)}
+
+        self.user_embedding = nn.Embedding(len(self.users), embedding_dim)
+        self.game_embedding = nn.Embedding(len(self.games), embedding_dim)
         self.linear = nn.Linear(embedding_dim, 1)
         self.loss_fn = nn.MSELoss()
+
         self.learning_rate = learning_rate
+
         self.save_hyperparameters()
 
     def forward(self, user: torch.Tensor, item: torch.Tensor) -> torch.Tensor:
         user_embedded = self.user_embedding(user)
-        item_embedded = self.item_embedding(item)
-        product = user_embedded * item_embedded
+        game_embedded = self.game_embedding(item)
+        product = user_embedded * game_embedded
         return self.linear(product).squeeze()
 
     def training_step(self, batch: torch.Tensor, batch_idx: int = 0) -> torch.Tensor:
@@ -64,7 +72,7 @@ def load_jl(path: os.PathLike, schema: Dict[str, Type[pl.DataType]]) -> pl.DataF
 
 def load_data(
     ratings_path: os.PathLike,
-) -> Tuple[pl.DataFrame, np.ndarray, Dict[str, int], np.ndarray, Dict[str, int]]:
+) -> Tuple[pl.DataFrame, np.ndarray, np.ndarray]:
     ratings = load_jl(
         path=ratings_path,
         schema={
@@ -86,7 +94,7 @@ def load_data(
         game_id=ratings["bgg_id"].replace(game_ids, return_dtype=pl.Int32),
     )
 
-    return ratings, users.to_numpy(), user_ids, games.to_numpy(), game_ids
+    return ratings, users.to_numpy(), games.to_numpy()
 
 
 def train_model(
@@ -95,11 +103,11 @@ def train_model(
     max_epochs: int = 10,
     batch_size: int = 1024,
 ) -> CollaborativeFilteringModel:
-    ratings, users, user_ids, games, game_ids = load_data(ratings_path)
+    ratings, users, games = load_data(ratings_path)
 
     model = CollaborativeFilteringModel(
-        num_users=len(users),
-        num_items=len(games),
+        users=users,
+        games=games,
         embedding_dim=32,
         learning_rate=1e-3,
     )
