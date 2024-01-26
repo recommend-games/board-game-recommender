@@ -114,7 +114,11 @@ def train_model(
     train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    trainer = lightning.Trainer(max_epochs=max_epochs)
+    csv_logger = lightning.pytorch.loggers.csv_logs.CSVLogger()
+    trainer = lightning.Trainer(
+        max_epochs=max_epochs,
+        logger=[csv_logger],
+    )
     trainer.fit(model, train_loader, val_loader)
 
     return model
