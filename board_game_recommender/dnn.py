@@ -49,7 +49,7 @@ class CollaborativeFilteringModel(lightning.LightningModule):
     def recommend(self, user: str, n: int = 10) -> np.ndarray:
         user_id = self.user_ids[user]
         user_tensor = torch.tensor([user_id])
-        game_tensor = torch.tensor(self.games)
+        game_tensor = torch.arange(len(self.games))
         predictions = self(user_tensor, game_tensor)
         top_n = torch.topk(predictions, n)
         return self.games[top_n.indices.numpy()]
@@ -133,14 +133,14 @@ def train_model(
         dataset=dataset,
         batch_size=batch_size,
         num_workers=num_cpus - 1,
-        persistent_workers=True,
+        persistent_workers=num_cpus > 1,
         shuffle=True,
     )
     val_loader = DataLoader(
         dataset=dataset,
         batch_size=batch_size,
         num_workers=num_cpus - 1,
-        persistent_workers=True,
+        persistent_workers=num_cpus > 1,
         shuffle=False,
     )
 
