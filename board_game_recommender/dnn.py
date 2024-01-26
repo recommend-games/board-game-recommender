@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, Tuple, Type
 
 import lightning
+import numpy as np
 import polars as pl
 import torch
 import torch.nn as nn
@@ -63,7 +64,7 @@ def load_jl(path: os.PathLike, schema: Dict[str, Type[pl.DataType]]) -> pl.DataF
 
 def load_data(
     ratings_path: os.PathLike,
-) -> Tuple[pl.DataFrame, pl.Series, Dict[str, int], pl.Series, Dict[int, int]]:
+) -> Tuple[pl.DataFrame, np.ndarray, Dict[str, int], np.ndarray, Dict[str, int]]:
     ratings = load_jl(
         path=ratings_path,
         schema={
@@ -85,7 +86,7 @@ def load_data(
         game_id=ratings["bgg_id"].replace(game_ids, return_dtype=pl.Int32),
     )
 
-    return ratings, users, user_ids, games, game_ids
+    return ratings, users.to_numpy(), user_ids, games.to_numpy(), game_ids
 
 
 def train_model(
@@ -110,18 +111,19 @@ def train_model(
     ratings_array = ratings["bgg_user_rating"].to_numpy()
     ratings_tensor = torch.from_numpy(ratings_array)
 
+    num_cpus = os.cpu_count() or 1
     dataset = TensorDataset(user_ids_tensor, game_ids_tensor, ratings_tensor)
     train_loader = DataLoader(
         dataset=dataset,
         batch_size=batch_size,
-        num_workers=os.cpu_count() - 1,
+        num_workers=num_cpus - 1,
         persistent_workers=True,
         shuffle=True,
     )
     val_loader = DataLoader(
         dataset=dataset,
         batch_size=batch_size,
-        num_workers=os.cpu_count() - 1,
+        num_workers=num_cpus - 1,
         persistent_workers=True,
         shuffle=False,
     )
