@@ -38,13 +38,21 @@ class CollaborativeFilteringModel(lightning.LightningModule):
 
         self.learning_rate = learning_rate
 
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=("users", "user_ids", "games", "game_ids"))
 
     def forward(self, user: torch.Tensor, item: torch.Tensor) -> torch.Tensor:
         user_embedded = self.user_embedding(user)
         game_embedded = self.game_embedding(item)
         product = user_embedded * game_embedded
         return self.linear(product).squeeze()
+
+    def recommend(self, user: str, n: int = 10) -> np.ndarray:
+        user_id = self.user_ids[user]
+        user_tensor = torch.tensor([user_id])
+        game_tensor = torch.tensor(self.games)
+        predictions = self(user_tensor, game_tensor)
+        top_n = torch.topk(predictions, n)
+        return self.games[top_n.indices.numpy()]
 
     def training_step(self, batch: torch.Tensor, batch_idx: int = 0) -> torch.Tensor:
         user, item, target = batch
@@ -112,11 +120,11 @@ def train_model(
         learning_rate=1e-3,
     )
 
-    user_ids_array = ratings["user_id"].to_numpy()
+    user_ids_array = ratings["user_id"].to_numpy(writable=True)
     user_ids_tensor = torch.from_numpy(user_ids_array)
-    game_ids_array = ratings["game_id"].to_numpy()
+    game_ids_array = ratings["game_id"].to_numpy(writable=True)
     game_ids_tensor = torch.from_numpy(game_ids_array)
-    ratings_array = ratings["bgg_user_rating"].to_numpy()
+    ratings_array = ratings["bgg_user_rating"].to_numpy(writable=True)
     ratings_tensor = torch.from_numpy(ratings_array)
 
     num_cpus = os.cpu_count() or 1
