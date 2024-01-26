@@ -29,7 +29,6 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         self.linear = nn.Linear(embedding_dim, 1)
         self.loss_fn = nn.MSELoss()
         self.learning_rate = learning_rate
-        self.double()
         self.save_hyperparameters()
 
     def forward(self, user: torch.Tensor, item: torch.Tensor) -> torch.Tensor:
@@ -69,8 +68,8 @@ def load_data(
         path=ratings_path,
         schema={
             "bgg_user_name": pl.Utf8,
-            "bgg_id": pl.Int64,
-            "bgg_user_rating": pl.Float64,
+            "bgg_id": pl.Int32,
+            "bgg_user_rating": pl.Float32,
         },
     )
     ratings = ratings.drop_nulls()
@@ -82,8 +81,8 @@ def load_data(
     game_ids = {game: i for i, game in enumerate(games)}
 
     ratings = ratings.with_columns(
-        user_id=ratings["bgg_user_name"].replace(user_ids, return_dtype=pl.Int64),
-        game_id=ratings["bgg_id"].replace(game_ids, return_dtype=pl.Int64),
+        user_id=ratings["bgg_user_name"].replace(user_ids, return_dtype=pl.Int32),
+        game_id=ratings["bgg_id"].replace(game_ids, return_dtype=pl.Int32),
     )
 
     return ratings, users, user_ids, games, game_ids
