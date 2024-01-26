@@ -114,7 +114,7 @@ def train_model(
     train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    csv_logger = lightning.pytorch.loggers.csv_logs.CSVLogger()
+    csv_logger = lightning.pytorch.loggers.csv_logs.CSVLogger(save_dir=".")
     trainer = lightning.Trainer(
         max_epochs=max_epochs,
         logger=[csv_logger],
