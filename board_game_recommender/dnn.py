@@ -111,8 +111,20 @@ def train_model(
     ratings_tensor = torch.from_numpy(ratings_array)
 
     dataset = TensorDataset(user_ids_tensor, game_ids_tensor, ratings_tensor)
-    train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(
+        dataset=dataset,
+        batch_size=batch_size,
+        num_workers=os.cpu_count() - 1,
+        persistent_workers=True,
+        shuffle=True,
+    )
+    val_loader = DataLoader(
+        dataset=dataset,
+        batch_size=batch_size,
+        num_workers=os.cpu_count() - 1,
+        persistent_workers=True,
+        shuffle=False,
+    )
 
     csv_logger = lightning.pytorch.loggers.csv_logs.CSVLogger(save_dir=".")
     trainer = lightning.Trainer(
