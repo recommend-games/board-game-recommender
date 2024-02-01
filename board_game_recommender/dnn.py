@@ -16,6 +16,31 @@ LOGGER = logging.getLogger(__name__)
 
 
 class CollaborativeFilteringModel(lightning.LightningModule):
+    @classmethod
+    def load_from_dir(
+        cls,
+        save_dir: os.PathLike,
+        checkpoint_file: os.PathLike,
+        items_file: os.PathLike = "items.npz",
+    ) -> "CollaborativeFilteringModel":
+        save_dir = Path(save_dir).resolve()
+        LOGGER.info("Loading model from <%s>", save_dir)
+
+        items_path = save_dir / items_file
+        LOGGER.info("Loading items from <%s>", items_path)
+        with np.load(items_path) as items:
+            users = items["users"]
+            games = items["games"]
+
+        checkpoint_path = save_dir / checkpoint_file
+        LOGGER.info("Loading checkpoint from <%s>", checkpoint_path)
+
+        return cls.load_from_checkpoint(
+            checkpoint_path=checkpoint_path,
+            users=users,
+            games=games,
+        )
+
     def __init__(
         self,
         *,
@@ -144,12 +169,26 @@ def train_model(
         shuffle=False,
     )
 
-    csv_logger = lightning.pytorch.loggers.csv_logs.CSVLogger(save_dir=".")
+    checkpoint_callback = lightning.pytorch.callbacks.model_checkpoint.ModelCheckpoint(
+        monitor="val_loss",
+        mode="min",
+        save_top_k=3,
+        save_last=True,
+        # dirpath=".",
+    )
+
+    csv_logger = lightning.pytorch.loggers.csv_logs.CSVLogger(
+        save_dir=".",
+    )
+
     trainer = lightning.Trainer(
         max_epochs=max_epochs,
         logger=[csv_logger],
+        callbacks=[checkpoint_callback],
+        fast_dev_run=True,
     )
     trainer.fit(model, train_loader, val_loader)
+    # TODO: Save best checkpoint and items as its sibling
 
     return model
 
