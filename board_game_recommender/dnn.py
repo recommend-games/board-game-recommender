@@ -135,6 +135,8 @@ def train_model(
     ratings_path: os.PathLike,
     max_epochs: int = 10,
     batch_size: int = 1024,
+    save_dir: os.PathLike = ".",
+    fast_dev_run: bool = False,
 ) -> CollaborativeFilteringModel:
     ratings, users, games = load_data(ratings_path)
 
@@ -169,26 +171,38 @@ def train_model(
         shuffle=False,
     )
 
+    save_dir = Path(save_dir).resolve()
+    LOGGER.info("Saving items to <%s>", save_dir)
+
     checkpoint_callback = lightning.pytorch.callbacks.model_checkpoint.ModelCheckpoint(
         monitor="val_loss",
         mode="min",
         save_top_k=3,
         save_last=True,
-        # dirpath=".",
     )
 
     csv_logger = lightning.pytorch.loggers.csv_logs.CSVLogger(
-        save_dir=".",
+        save_dir=save_dir,
     )
 
     trainer = lightning.Trainer(
         max_epochs=max_epochs,
         logger=[csv_logger],
         callbacks=[checkpoint_callback],
-        fast_dev_run=True,
+        default_root_dir=save_dir,
+        fast_dev_run=fast_dev_run,
     )
+
     trainer.fit(model, train_loader, val_loader)
-    # TODO: Save best checkpoint and items as its sibling
+
+    best_model_path = Path(checkpoint_callback.best_model_path).resolve()
+    items_path = best_model_path.parent / "items.npz"
+    LOGGER.info("Saving items to <%s>", items_path)
+    np.savez(
+        file=items_path,
+        users=users,
+        games=games,
+    )
 
     return model
 
@@ -203,4 +217,10 @@ if __name__ == "__main__":
     data_dir = Path(__file__).parent.parent.parent / "board-game-data"
     ratings_path = data_dir / "scraped" / "bgg_RatingItem.jl"
 
-    train_model(ratings_path=ratings_path)
+    train_model(
+        ratings_path=ratings_path,
+        max_epochs=10,
+        batch_size=1024,
+        save_dir=".",
+        fast_dev_run=False,
+    )
