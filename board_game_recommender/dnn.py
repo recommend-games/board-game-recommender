@@ -174,6 +174,8 @@ def train_model(
     save_dir = Path(save_dir).resolve()
     LOGGER.info("Saving items to <%s>", save_dir)
 
+    # TODO: Add early stopping and increase max_epochs
+
     checkpoint_callback = lightning.pytorch.callbacks.model_checkpoint.ModelCheckpoint(
         monitor="val_loss",
         mode="min",
@@ -195,6 +197,7 @@ def train_model(
 
     trainer.fit(model, train_loader, val_loader)
 
+    # TODO: Save best model (or create `best.ckpt` symlink to best model)
     best_model_path = Path(checkpoint_callback.best_model_path).resolve()
     items_path = best_model_path.parent / "items.npz"
     LOGGER.info("Saving items to <%s>", items_path)
