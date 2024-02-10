@@ -1126,38 +1126,3 @@ class BGGRecommender(GamesRecommender):
             del ratings["ratings"]
 
         return ratings
-
-
-class BGARecommender(GamesRecommender):
-    """Board Game Atlas recommender"""
-
-    logger = logging.getLogger("BGARecommender")
-
-    id_field = "bga_id"
-    user_id_field = "bga_user_id"
-    rating_id_field = "bga_user_rating"
-
-    columns_games = {
-        "name": str,
-        "year": int,
-        "min_players": int,
-        "max_players": int,
-        "min_age": int,
-        "min_time": int,
-        "max_time": int,
-        "num_votes": int,
-        "avg_rating": float,
-        "bga_id": str,
-    }
-    columns_ratings = {"bga_id": str, "bga_user_id": str, "bga_user_rating": float}
-    default_filters = {
-        # exclude expansions
-        "category__apply": lambda item: not item or "v4SfYtS2Lr" not in item,
-        # 'year__range': (-4000, date.today().year),
-        # 'min_players__gte': 1,
-        # 'max_players__gte': 1,
-        # 'min_age__range': (2, 21),
-        # 'min_time__range': (1, 24 * 60),
-        # 'max_time__range': (1, 4 * 24 * 60),
-        # 'num_votes__gte': 10,
-    }
