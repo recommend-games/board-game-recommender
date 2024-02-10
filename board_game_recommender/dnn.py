@@ -28,7 +28,7 @@ class CollaborativeFilteringModel(lightning.LightningModule):
 
         items_path = save_dir / items_file
         LOGGER.info("Loading items from <%s>", items_path)
-        with np.load(items_path) as items:
+        with np.load(items_path, allow_pickle=True) as items:
             users = items["users"]
             games = items["games"]
 
