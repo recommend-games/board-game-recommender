@@ -7,7 +7,7 @@ import logging
 import os
 import sys
 
-from board_game_recommender.recommend import BGARecommender, BGGRecommender
+from board_game_recommender.recommend import BGGRecommender
 
 LOGGER = logging.getLogger(__name__)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -16,12 +16,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def _parse_args():
     parser = argparse.ArgumentParser(description="train board game recommender model")
     parser.add_argument("users", nargs="*", help="users to be recommended games")
-    parser.add_argument(
-        "--bga",
-        "-b",
-        action="store_true",
-        help="use Board Game Atlas data",
-    )
     parser.add_argument("--model", "-m", help="model directory")
     parser.add_argument("--train", "-t", action="store_true", help="train a new model")
     parser.add_argument(
@@ -105,32 +99,18 @@ def _main():
 
     LOGGER.info(args)
 
-    if args.bga:
-        model_cls = BGARecommender
-        model_dir = args.model or os.path.join(BASE_DIR, ".bga")
-        games_file = args.games_file or os.path.join(
-            BASE_DIR,
-            "results",
-            "bga_GameItem.jl",
-        )
-        ratings_file = args.ratings_file or os.path.join(
-            BASE_DIR,
-            "results",
-            "bga_RatingItem.jl",
-        )
-    else:
-        model_cls = BGGRecommender
-        model_dir = args.model or os.path.join(BASE_DIR, ".bgg")
-        games_file = args.games_file or os.path.join(
-            BASE_DIR,
-            "results",
-            "bgg_GameItem.jl",
-        )
-        ratings_file = args.ratings_file or os.path.join(
-            BASE_DIR,
-            "results",
-            "bgg_RatingItem.jl",
-        )
+    model_cls = BGGRecommender
+    model_dir = args.model or os.path.join(BASE_DIR, ".bgg")
+    games_file = args.games_file or os.path.join(
+        BASE_DIR,
+        "results",
+        "bgg_GameItem.jl",
+    )
+    ratings_file = args.ratings_file or os.path.join(
+        BASE_DIR,
+        "results",
+        "bgg_RatingItem.jl",
+    )
 
     games_filters = {}
 

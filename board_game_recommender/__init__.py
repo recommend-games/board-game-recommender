@@ -9,10 +9,6 @@ except ImportError:
     pass
 
 try:
-    from board_game_recommender.recommend import (
-        BGARecommender,
-        BGGRecommender,
-        GamesRecommender,
-    )
+    from board_game_recommender.recommend import BGGRecommender, GamesRecommender
 except ImportError:
     pass
