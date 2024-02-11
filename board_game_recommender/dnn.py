@@ -8,8 +8,7 @@ import lightning
 import numpy as np
 import polars as pl
 import torch
-import torch.nn as nn
-import torch.optim as optim
+from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 
 LOGGER = logging.getLogger(__name__)
@@ -57,8 +56,10 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         self.game_ids = {game: i for i, game in enumerate(self.games)}
 
         self.user_embedding = nn.Embedding(len(self.users), embedding_dim)
+        self.user_biases = nn.Parameter(torch.rand(len(self.users)))
         self.game_embedding = nn.Embedding(len(self.games), embedding_dim)
-        self.linear = nn.Linear(embedding_dim, 1)
+        self.game_biases = nn.Parameter(torch.rand(len(self.games)))
+        self.intercept = nn.Parameter(torch.rand(1))
         self.loss_fn = nn.MSELoss()
 
         self.learning_rate = learning_rate
@@ -67,9 +68,10 @@ class CollaborativeFilteringModel(lightning.LightningModule):
 
     def forward(self, user: torch.Tensor, item: torch.Tensor) -> torch.Tensor:
         user_embedded = self.user_embedding(user)
+        user_bias = self.user_biases[user]
         game_embedded = self.game_embedding(item)
-        product = user_embedded * game_embedded
-        return self.linear(product).squeeze()
+        game_bias = self.game_biases[item]
+        return user_embedded @ game_embedded + user_bias + game_bias + self.intercept
 
     def recommend(self, user: str, n: int = 10) -> np.ndarray:
         user_id = self.user_ids[user]
@@ -207,7 +209,7 @@ def train_model(
     return model
 
 
-if __name__ == "__main__":
+def _main():
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
@@ -224,3 +226,7 @@ if __name__ == "__main__":
         save_dir=".",
         fast_dev_run=False,
     )
+
+
+if __name__ == "__main__":
+    _main()
