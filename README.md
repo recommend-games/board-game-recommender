@@ -27,8 +27,7 @@ You can either scrape your own using the [board-game-scraper](https://gitlab.com
 project or take a look at the [BoardGameGeek guild](https://boardgamegeek.com/thread/2287371/boardgamegeek-games-and-ratings-datasets)
 to obtain existing datasets.
 
-At the moment there are [recommender implementations](board_game_recommender/recommend.py)
-for two sources: [BoardGameGeek](https://boardgamegeek.com/) and [Board Game Atlas](https://www.boardgameatlas.com/).
+At the moment there is only one [recommender implementations](board_game_recommender/recommend.py): [BoardGameGeek](https://boardgamegeek.com/).
 
 ### Models
 
