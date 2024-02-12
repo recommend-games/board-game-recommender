@@ -208,8 +208,11 @@ def train_model(
 
     trainer.fit(model, train_loader, val_loader)
 
-    # TODO: Save best model (or create `best.ckpt` symlink to best model)
     best_model_path = Path(checkpoint_callback.best_model_path).resolve()
+    best_model_alias = best_model_path.parent / "best.ckpt"
+    LOGGER.info("Linking best model <%s> to <%s>", best_model_path, best_model_alias)
+    best_model_alias.symlink_to(best_model_path)
+
     items_path = best_model_path.parent / "items.npz"
     LOGGER.info("Saving items to <%s>", items_path)
     np.savez(
