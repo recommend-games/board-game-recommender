@@ -67,11 +67,13 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         self.save_hyperparameters(ignore=("users", "user_ids", "games", "game_ids"))
 
     def forward(self, user: torch.Tensor, item: torch.Tensor) -> torch.Tensor:
-        user_embedded = self.user_embedding(user)
-        user_bias = self.user_biases[user]
-        game_embedded = self.game_embedding(item)
-        game_bias = self.game_biases[item]
-        return user_embedded @ game_embedded + user_bias + game_bias + self.intercept
+        assert user.shape == item.shape
+        user_embedded = self.user_embedding(user)  # (num_input, embedding_dim)
+        user_bias = self.user_biases[user]  # (num_input,)
+        game_embedded = self.game_embedding(item)  # (num_input, embedding_dim)
+        game_bias = self.game_biases[item]  # (num_input,)
+        dot_product = torch.sum(user_embedded * game_embedded, dim=-1)  # (num_input,)
+        return dot_product + user_bias + game_bias + self.intercept  # (num_input,)
 
     def recommend(self, user: str, n: int = 10) -> np.ndarray:
         user_id = self.user_ids[user]
