@@ -8,6 +8,7 @@ import lightning
 import numpy as np
 import polars as pl
 import torch
+import torchmetrics
 from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -68,6 +69,9 @@ class CollaborativeFilteringModel(lightning.LightningModule):
 
         self.learning_rate = learning_rate
 
+        self.train_rmse = torchmetrics.MeanSquaredError(squared=False)
+        self.val_rmse = torchmetrics.MeanSquaredError(squared=False)
+
         self.save_hyperparameters(ignore=("users", "user_ids", "games", "game_ids"))
 
     def loss_fn(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -106,6 +110,8 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         prediction = self(user, item)
         loss = self.loss_fn(prediction, target)
         self.log("train_loss", loss, prog_bar=True)
+        self.train_rmse(prediction, target)
+        self.log("train_rmse", self.train_rmse, prog_bar=True)
         return loss
 
     def validation_step(self, batch: torch.Tensor, batch_idx: int = 0) -> torch.Tensor:
@@ -113,6 +119,8 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         prediction = self(user, item)
         loss = self.loss_fn(prediction, target)
         self.log("val_loss", loss)
+        self.val_rmse(prediction, target)
+        self.log("val_rmse", self.val_rmse)
         return loss
 
     def configure_optimizers(self):
@@ -176,7 +184,7 @@ def train_model(
     ratings_array = ratings["bgg_user_rating"].to_numpy(writable=True)
     ratings_tensor = torch.from_numpy(ratings_array)
 
-    num_cpus = os.cpu_count() or 1
+    num_cpus = 1  # os.cpu_count() or 1
     # TODO: Train/test/val split
     dataset = TensorDataset(user_ids_tensor, game_ids_tensor, ratings_tensor)
     train_loader = DataLoader(
