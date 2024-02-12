@@ -137,7 +137,7 @@ def load_data(
 def train_model(
     *,
     ratings_path: os.PathLike,
-    max_epochs: int = 10,
+    max_epochs: int = 100,
     batch_size: int = 1024,
     save_dir: os.PathLike = ".",
     fast_dev_run: bool = False,
@@ -179,13 +179,19 @@ def train_model(
     save_dir = Path(save_dir).resolve()
     LOGGER.info("Saving items to <%s>", save_dir)
 
-    # TODO: Add early stopping and increase max_epochs
-
     checkpoint_callback = lightning.pytorch.callbacks.model_checkpoint.ModelCheckpoint(
         monitor="val_loss",
         mode="min",
         save_top_k=3,
         save_last=True,
+    )
+
+    early_stopping_callback = lightning.pytorch.callbacks.early_stopping.EarlyStopping(
+        monitor="val_loss",
+        mode="min",
+        min_delta=0.0,
+        patience=3,
+        verbose=True,
     )
 
     csv_logger = lightning.pytorch.loggers.csv_logs.CSVLogger(
@@ -195,7 +201,7 @@ def train_model(
     trainer = lightning.Trainer(
         max_epochs=max_epochs,
         logger=[csv_logger],
-        callbacks=[checkpoint_callback],
+        callbacks=[checkpoint_callback, early_stopping_callback],
         default_root_dir=save_dir,
         fast_dev_run=fast_dev_run,
     )
@@ -227,7 +233,7 @@ def _main():
 
     train_model(
         ratings_path=ratings_path,
-        max_epochs=10,
+        max_epochs=100,
         batch_size=1024,
         save_dir=".",
         fast_dev_run=False,
