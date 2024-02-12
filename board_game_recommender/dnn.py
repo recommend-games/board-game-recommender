@@ -46,6 +46,8 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         users: Iterable[str],
         games: Iterable[int],
         embedding_dim: int = 32,
+        regularization: float = 1e-8,
+        linear_regularization: float = 1e-10,
         learning_rate: float = 1e-3,
     ):
         super().__init__()
@@ -60,11 +62,27 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         self.game_embedding = nn.Embedding(len(self.games), embedding_dim)
         self.game_biases = nn.Parameter(torch.rand(len(self.games)))
         self.intercept = nn.Parameter(torch.rand(1))
-        self.loss_fn = nn.MSELoss()
+
+        self.regularization = regularization
+        self.linear_regularization = linear_regularization
 
         self.learning_rate = learning_rate
 
         self.save_hyperparameters(ignore=("users", "user_ids", "games", "game_ids"))
+
+    def loss_fn(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        target_l2_loss = (prediction - target) ** 2
+        user_embedding = self.user_embedding.weight
+        game_embedding = self.game_embedding.weight
+        user_bias = self.user_biases
+        game_bias = self.game_biases
+        embedding_l2_reg = self.regularization * (
+            torch.sum(user_embedding**2) + torch.sum(game_embedding**2)
+        )
+        bias_l2_reg = self.linear_regularization * (
+            torch.sum(user_bias**2) + torch.sum(game_bias**2)
+        )
+        return torch.mean(target_l2_loss + embedding_l2_reg + bias_l2_reg)
 
     def forward(self, user: torch.Tensor, item: torch.Tensor) -> torch.Tensor:
         assert user.shape == item.shape
