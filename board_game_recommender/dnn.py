@@ -159,6 +159,7 @@ def train_model(
     ratings_tensor = torch.from_numpy(ratings_array)
 
     num_cpus = os.cpu_count() or 1
+    # TODO: Train/test/val split
     dataset = TensorDataset(user_ids_tensor, game_ids_tensor, ratings_tensor)
     train_loader = DataLoader(
         dataset=dataset,
