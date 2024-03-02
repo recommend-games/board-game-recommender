@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, Tuple, Type
+from typing import Dict, Iterable, Optional, Tuple, Type, Union
 
 import lightning
 import numpy as np
@@ -19,9 +19,9 @@ class CollaborativeFilteringModel(lightning.LightningModule):
     @classmethod
     def load_from_dir(
         cls,
-        save_dir: os.PathLike,
-        checkpoint_file: os.PathLike,
-        items_file: os.PathLike = "items.npz",
+        save_dir: Union[os.PathLike, str],
+        checkpoint_file: Union[os.PathLike, str],
+        items_file: Union[os.PathLike, str] = "items.npz",
     ) -> "CollaborativeFilteringModel":
         save_dir = Path(save_dir).resolve()
         LOGGER.info("Loading model from <%s>", save_dir)
@@ -47,8 +47,8 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         users: Iterable[str],
         games: Iterable[int],
         embedding_dim: int = 32,
-        regularization: float = 1e-8,
-        linear_regularization: float = 1e-10,
+        regularization: Optional[float] = None,  # 1e-8
+        linear_regularization: Optional[float] = None,  # 1e-10
         learning_rate: float = 1e-3,
     ):
         super().__init__()
@@ -75,18 +75,26 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         self.save_hyperparameters(ignore=("users", "user_ids", "games", "game_ids"))
 
     def loss_fn(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        target_l2_loss = (prediction - target) ** 2
-        user_embedding = self.user_embedding.weight
-        game_embedding = self.game_embedding.weight
-        user_bias = self.user_biases
-        game_bias = self.game_biases
-        embedding_l2_reg = self.regularization * (
-            torch.sum(user_embedding**2) + torch.sum(game_embedding**2)
-        )
-        bias_l2_reg = self.linear_regularization * (
-            torch.sum(user_bias**2) + torch.sum(game_bias**2)
-        )
-        return torch.mean(target_l2_loss + embedding_l2_reg + bias_l2_reg)
+        if not self.regularization and not self.linear_regularization:
+            return nn.functional.mse_loss(prediction, target)
+
+        loss = (prediction - target) ** 2
+
+        if self.regularization:
+            user_embedding = self.user_embedding.weight
+            game_embedding = self.game_embedding.weight
+            loss += self.regularization * (
+                torch.sum(user_embedding**2) + torch.sum(game_embedding**2)
+            )
+
+        if self.linear_regularization:
+            user_bias = self.user_biases
+            game_bias = self.game_biases
+            loss += self.linear_regularization * (
+                torch.sum(user_bias**2) + torch.sum(game_bias**2)
+            )
+
+        return torch.mean(loss)
 
     def forward(self, user: torch.Tensor, item: torch.Tensor) -> torch.Tensor:
         assert user.shape == item.shape
@@ -165,7 +173,7 @@ def train_model(
     ratings_path: os.PathLike,
     max_epochs: int = 100,
     batch_size: int = 1024,
-    save_dir: os.PathLike = ".",
+    save_dir: Union[os.PathLike, str] = ".",
     fast_dev_run: bool = False,
 ) -> CollaborativeFilteringModel:
     ratings, users, games = load_data(ratings_path)
