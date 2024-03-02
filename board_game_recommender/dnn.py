@@ -170,6 +170,10 @@ class CollaborativeFilteringWithRegularizationModel(CollaborativeFilteringModel)
         return loss
 
 
+# TODO: Implement loss of Turicreate's RankingFactorizationRecommender
+# https://apple.github.io/turicreate/docs/api/generated/turicreate.recommender.ranking_factorization_recommender.RankingFactorizationRecommender.html
+
+
 def load_jl(path: PATH_OR_STR, schema: Dict[str, Type[pl.DataType]]) -> pl.DataFrame:
     path = Path(path).resolve()
     LOGGER.info("Loading %s", path)
