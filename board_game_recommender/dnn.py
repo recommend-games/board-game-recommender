@@ -14,14 +14,16 @@ from torch.utils.data import DataLoader, TensorDataset
 
 LOGGER = logging.getLogger(__name__)
 
+PATH_OR_STR = Union[os.PathLike, str]
+
 
 class CollaborativeFilteringModel(lightning.LightningModule):
     @classmethod
     def load_from_dir(
         cls,
-        save_dir: Union[os.PathLike, str],
-        checkpoint_file: Union[os.PathLike, str],
-        items_file: Union[os.PathLike, str] = "items.npz",
+        save_dir: PATH_OR_STR,
+        checkpoint_file: PATH_OR_STR,
+        items_file: PATH_OR_STR = "items.npz",
     ) -> "CollaborativeFilteringModel":
         save_dir = Path(save_dir).resolve()
         LOGGER.info("Loading model from <%s>", save_dir)
@@ -135,14 +137,14 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
-def load_jl(path: os.PathLike, schema: Dict[str, Type[pl.DataType]]) -> pl.DataFrame:
+def load_jl(path: PATH_OR_STR, schema: Dict[str, Type[pl.DataType]]) -> pl.DataFrame:
     path = Path(path).resolve()
     LOGGER.info("Loading %s", path)
     return pl.read_ndjson(path, schema=schema)
 
 
 def load_data(
-    ratings_path: os.PathLike,
+    ratings_path: PATH_OR_STR,
 ) -> Tuple[pl.DataFrame, np.ndarray, np.ndarray]:
     ratings = load_jl(
         path=ratings_path,
@@ -170,10 +172,10 @@ def load_data(
 
 def train_model(
     *,
-    ratings_path: os.PathLike,
+    ratings_path: PATH_OR_STR,
     max_epochs: int = 100,
     batch_size: int = 1024,
-    save_dir: Union[os.PathLike, str] = ".",
+    save_dir: PATH_OR_STR = ".",
     fast_dev_run: bool = False,
 ) -> CollaborativeFilteringModel:
     ratings, users, games = load_data(ratings_path)
