@@ -89,10 +89,7 @@ class CollaborativeFilteringModel(lightning.LightningModule):
     # Regularized loss function from Turicreate's FactorizationRecommender:
     # https://apple.github.io/turicreate/docs/api/generated/turicreate.recommender.factorization_recommender.FactorizationRecommender.html
     def loss_fn(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        if not self.regularization and not self.linear_regularization:
-            return nn.functional.mse_loss(prediction, target)
-
-        loss = (prediction - target) ** 2
+        loss = nn.functional.mse_loss(prediction, target)
 
         if self.regularization:
             user_embedding = self.user_embedding.weight
@@ -108,7 +105,7 @@ class CollaborativeFilteringModel(lightning.LightningModule):
                 torch.sum(user_bias**2) + torch.sum(game_bias**2)
             )
 
-        return torch.mean(loss)
+        return loss
 
     def forward(self, user: torch.Tensor, item: torch.Tensor) -> torch.Tensor:
         assert user.shape == item.shape
@@ -197,6 +194,8 @@ def train_model(
         games=games,
         embedding_dim=32,
         learning_rate=1e-3,
+        regularization=1e-8,
+        linear_regularization=1e-10,
     )
 
     user_ids_array = ratings["user_id"].to_numpy(writable=True)
