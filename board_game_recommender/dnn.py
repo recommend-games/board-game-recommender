@@ -52,18 +52,9 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         users: Iterable[str],
         games: Iterable[int],
         embedding_dim: int = 32,
-        regularization: Optional[float] = None,  # 1e-8
-        linear_regularization: Optional[float] = None,  # 1e-10
         learning_rate: float = 1e-3,
     ):
         super().__init__()
-
-        assert (
-            regularization is None or regularization > 0
-        ), "Regularization must be positive"
-        assert (
-            linear_regularization is None or linear_regularization > 0
-        ), "Linear regularization must be positive"
 
         self.users = np.array(list(users), dtype=np.str_)
         self.user_ids = {user: i for i, user in enumerate(self.users)}
@@ -76,13 +67,84 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         self.game_biases = nn.Parameter(torch.rand(len(self.games)))
         self.intercept = nn.Parameter(torch.rand(1))
 
-        self.regularization = regularization
-        self.linear_regularization = linear_regularization
-
         self.learning_rate = learning_rate
 
         self.train_rmse = torchmetrics.MeanSquaredError(squared=False)
         self.val_rmse = torchmetrics.MeanSquaredError(squared=False)
+
+        self.save_hyperparameters(ignore=("users", "user_ids", "games", "game_ids"))
+
+    loss_fn = nn.MSELoss()
+
+    def forward(self, user: torch.Tensor, item: torch.Tensor) -> torch.Tensor:
+        assert user.shape == item.shape
+        user_embedded = self.user_embedding(user)  # (num_input, embedding_dim)
+        user_bias = self.user_biases[user]  # (num_input,)
+        game_embedded = self.game_embedding(item)  # (num_input, embedding_dim)
+        game_bias = self.game_biases[item]  # (num_input,)
+        dot_product = torch.sum(user_embedded * game_embedded, dim=-1)  # (num_input,)
+        return dot_product + user_bias + game_bias + self.intercept  # (num_input,)
+
+    def recommend(self, user: str, n: int = 10) -> np.ndarray:
+        user_id = self.user_ids[user]
+        num_games = len(self.games)
+        user_tensor = torch.tensor([user_id] * num_games, dtype=torch.int64).to(
+            self.device
+        )
+        game_tensor = torch.arange(num_games).to(self.device)
+        predictions = self(user_tensor, game_tensor)
+        top_n = torch.topk(predictions, n)
+        return self.games[top_n.indices.cpu().numpy()]
+
+    def training_step(self, batch: torch.Tensor, batch_idx: int = 0) -> torch.Tensor:
+        user, item, target = batch
+        prediction = self(user, item)
+        loss = self.loss_fn(prediction, target)
+        self.log("train_loss", loss, prog_bar=True)
+        self.train_rmse(prediction, target)
+        self.log("train_rmse", self.train_rmse, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch: torch.Tensor, batch_idx: int = 0) -> torch.Tensor:
+        user, item, target = batch
+        prediction = self(user, item)
+        loss = self.loss_fn(prediction, target)
+        self.log("val_loss", loss)
+        self.val_rmse(prediction, target)
+        self.log("val_rmse", self.val_rmse)
+        return loss
+
+    def configure_optimizers(self):
+        return optim.Adam(self.parameters(), lr=self.learning_rate)
+
+
+class CollaborativeFilteringWithRegularizationModel(CollaborativeFilteringModel):
+    def __init__(
+        self,
+        *,
+        users: Iterable[str],
+        games: Iterable[int],
+        embedding_dim: int = 32,
+        regularization: Optional[float] = None,  # 1e-8
+        linear_regularization: Optional[float] = None,  # 1e-10
+        learning_rate: float = 1e-3,
+    ):
+        super().__init__(
+            users=users,
+            games=games,
+            embedding_dim=embedding_dim,
+            learning_rate=learning_rate,
+        )
+
+        assert (
+            regularization is None or regularization > 0
+        ), "Regularization must be positive"
+        assert (
+            linear_regularization is None or linear_regularization > 0
+        ), "Linear regularization must be positive"
+
+        self.regularization = regularization
+        self.linear_regularization = linear_regularization
 
         self.save_hyperparameters(ignore=("users", "user_ids", "games", "game_ids"))
 
@@ -106,44 +168,6 @@ class CollaborativeFilteringModel(lightning.LightningModule):
             )
 
         return loss
-
-    def forward(self, user: torch.Tensor, item: torch.Tensor) -> torch.Tensor:
-        assert user.shape == item.shape
-        user_embedded = self.user_embedding(user)  # (num_input, embedding_dim)
-        user_bias = self.user_biases[user]  # (num_input,)
-        game_embedded = self.game_embedding(item)  # (num_input, embedding_dim)
-        game_bias = self.game_biases[item]  # (num_input,)
-        dot_product = torch.sum(user_embedded * game_embedded, dim=-1)  # (num_input,)
-        return dot_product + user_bias + game_bias + self.intercept  # (num_input,)
-
-    def recommend(self, user: str, n: int = 10) -> np.ndarray:
-        user_id = self.user_ids[user]
-        user_tensor = torch.tensor([user_id])
-        game_tensor = torch.arange(len(self.games))
-        predictions = self(user_tensor, game_tensor)
-        top_n = torch.topk(predictions, n)
-        return self.games[top_n.indices.numpy()]
-
-    def training_step(self, batch: torch.Tensor, batch_idx: int = 0) -> torch.Tensor:
-        user, item, target = batch
-        prediction = self(user, item)
-        loss = self.loss_fn(prediction, target)
-        self.log("train_loss", loss, prog_bar=True)
-        self.train_rmse(prediction, target)
-        self.log("train_rmse", self.train_rmse, prog_bar=True)
-        return loss
-
-    def validation_step(self, batch: torch.Tensor, batch_idx: int = 0) -> torch.Tensor:
-        user, item, target = batch
-        prediction = self(user, item)
-        loss = self.loss_fn(prediction, target)
-        self.log("val_loss", loss)
-        self.val_rmse(prediction, target)
-        self.log("val_rmse", self.val_rmse)
-        return loss
-
-    def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
 def load_jl(path: PATH_OR_STR, schema: Dict[str, Type[pl.DataType]]) -> pl.DataFrame:
@@ -189,7 +213,7 @@ def train_model(
 ) -> CollaborativeFilteringModel:
     ratings, users, games = load_data(ratings_path)
 
-    model = CollaborativeFilteringModel(
+    model = CollaborativeFilteringWithRegularizationModel(
         users=users,
         games=games,
         embedding_dim=32,
