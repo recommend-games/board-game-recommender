@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 import sys
@@ -15,6 +16,8 @@ from torch.utils.data import DataLoader, TensorDataset
 LOGGER = logging.getLogger(__name__)
 
 PATH_OR_STR = Union[os.PathLike, str]
+
+BASE_DIR = Path(__file__).parent.parent.resolve()
 
 
 class CollaborativeFilteringModel(lightning.LightningModule):
@@ -260,22 +263,68 @@ def train_model(
     return model
 
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Train a collaborative filtering model"
+    )
+
+    parser.add_argument(
+        "--ratings-path",
+        type=Path,
+        default=BASE_DIR.parent / "board-game-data" / "scraped" / "bgg_RatingItem.jl",
+        help="Path to the ratings data",
+    )
+    parser.add_argument(
+        "--max-epochs",
+        type=int,
+        default=100,
+        help="Maximum number of epochs",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=1024,
+        help="Batch size",
+    )
+    parser.add_argument(
+        "--save-dir",
+        type=Path,
+        default=Path(".").resolve(),
+        help="Directory to save the model",
+    )
+    parser.add_argument(
+        "--fast-dev-run",
+        action="store_true",
+        help="Run a fast development run",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="count",
+        default=0,
+        help="Increase verbosity",
+    )
+
+    return parser.parse_args()
+
+
 def _main():
+    args = _parse_args()
+
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG if args.verbose > 0 else logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
         stream=sys.stdout,
     )
 
-    data_dir = Path(__file__).parent.parent.parent / "board-game-data"
-    ratings_path = data_dir / "scraped" / "bgg_RatingItem.jl"
+    LOGGER.info(args)
 
     train_model(
-        ratings_path=ratings_path,
-        max_epochs=100,
-        batch_size=1024,
-        save_dir=".",
-        fast_dev_run=False,
+        ratings_path=args.ratings_path,
+        max_epochs=args.max_epochs,
+        batch_size=args.batch_size,
+        save_dir=args.save_dir,
+        fast_dev_run=args.fast_dev_run,
     )
 
 
