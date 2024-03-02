@@ -265,7 +265,7 @@ def train_model(
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Train a collaborative filtering model"
+        description="Train a collaborative filtering model",
     )
 
     parser.add_argument(
@@ -289,7 +289,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--save-dir",
         type=Path,
-        default=Path(".").resolve(),
+        default=BASE_DIR,
         help="Directory to save the model",
     )
     parser.add_argument(
