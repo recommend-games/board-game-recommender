@@ -85,6 +85,7 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         dot_product = torch.sum(user_embedded * game_embedded, dim=-1)  # (num_input,)
         return dot_product + user_bias + game_bias + self.intercept  # (num_input,)
 
+    @torch.no_grad()
     def recommend(self, user: str, n: int = 10) -> np.ndarray:
         user_id = self.user_ids[user]
         num_games = len(self.games)
@@ -233,7 +234,7 @@ def train_model(
     ratings_array = ratings["bgg_user_rating"].to_numpy(writable=True)
     ratings_tensor = torch.from_numpy(ratings_array)
 
-    num_cpus = 1  # os.cpu_count() or 1
+    num_cpus = os.cpu_count() or 1
     # TODO: Train/test/val split
     dataset = TensorDataset(user_ids_tensor, game_ids_tensor, ratings_tensor)
     train_loader = DataLoader(
