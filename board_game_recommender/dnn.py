@@ -58,6 +58,13 @@ class CollaborativeFilteringModel(lightning.LightningModule):
     ):
         super().__init__()
 
+        assert (
+            regularization is None or regularization > 0
+        ), "Regularization must be positive"
+        assert (
+            linear_regularization is None or linear_regularization > 0
+        ), "Linear regularization must be positive"
+
         self.users = np.array(list(users), dtype=np.str_)
         self.user_ids = {user: i for i, user in enumerate(self.users)}
         self.games = np.array(list(games), dtype=np.int32)
