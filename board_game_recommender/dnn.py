@@ -79,6 +79,8 @@ class CollaborativeFilteringModel(lightning.LightningModule):
 
         self.save_hyperparameters(ignore=("users", "user_ids", "games", "game_ids"))
 
+    # Regularized loss function from Turicreate's FactorizationRecommender:
+    # https://apple.github.io/turicreate/docs/api/generated/turicreate.recommender.factorization_recommender.FactorizationRecommender.html
     def loss_fn(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         if not self.regularization and not self.linear_regularization:
             return nn.functional.mse_loss(prediction, target)
