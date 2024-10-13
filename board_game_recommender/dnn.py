@@ -52,6 +52,8 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         users: Iterable[str],
         games: Iterable[int],
         embedding_dim: int = 32,
+        regularization: Optional[float] = None,  # 1e-8
+        linear_regularization: Optional[float] = None,  # 1e-10
         learning_rate: float = 1e-3,
     ):
         super().__init__()
@@ -61,20 +63,51 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         self.games = np.array(list(games), dtype=np.int32)
         self.game_ids = {game: i for i, game in enumerate(self.games)}
 
+        assert embedding_dim > 0, "Embedding dimension must be positive"
+        assert (
+            regularization is None or regularization > 0
+        ), "Regularization must be positive"
+        assert (
+            linear_regularization is None or linear_regularization > 0
+        ), "Linear regularization must be positive"
+        assert learning_rate > 0, "Learning rate must be positive"
+
+        self.embedding_dim = embedding_dim
+        self.regularization = regularization
+        self.linear_regularization = linear_regularization
+        self.learning_rate = learning_rate
+
         self.user_embedding = nn.Embedding(len(self.users), embedding_dim)
         self.user_biases = nn.Parameter(torch.rand(len(self.users)))
         self.game_embedding = nn.Embedding(len(self.games), embedding_dim)
         self.game_biases = nn.Parameter(torch.rand(len(self.games)))
         self.intercept = nn.Parameter(torch.rand(1))
 
-        self.learning_rate = learning_rate
-
         self.train_rmse = torchmetrics.MeanSquaredError(squared=False)
         self.val_rmse = torchmetrics.MeanSquaredError(squared=False)
 
         self.save_hyperparameters(ignore=("users", "user_ids", "games", "game_ids"))
 
-    loss_fn = nn.MSELoss()
+    # Regularized loss function from Turicreate's FactorizationRecommender:
+    # https://apple.github.io/turicreate/docs/api/generated/turicreate.recommender.factorization_recommender.FactorizationRecommender.html
+    def loss_fn(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        loss = nn.functional.mse_loss(prediction, target)
+
+        if self.regularization:
+            user_embedding = self.user_embedding.weight
+            game_embedding = self.game_embedding.weight
+            loss += self.regularization * (
+                torch.sum(user_embedding**2) + torch.sum(game_embedding**2)
+            )
+
+        if self.linear_regularization:
+            user_bias = self.user_biases
+            game_bias = self.game_biases
+            loss += self.linear_regularization * (
+                torch.sum(user_bias**2) + torch.sum(game_bias**2)
+            )
+
+        return loss
 
     def forward(self, user: torch.Tensor, item: torch.Tensor) -> torch.Tensor:
         assert user.shape == item.shape
@@ -117,58 +150,6 @@ class CollaborativeFilteringModel(lightning.LightningModule):
 
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
-
-
-class CollaborativeFilteringWithRegularizationModel(CollaborativeFilteringModel):
-    def __init__(
-        self,
-        *,
-        users: Iterable[str],
-        games: Iterable[int],
-        embedding_dim: int = 32,
-        regularization: Optional[float] = None,  # 1e-8
-        linear_regularization: Optional[float] = None,  # 1e-10
-        learning_rate: float = 1e-3,
-    ):
-        super().__init__(
-            users=users,
-            games=games,
-            embedding_dim=embedding_dim,
-            learning_rate=learning_rate,
-        )
-
-        assert (
-            regularization is None or regularization > 0
-        ), "Regularization must be positive"
-        assert (
-            linear_regularization is None or linear_regularization > 0
-        ), "Linear regularization must be positive"
-
-        self.regularization = regularization
-        self.linear_regularization = linear_regularization
-
-        self.save_hyperparameters(ignore=("users", "user_ids", "games", "game_ids"))
-
-    # Regularized loss function from Turicreate's FactorizationRecommender:
-    # https://apple.github.io/turicreate/docs/api/generated/turicreate.recommender.factorization_recommender.FactorizationRecommender.html
-    def loss_fn(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        loss = nn.functional.mse_loss(prediction, target)
-
-        if self.regularization:
-            user_embedding = self.user_embedding.weight
-            game_embedding = self.game_embedding.weight
-            loss += self.regularization * (
-                torch.sum(user_embedding**2) + torch.sum(game_embedding**2)
-            )
-
-        if self.linear_regularization:
-            user_bias = self.user_biases
-            game_bias = self.game_biases
-            loss += self.linear_regularization * (
-                torch.sum(user_bias**2) + torch.sum(game_bias**2)
-            )
-
-        return loss
 
 
 # TODO: Implement loss of Turicreate's RankingFactorizationRecommender
@@ -218,7 +199,7 @@ def train_model(
 ) -> CollaborativeFilteringModel:
     ratings, users, games = load_data(ratings_path)
 
-    model = CollaborativeFilteringWithRegularizationModel(
+    model = CollaborativeFilteringModel(
         users=users,
         games=games,
         embedding_dim=32,
