@@ -122,6 +122,38 @@ class CollaborativeFilteringModel(lightning.LightningModule):
                 torch.sum(user_bias**2) + torch.sum(game_bias**2)
             )
 
+        # Ranking regularization from Turicreate's RankingFactorizationRecommender:
+        # https://apple.github.io/turicreate/docs/api/generated/turicreate.recommender.ranking_factorization_recommender.RankingFactorizationRecommender.html
+        if (
+            self.ranking_regularization
+            and self.unobserved_rating_value
+            and self.num_sampled_negative_examples
+        ):
+            # For each user–item pair in the training data, we sample a number of negative examples
+            num_samples = len(target) * self.num_sampled_negative_examples
+            # TODO: Make sure those pairs are not in the training data
+            users_sample = torch.randint(
+                low=0,
+                high=len(self.users),
+                size=(num_samples,),
+                device=self.device,
+            )
+            games_sample = torch.randint(
+                low=0,
+                high=len(self.games),
+                size=(num_samples,),
+                device=self.device,
+            )
+            unobserved_predictions = self(users_sample, games_sample)
+            unobserved_targets = (
+                torch.ones_like(unobserved_predictions, device=self.device)
+                * self.unobserved_rating_value
+            )
+            loss += self.ranking_regularization * nn.functional.mse_loss(
+                unobserved_predictions,
+                unobserved_targets,
+            )
+
         return loss
 
     def forward(self, user: torch.Tensor, item: torch.Tensor) -> torch.Tensor:
@@ -165,10 +197,6 @@ class CollaborativeFilteringModel(lightning.LightningModule):
 
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.learning_rate)
-
-
-# TODO: Implement loss of Turicreate's RankingFactorizationRecommender
-# https://apple.github.io/turicreate/docs/api/generated/turicreate.recommender.ranking_factorization_recommender.RankingFactorizationRecommender.html
 
 
 def load_jl(path: PATH_OR_STR, schema: Dict[str, Type[pl.DataType]]) -> pl.DataFrame:
@@ -221,6 +249,9 @@ def train_model(
         learning_rate=1e-3,
         regularization=1e-8,
         linear_regularization=1e-10,
+        ranking_regularization=0.25,
+        unobserved_rating_value=ratings["bgg_user_rating"].quantile(0.05),
+        num_sampled_negative_examples=4,
     )
 
     user_ids_array = ratings["user_id"].to_numpy(writable=True)
