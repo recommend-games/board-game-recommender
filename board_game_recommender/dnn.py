@@ -130,27 +130,27 @@ class CollaborativeFilteringModel(lightning.LightningModule):
             and self.num_sampled_negative_examples
         ):
             # For each user–item pair in the training data, we sample a number of negative examples
-            num_samples = len(target) * self.num_sampled_negative_examples
             # TODO: Make sure those pairs are not in the training data
             users_sample = torch.randint(
                 low=0,
                 high=len(self.users),
-                size=(num_samples,),
+                size=(len(target), 1),
                 device=self.device,
-            )
+            ).expand(-1, self.num_sampled_negative_examples)
             games_sample = torch.randint(
                 low=0,
                 high=len(self.games),
-                size=(num_samples,),
+                size=(len(target), self.num_sampled_negative_examples),
                 device=self.device,
             )
             unobserved_predictions = self(users_sample, games_sample)
+            unobserved_predictions_max, _ = torch.max(unobserved_predictions, dim=-1)
             unobserved_targets = (
-                torch.ones_like(unobserved_predictions, device=self.device)
+                torch.ones_like(unobserved_predictions_max, device=self.device)
                 * self.unobserved_rating_value
             )
             loss += self.ranking_regularization * nn.functional.mse_loss(
-                unobserved_predictions,
+                unobserved_predictions_max,
                 unobserved_targets,
             )
 
