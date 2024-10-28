@@ -52,6 +52,9 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         users: Iterable[str],
         games: Iterable[int],
         embedding_dim: int = 32,
+        ratings_mean: Optional[float] = None,
+        user_ratings_mean: Optional[Iterable[float]] = None,
+        game_ratings_mean: Optional[Iterable[float]] = None,
         regularization: Optional[float] = None,  # 1e-8
         linear_regularization: Optional[float] = None,  # 1e-10
         ranking_regularization: Optional[float] = None,  # 0.25
@@ -65,8 +68,29 @@ class CollaborativeFilteringModel(lightning.LightningModule):
 
         self.users = np.array(list(users), dtype=np.str_)
         self.user_ids = {user: i for i, user in enumerate(self.users)}
+
+        self.user_ratings_mean = (
+            np.array(list(user_ratings_mean), dtype=np.float32)
+            if user_ratings_mean is not None
+            else None
+        )
+        assert self.user_ratings_mean is None or len(self.user_ratings_mean) == len(
+            self.users
+        ), "User ratings mean must have the same length as the number of users"
+
         self.games = np.array(list(games), dtype=np.int32)
         self.game_ids = {game: i for i, game in enumerate(self.games)}
+
+        self.game_ratings_mean = (
+            np.array(list(game_ratings_mean), dtype=np.float32)
+            if game_ratings_mean is not None
+            else None
+        )
+        assert self.game_ratings_mean is None or len(self.game_ratings_mean) == len(
+            self.games
+        ), "Game ratings mean must have the same length as the number of games"
+
+        self.ratings_mean = ratings_mean
 
         assert embedding_dim > 0, "Embedding dimension must be positive"
         assert (
@@ -95,21 +119,37 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         self.learning_rate = learning_rate
 
         self.user_embedding = nn.Embedding(len(self.users), embedding_dim)
-        self.user_biases = nn.Parameter(torch.zeros(len(self.users)))
-        self.game_embedding = nn.Embedding(len(self.games), embedding_dim)
-        self.game_biases = nn.Parameter(torch.zeros(len(self.games)))
-        # TODO: Should we initialize the intercept with the mean of the ratings?
-        self.intercept = nn.Parameter(torch.zeros(1))
-
         nn.init.normal_(self.user_embedding.weight, std=0.1)
-        nn.init.normal_(self.user_biases, std=0.01)
+
+        if self.user_ratings_mean is None:
+            self.user_biases = nn.Parameter(torch.zeros(len(self.users)))
+            nn.init.normal_(self.user_biases, std=0.01)
+        else:
+            self.user_biases = nn.Parameter(torch.tensor(self.user_ratings_mean))
+
+        self.game_embedding = nn.Embedding(len(self.games), embedding_dim)
         nn.init.normal_(self.game_embedding.weight, std=0.1)
-        nn.init.normal_(self.game_biases, std=0.01)
+
+        if self.game_ratings_mean is None:
+            self.game_biases = nn.Parameter(torch.zeros(len(self.games)))
+            nn.init.normal_(self.game_biases, std=0.01)
+        else:
+            self.game_biases = nn.Parameter(torch.tensor(self.game_ratings_mean))
+
+        intercept = self.ratings_mean if self.ratings_mean is not None else 0.0
+        self.intercept = nn.Parameter(torch.tensor(intercept))
 
         self.train_rmse = torchmetrics.MeanSquaredError(squared=False)
         self.val_rmse = torchmetrics.MeanSquaredError(squared=False)
 
-        self.save_hyperparameters(ignore=("users", "user_ids", "games", "game_ids"))
+        self.save_hyperparameters(
+            ignore=(
+                "users",
+                "user_ratings_mean",
+                "games",
+                "game_ratings_mean",
+            ),
+        )
 
     def loss_fn(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         loss = nn.functional.mse_loss(prediction, target)
@@ -287,7 +327,10 @@ def train_model(
 
     model = CollaborativeFilteringModel(
         users=users,
+        # user_ratings_mean=TODO,
         games=games,
+        # game_ratings_mean=TODO,
+        ratings_mean=ratings["bgg_user_rating"].mean(),
         embedding_dim=32,
         learning_rate=1e-3,
         # regularization=1e-8,
