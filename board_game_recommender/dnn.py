@@ -310,14 +310,14 @@ def train_model(
     train_loader = DataLoader(
         dataset=dataset,
         batch_size=batch_size,
-        num_workers=num_cpus - 1,
+        num_workers=4 if num_cpus > 1 else 0,
         persistent_workers=num_cpus > 1,
         shuffle=True,
     )
     val_loader = DataLoader(
         dataset=dataset,
         batch_size=batch_size,
-        num_workers=num_cpus - 1,
+        num_workers=4 if num_cpus > 1 else 0,
         persistent_workers=num_cpus > 1,
         shuffle=False,
     )
