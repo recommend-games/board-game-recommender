@@ -457,6 +457,17 @@ def _parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "users",
+        nargs="*",
+        help="Users to recommend games to",
+    )
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=10,
+        help="Number of games to recommend for each user",
+    )
+    parser.add_argument(
         "--ratings-path",
         type=Path,
         default=BASE_DIR.parent / "board-game-data" / "scraped" / "bgg_RatingItem.jl",
@@ -507,13 +518,20 @@ def _main():
 
     LOGGER.info(args)
 
-    train_model(
+    model = train_model(
         ratings_path=args.ratings_path,
         max_epochs=args.max_epochs,
         batch_size=args.batch_size,
         save_dir=args.save_dir,
         fast_dev_run=args.fast_dev_run,
     )
+
+    for user in args.users:
+        rec = model.recommend(user, args.top_k)
+        print(f"Recommendations for <{user}>:")
+        for game_id in rec:
+            print(game_id)
+        print()
 
 
 if __name__ == "__main__":
