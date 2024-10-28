@@ -151,23 +151,44 @@ class CollaborativeFilteringModel(lightning.LightningModule):
             ),
         )
 
-    def loss_fn(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    def loss_fn(
+        self,
+        prediction: torch.Tensor,
+        target: torch.Tensor,
+        user: Optional[torch.Tensor] = None,
+        item: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         loss = nn.functional.mse_loss(prediction, target)
 
         # Regularized loss function from Turicreate's FactorizationRecommender:
         # https://apple.github.io/turicreate/docs/api/generated/turicreate.recommender.factorization_recommender.FactorizationRecommender.html
         if self.regularization:
-            # TODO: Only regularize the embeddings of the observed users and items
-            user_embedding = self.user_embedding.weight
-            game_embedding = self.game_embedding.weight
+            user_embedding = (
+                self.user_embedding(user)
+                if user is not None
+                else self.user_embedding.weight
+            )
+            assert isinstance(user_embedding, torch.Tensor)
+            game_embedding = (
+                self.game_embedding(item)
+                if item is not None
+                else self.game_embedding.weight
+            )
+            assert isinstance(game_embedding, torch.Tensor)
             loss += self.regularization * (
                 torch.sum(user_embedding**2) + torch.sum(game_embedding**2)
             )
 
         if self.linear_regularization:
             # TODO: Only regularize the biases of the observed users and items
-            user_bias = self.user_biases
-            game_bias = self.game_biases
+            user_bias = (
+                self.user_biases[user] if user is not None else self.user_biases.data
+            )
+            assert isinstance(user_bias, torch.Tensor)
+            game_bias = (
+                self.game_biases[item] if item is not None else self.game_biases.data
+            )
+            assert isinstance(game_bias, torch.Tensor)
             loss += self.linear_regularization * (
                 torch.sum(user_bias**2) + torch.sum(game_bias**2)
             )
@@ -231,7 +252,7 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         user, item, target = batch
         prediction = self(user, item)
 
-        loss = self.loss_fn(prediction, target)
+        loss = self.loss_fn(prediction, target, user, item)
         self.log("train_loss", loss, prog_bar=True)
 
         self.train_rmse(prediction, target)
@@ -256,7 +277,7 @@ class CollaborativeFilteringModel(lightning.LightningModule):
     def validation_step(self, batch: torch.Tensor, batch_idx: int = 0) -> torch.Tensor:
         user, item, target = batch
         prediction = self(user, item)
-        loss = self.loss_fn(prediction, target)
+        loss = self.loss_fn(prediction, target, user, item)
         self.log("val_loss", loss)
         self.val_rmse(prediction, target)
         self.log("val_rmse", self.val_rmse)
@@ -350,8 +371,8 @@ def train_model(
         ratings_mean=ratings["bgg_user_rating"].mean(),
         embedding_dim=32,
         learning_rate=1e-3,
-        # regularization=1e-8,
-        # linear_regularization=1e-10,
+        regularization=1e-8,
+        linear_regularization=1e-10,
         # ranking_regularization=0.25,
         # unobserved_rating_value=ratings["bgg_user_rating"].quantile(0.05),
         # num_sampled_negative_examples=4,
