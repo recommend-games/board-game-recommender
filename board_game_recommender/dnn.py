@@ -325,11 +325,28 @@ def train_model(
 ) -> CollaborativeFilteringModel:
     ratings, users, games = load_data(ratings_path)
 
+    user_ratings_mean = (
+        ratings.lazy()
+        .group_by("user_id")
+        .agg(pl.mean("bgg_user_rating"))
+        .sort("user_id")
+        .select("bgg_user_rating")
+        .collect()["bgg_user_rating"]
+    )
+    game_ratings_mean = (
+        ratings.lazy()
+        .group_by("game_id")
+        .agg(pl.mean("bgg_user_rating"))
+        .sort("game_id")
+        .select("bgg_user_rating")
+        .collect()["bgg_user_rating"]
+    )
+
     model = CollaborativeFilteringModel(
         users=users,
-        # user_ratings_mean=TODO,
+        user_ratings_mean=user_ratings_mean,
         games=games,
-        # game_ratings_mean=TODO,
+        game_ratings_mean=game_ratings_mean,
         ratings_mean=ratings["bgg_user_rating"].mean(),
         embedding_dim=32,
         learning_rate=1e-3,
