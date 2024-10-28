@@ -61,6 +61,8 @@ class CollaborativeFilteringModel(lightning.LightningModule):
     ):
         super().__init__()
 
+        self.automatic_optimization = False
+
         self.users = np.array(list(users), dtype=np.str_)
         self.user_ids = {user: i for i, user in enumerate(self.users)}
         self.games = np.array(list(games), dtype=np.int32)
@@ -93,10 +95,16 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         self.learning_rate = learning_rate
 
         self.user_embedding = nn.Embedding(len(self.users), embedding_dim)
-        self.user_biases = nn.Parameter(torch.rand(len(self.users)))
+        self.user_biases = nn.Parameter(torch.zeros(len(self.users)))
         self.game_embedding = nn.Embedding(len(self.games), embedding_dim)
-        self.game_biases = nn.Parameter(torch.rand(len(self.games)))
-        self.intercept = nn.Parameter(torch.rand(1))
+        self.game_biases = nn.Parameter(torch.zeros(len(self.games)))
+        # TODO: Should we initialize the intercept with the mean of the ratings?
+        self.intercept = nn.Parameter(torch.zeros(1))
+
+        nn.init.normal_(self.user_embedding.weight, std=0.1)
+        nn.init.normal_(self.user_biases, std=0.01)
+        nn.init.normal_(self.game_embedding.weight, std=0.1)
+        nn.init.normal_(self.game_biases, std=0.01)
 
         self.train_rmse = torchmetrics.MeanSquaredError(squared=False)
         self.val_rmse = torchmetrics.MeanSquaredError(squared=False)
@@ -109,6 +117,7 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         # Regularized loss function from Turicreate's FactorizationRecommender:
         # https://apple.github.io/turicreate/docs/api/generated/turicreate.recommender.factorization_recommender.FactorizationRecommender.html
         if self.regularization:
+            # TODO: Only regularize the embeddings of the observed users and items
             user_embedding = self.user_embedding.weight
             game_embedding = self.game_embedding.weight
             loss += self.regularization * (
@@ -116,6 +125,7 @@ class CollaborativeFilteringModel(lightning.LightningModule):
             )
 
         if self.linear_regularization:
+            # TODO: Only regularize the biases of the observed users and items
             user_bias = self.user_biases
             game_bias = self.game_biases
             loss += self.linear_regularization * (
@@ -180,10 +190,27 @@ class CollaborativeFilteringModel(lightning.LightningModule):
     def training_step(self, batch: torch.Tensor, batch_idx: int = 0) -> torch.Tensor:
         user, item, target = batch
         prediction = self(user, item)
+
         loss = self.loss_fn(prediction, target)
         self.log("train_loss", loss, prog_bar=True)
+
         self.train_rmse(prediction, target)
         self.log("train_rmse", self.train_rmse, prog_bar=True)
+
+        user_optimizer, item_optimizer = self.optimizers()
+
+        # Alternate between optimizing the user and item embeddings
+        if batch_idx % 2 == 0:
+            assert isinstance(user_optimizer, optim.Optimizer)
+            user_optimizer.zero_grad()
+            self.manual_backward(loss)
+            user_optimizer.step()
+        else:
+            assert isinstance(item_optimizer, optim.Optimizer)
+            item_optimizer.zero_grad()
+            self.manual_backward(loss)
+            item_optimizer.step()
+
         return loss
 
     def validation_step(self, batch: torch.Tensor, batch_idx: int = 0) -> torch.Tensor:
@@ -195,8 +222,24 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         self.log("val_rmse", self.val_rmse)
         return loss
 
-    def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=self.learning_rate)
+    def configure_optimizers(self) -> Tuple[optim.Optimizer, optim.Optimizer]:
+        user_optimizer = optim.Adam(
+            params=[
+                self.user_embedding.weight,
+                self.user_biases,
+                self.intercept,
+            ],
+            lr=self.learning_rate,
+        )
+        game_optimizer = optim.Adam(
+            params=[
+                self.game_embedding.weight,
+                self.game_biases,
+                self.intercept,
+            ],
+            lr=self.learning_rate,
+        )
+        return user_optimizer, game_optimizer
 
 
 def load_jl(path: PATH_OR_STR, schema: Dict[str, Type[pl.DataType]]) -> pl.DataFrame:
@@ -247,11 +290,11 @@ def train_model(
         games=games,
         embedding_dim=32,
         learning_rate=1e-3,
-        regularization=1e-8,
-        linear_regularization=1e-10,
-        ranking_regularization=0.25,
-        unobserved_rating_value=ratings["bgg_user_rating"].quantile(0.05),
-        num_sampled_negative_examples=4,
+        # regularization=1e-8,
+        # linear_regularization=1e-10,
+        # ranking_regularization=0.25,
+        # unobserved_rating_value=ratings["bgg_user_rating"].quantile(0.05),
+        # num_sampled_negative_examples=4,
     )
 
     user_ids_array = ratings["user_id"].to_numpy(writable=True)
