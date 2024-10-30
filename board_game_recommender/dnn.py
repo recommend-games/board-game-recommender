@@ -90,7 +90,7 @@ class CollaborativeFilteringModel(lightning.LightningModule):
             self.games
         ), "Game ratings mean must have the same length as the number of games"
 
-        self.ratings_mean = ratings_mean
+        self.ratings_mean = ratings_mean or 0.0
 
         assert embedding_dim > 0, "Embedding dimension must be positive"
         assert (
@@ -125,7 +125,9 @@ class CollaborativeFilteringModel(lightning.LightningModule):
             self.user_biases = nn.Parameter(torch.zeros(len(self.users)))
             nn.init.normal_(self.user_biases, std=0.01)
         else:
-            self.user_biases = nn.Parameter(torch.tensor(self.user_ratings_mean))
+            self.user_biases = nn.Parameter(
+                torch.tensor(self.user_ratings_mean - self.ratings_mean)
+            )
 
         self.game_embedding = nn.Embedding(len(self.games), embedding_dim)
         nn.init.normal_(self.game_embedding.weight, std=0.1)
@@ -134,10 +136,11 @@ class CollaborativeFilteringModel(lightning.LightningModule):
             self.game_biases = nn.Parameter(torch.zeros(len(self.games)))
             nn.init.normal_(self.game_biases, std=0.01)
         else:
-            self.game_biases = nn.Parameter(torch.tensor(self.game_ratings_mean))
+            self.game_biases = nn.Parameter(
+                torch.tensor(self.game_ratings_mean - self.ratings_mean)
+            )
 
-        intercept = self.ratings_mean if self.ratings_mean is not None else 0.0
-        self.intercept = nn.Parameter(torch.tensor(intercept))
+        self.intercept = nn.Parameter(torch.tensor(self.ratings_mean))
 
         self.train_rmse = torchmetrics.MeanSquaredError(squared=False)
         self.val_rmse = torchmetrics.MeanSquaredError(squared=False)
