@@ -18,6 +18,7 @@ LOGGER = logging.getLogger(__name__)
 PATH_OR_STR = Union[os.PathLike, str]
 
 BASE_DIR = Path(__file__).parent.parent.resolve()
+NUM_CPUS = os.cpu_count() or 1
 
 
 class CollaborativeFilteringModel(lightning.LightningModule):
@@ -183,7 +184,6 @@ class CollaborativeFilteringModel(lightning.LightningModule):
             )
 
         if self.linear_regularization:
-            # TODO: Only regularize the biases of the observed users and items
             user_bias = (
                 self.user_biases[user] if user is not None else self.user_biases.data
             )
@@ -388,21 +388,29 @@ def train_model(
     ratings_array = ratings["bgg_user_rating"].to_numpy(writable=True)
     ratings_tensor = torch.from_numpy(ratings_array)
 
-    num_cpus = os.cpu_count() or 1
-    # TODO: Train/test/val split
-    dataset = TensorDataset(user_ids_tensor, game_ids_tensor, ratings_tensor)
-    train_loader = DataLoader(
+    dataset = TensorDataset(
+        user_ids_tensor,
+        game_ids_tensor,
+        ratings_tensor,
+    )
+    train_dataset, val_dataset = torch.utils.data.random_split(
         dataset=dataset,
+        lengths=(0.9, 0.1),
+    )
+
+    train_loader = DataLoader(
+        dataset=train_dataset,
         batch_size=batch_size,
-        num_workers=4 if num_cpus > 1 else 0,
-        persistent_workers=num_cpus > 1,
+        num_workers=4 if NUM_CPUS > 1 else 0,
+        persistent_workers=NUM_CPUS > 1,
         shuffle=True,
     )
+
     val_loader = DataLoader(
-        dataset=dataset,
+        dataset=val_dataset,
         batch_size=batch_size,
-        num_workers=4 if num_cpus > 1 else 0,
-        persistent_workers=num_cpus > 1,
+        num_workers=4 if NUM_CPUS > 1 else 0,
+        persistent_workers=NUM_CPUS > 1,
         shuffle=False,
     )
 
@@ -419,8 +427,8 @@ def train_model(
     early_stopping_callback = lightning.pytorch.callbacks.early_stopping.EarlyStopping(
         monitor="val_loss",
         mode="min",
-        min_delta=0.0,
-        patience=3,
+        min_delta=0.001,
+        patience=5,
         verbose=True,
     )
 
