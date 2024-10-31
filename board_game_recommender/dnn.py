@@ -249,7 +249,7 @@ class CollaborativeFilteringModel(lightning.LightningModule):
         game_tensor = torch.arange(num_games).to(self.device)
         predictions = self(user_tensor, game_tensor)
         top_n = torch.topk(predictions, n)
-        return self.games[top_n.indices.cpu().numpy()]
+        return self.games[top_n.indices.numpy(force=True)]
 
     def training_step(self, batch: torch.Tensor, batch_idx: int = 0) -> torch.Tensor:
         user, item, target = batch
@@ -381,12 +381,9 @@ def train_model(
         # num_sampled_negative_examples=4,
     )
 
-    user_ids_array = ratings["user_id"].to_numpy(writable=True)
-    user_ids_tensor = torch.from_numpy(user_ids_array)
-    game_ids_array = ratings["game_id"].to_numpy(writable=True)
-    game_ids_tensor = torch.from_numpy(game_ids_array)
-    ratings_array = ratings["bgg_user_rating"].to_numpy(writable=True)
-    ratings_tensor = torch.from_numpy(ratings_array)
+    user_ids_tensor = ratings["user_id"].to_torch()
+    game_ids_tensor = ratings["game_id"].to_torch()
+    ratings_tensor = ratings["bgg_user_rating"].to_torch()
 
     dataset = TensorDataset(
         user_ids_tensor,
