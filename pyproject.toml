@@ -34,6 +34,9 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.9.0, <4.0"
 
+numpy = "*"
+polars = "*"
+
 [tool.poetry.group.dev.dependencies]
 mkdocstrings = {version = ">=0.23", extras = ["python"]}
 mkdocs-material = "*"
