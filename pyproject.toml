@@ -38,6 +38,7 @@ numpy = "*"
 polars = "*"
 
 [tool.poetry.group.dev.dependencies]
+ipython = "*"
 mkdocstrings = {version = ">=0.23", extras = ["python"]}
 mkdocs-material = "*"
 mypy = "*"
