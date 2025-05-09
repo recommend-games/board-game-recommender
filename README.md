@@ -1,71 +1,91 @@
-# 🎲 Board Game Recommender 👍
+# Board Game Recommender
 
-Board game recommendation engine. View the recommendations live at
-[Recommend.Games](https://recommend.games/)! Install via
+[![PyPI](https://img.shields.io/pypi/v/board-game-recommender?style=flat-square)](https://pypi.python.org/pypi/board-game-recommender/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/board-game-recommender?style=flat-square)](https://pypi.python.org/pypi/board-game-recommender/)
+[![PyPI - License](https://img.shields.io/pypi/l/board-game-recommender?style=flat-square)](https://pypi.python.org/pypi/board-game-recommender/)
+[![Coookiecutter - Wolt](https://img.shields.io/badge/cookiecutter-Wolt-00c2e8?style=flat-square&logo=cookiecutter&logoColor=D4AA00&link=https://github.com/woltapp/wolt-python-package-cookiecutter)](https://github.com/woltapp/wolt-python-package-cookiecutter)
 
-```bash
+
+---
+
+**Documentation**: [https://recommend-games.github.io/board-game-recommender](https://recommend-games.github.io/board-game-recommender)
+
+**Source Code**: [https://github.com/recommend-games/board-game-recommender](https://github.com/recommend-games/board-game-recommender)
+
+**PyPI**: [https://pypi.org/project/board-game-recommender/](https://pypi.org/project/board-game-recommender/)
+
+---
+
+Board game recommendation engine.
+
+## Installation
+
+```sh
 pip install board-game-recommender
 ```
 
-## Training new recommender models
+## Development
 
-### Environment
+* Clone this repository
+* Requirements:
+  * [Poetry](https://python-poetry.org/)
+  * Python 3.8+
+* Create a virtual environment and install the dependencies
 
-[Requires Python 3](https://pythonclock.org/). Make sure
-[Pipenv](https://docs.pipenv.org/) is installed and create the virtual environment:
-
-```bash
-python3 -m pip install --upgrade pipenv
-pipenv install --dev
-pipenv shell
+```sh
+poetry install
 ```
 
-### Datasets
+* Activate the virtual environment
 
-In order to train the models you will need appropriate game and rating data.
-You can either scrape your own using the [board-game-scraper](https://gitlab.com/recommend.games/board-game-scraper)
-project or take a look at the [BoardGameGeek guild](https://boardgamegeek.com/thread/2287371/boardgamegeek-games-and-ratings-datasets)
-to obtain existing datasets.
-
-At the moment there is only one [recommender implementations](board_game_recommender/recommend.py): [BoardGameGeek](https://boardgamegeek.com/).
-
-### Models
-
-We use the recommender implementation by [Turi Create](https://github.com/apple/turicreate).
-Two recommender models are supported out of the box:
-
-* [`RankingFactorizationRecommender`](https://apple.github.io/turicreate/docs/api/generated/turicreate.recommender.ranking_factorization_recommender.RankingFactorizationRecommender.html)
- (default): Learns latent factors for each user and game, generally yielding
- very interesting recommendations.
-* [`ItemSimilarityRecommender`](https://apple.github.io/turicreate/docs/api/generated/turicreate.recommender.item_similarity_recommender.ItemSimilarityRecommender.html):
- Ranks a game according to its similarity to other ratings by a user, often
- resulting in less interesting recommendations. However, this model is also
- able to find games similar to a given game.
-
-### Run the training
-
-Run the training via the [main script](board_game_recommender/__main__.py):
-
-```bash
-python -m board_game_recommender --help
+```sh
+poetry shell
 ```
 
-E.g., train the default BGG mode like so:
+### Testing
 
-```bash
-python -m board_game_recommender \
-    --train \
-    --games-file bgg_GameItem.jl \
-    --ratings-file bgg_RatingItem.jl \
-    --model model/output/dir
+```sh
+pytest
 ```
 
-## Links
+### Documentation
 
-* [board-game-recommender](https://gitlab.com/recommend.games/board-game-recommender):
- This repository
-* [Recommend.Games](https://recommend.games/): board game recommender website
-* [recommend-games-server](https://gitlab.com/recommend.games/recommend-games-server):
- Server code for [Recommend.Games](https://recommend.games/)
-* [board-game-scraper](https://gitlab.com/recommend.games/board-game-scraper):
- Board game data scraper
+The documentation is automatically generated from the content of the [docs directory](https://github.com/recommend-games/board-game-recommender/tree/master/docs) and from the docstrings
+ of the public signatures of the source code. The documentation is updated and published as a [Github Pages page](https://pages.github.com/) automatically as part each release.
+
+### Releasing
+
+Trigger the [Draft release workflow](https://github.com/recommend-games/board-game-recommender/actions/workflows/draft_release.yml)
+(press _Run workflow_). This will update the changelog & version and create a GitHub release which is in _Draft_ state.
+
+Find the draft release from the
+[GitHub releases](https://github.com/recommend-games/board-game-recommender/releases) and publish it. When
+ a release is published, it'll trigger [release](https://github.com/recommend-games/board-game-recommender/blob/master/.github/workflows/release.yml) workflow which creates PyPI
+ release and deploys updated documentation.
+
+### Pre-commit
+
+Pre-commit hooks run all the auto-formatting (`ruff format`), linters (e.g. `ruff` and `mypy`), and other quality
+ checks to make sure the changeset is in good shape before a commit/push happens.
+
+You can install the hooks with (runs for each commit):
+
+```sh
+pre-commit install
+```
+
+Or if you want them to run only for each push:
+
+```sh
+pre-commit install -t pre-push
+```
+
+Or if you want e.g. want to run all checks manually for all files:
+
+```sh
+pre-commit run --all-files
+```
+
+---
+
+This project was generated using the [wolt-python-package-cookiecutter](https://github.com/woltapp/wolt-python-package-cookiecutter) template.
