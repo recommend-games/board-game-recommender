@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Export the recommender classes from the package root again. `from
+  board_game_recommender import LightGamesRecommender` worked in v3 but raised
+  `ImportError` in 4.0.0 and 4.1.0, since the package's `__init__.py` was empty.
+
+### Changed
+- API documentation now lists each class once, under the import path it is
+  actually reachable from, rather than walking every submodule.
 
 ## [4.1.0] - 2026-08-24
 ### Added
