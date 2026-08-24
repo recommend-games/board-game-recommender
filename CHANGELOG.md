@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [4.1.1] - 2026-08-24
 ### Fixed
 - Export the recommender classes from the package root again. `from
   board_game_recommender import LightGamesRecommender` worked in v3 but raised
@@ -30,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 - Initial v4 implementation containing ABC, baseline and light recommenders
 
-[Unreleased]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.1.0...master
+[Unreleased]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.1.1...master
+[4.1.1]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.1.0...4.1.1
 [4.1.0]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.0.0...4.1.0
 [4.0.0]: https://gitlab.com/recommend.games/board-game-recommender/tree/4.0.0
