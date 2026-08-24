@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   left unimplemented in 4.0.0. Both are back, now returning polars rather than
   pandas frames. Unlike in v3, an unknown game scores 0 against everything
   instead of returning `NaN` for every game.
+- Document manual release process without GitHub Actions or `gh` CLI
 
 ## [4.0.0] - 2025-05-09
 ### Added

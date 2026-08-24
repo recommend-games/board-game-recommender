@@ -86,6 +86,50 @@ Or if you want e.g. want to run all checks manually for all files:
 pre-commit run --all-files
 ```
 
+### Releasing manually
+
+If you'd rather not use GitHub Actions or the `gh` CLI, you can cut a release entirely from the command line:
+
+```sh
+# 1. Bump version (patch|minor|major|prepatch|preminor|premajor|prerelease, or explicit e.g. 1.2.3)
+poetry version patch
+VERSION=$(poetry version --short)
+
+# 2. Update changelog
+poetry run kacl-cli release "$VERSION" --modify --auto-link
+
+# 3. Commit the version bump
+git add CHANGELOG.md pyproject.toml
+git commit -m "Release $VERSION"
+
+# 4. Tag and push. `master` tracks GitLab, but the docs are published from
+#    GitHub, so both remotes need the commit and the tag.
+git tag "$VERSION"
+git push gitlab master
+git push gitlab "$VERSION"
+git push github master
+git push github "$VERSION"
+
+# 5. Build and publish to PyPI (needs a token, e.g. via a PYPI_TOKEN env var)
+poetry config pypi-token.pypi "$PYPI_TOKEN"
+poetry publish --build
+
+# 6. Deploy docs to GitHub Pages
+poetry run mkdocs gh-deploy --force --remote-name github
+```
+
+Three things worth knowing:
+
+* Tags carry no `v` prefix — `4.0.0`, not `v4.0.0`. That is what the draft release
+ workflow creates, and what the changelog's auto-generated links expect. The older
+ `v3.6.0`-style tags predate this convention.
+* `mkdocs gh-deploy` pushes to a remote called `origin` by default, which this
+ repository does not have, hence `--remote-name github`.
+* `poetry version` only edits `pyproject.toml`. `poetry.lock` records a hash of the
+ dependencies rather than the project's own version, so it does not need committing.
+
+Note that no GitHub Release object gets created this way — only the PyPI package and docs. Steps 4 and 6 use plain `git push` (not the GitHub API), so they work without `gh`.
+
 ---
 
 This project was generated using the [wolt-python-package-cookiecutter](https://github.com/woltapp/wolt-python-package-cookiecutter) template.
