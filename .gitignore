@@ -83,3 +83,6 @@ venv.bak/
 .bgg*
 *.ipynb
 *.npz
+
+# Claude
+.claude/
