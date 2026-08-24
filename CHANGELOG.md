@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `evaluation` module for scoring recommenders: nDCG, exponential-gain nDCG, RMSE
+  and effective catalog size, plus `ratings_train_test_split()` to hold out
+  ratings from power users. Ported from v3 with no Turi Create or scikit-learn
+  dependency; the effective catalog size formula is corrected (v3 computed
+  `2 * sum(p * rank) + 1` where the definition is `- 1`, an offset of 2).
 
 ## [4.0.0] - 2025-05-09
 ### Added
