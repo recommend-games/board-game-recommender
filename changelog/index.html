@@ -346,6 +346,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#411-2026-08-24" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.1.1 - 2026-08-24
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.1.1 - 2026-08-24">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fixed
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Changed
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#410-2026-08-24" class="md-nav__link">
     <span class="md-ellipsis">
       4.1.0 - 2026-08-24
@@ -437,6 +470,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#411-2026-08-24" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.1.1 - 2026-08-24
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.1.1 - 2026-08-24">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fixed
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Changed
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#410-2026-08-24" class="md-nav__link">
     <span class="md-ellipsis">
       4.1.0 - 2026-08-24
@@ -505,7 +571,19 @@
 <h1 id="changelog">Changelog</h1>
 <p>All notable changes to this project will be documented in this file.</p>
 <p>The format is based on <a href="https://keepachangelog.com/en/1.0.0/">Keep a Changelog</a>, and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
-<h2 id="unreleased"><a href="https://gitlab.com/recommend.games/board-game-recommender/compare/4.1.0...master">Unreleased</a></h2>
+<h2 id="unreleased"><a href="https://gitlab.com/recommend.games/board-game-recommender/compare/4.1.1...master">Unreleased</a></h2>
+<h2 id="411-2026-08-24"><a href="https://gitlab.com/recommend.games/board-game-recommender/compare/4.1.0...4.1.1">4.1.1</a> - 2026-08-24</h2>
+<h3 id="fixed">Fixed</h3>
+<ul>
+<li>Export the recommender classes from the package root again. <code>from
+  board_game_recommender import LightGamesRecommender</code> worked in v3 but raised
+  <code>ImportError</code> in 4.0.0 and 4.1.0, since the package's <code>__init__.py</code> was empty.</li>
+</ul>
+<h3 id="changed">Changed</h3>
+<ul>
+<li>API documentation now lists each class once, under the import path it is
+  actually reachable from, rather than walking every submodule.</li>
+</ul>
 <h2 id="410-2026-08-24"><a href="https://gitlab.com/recommend.games/board-game-recommender/compare/4.0.0...4.1.0">4.1.0</a> - 2026-08-24</h2>
 <h3 id="added">Added</h3>
 <ul>
