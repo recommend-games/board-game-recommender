@@ -261,54 +261,56 @@ class LightGamesRecommender(BaseGamesRecommender):
             else self._game_scores(games).reshape(1, -1)
         )
 
+    def _similarity_scores(self, games: list[int]) -> np.ndarray:
+        """
+        Cosine similarity between the given games and every known game.
+
+        The result has shape (len(games), num_games). Games unknown to the model
+        have no latent factors, so they score 0 against everything.
+        """
+
+        game_ids = np.array([self.items_indexes[game] for game in games], dtype=int)
+        game_factors = self.items_factors[:, game_ids]
+        return cosine_similarity(game_factors, self.items_factors[:, :-1])
+
     def recommend_similar(
         self,
         games: Iterable[int],
-        **kwargs,
+        **kwargs: Any,  # noqa: ARG002
     ) -> pl.DataFrame:
         """
         Recommend games similar to the given games based on cosine similarity
-        of latent factors.
+        of latent factors, averaged over all the given games.
         """
 
-        msg = "Not implemented yet"
-        raise NotImplementedError(msg)
-
-        # games = list(games)
-        # game_ids = np.array([self.items_indexes[game] for game in games])
-        # game_factors = self.items_factors[:, game_ids]
-
-        # scores = cosine_similarity(game_factors, self.items_factors[:, :-1]).mean(
-        #     axis=0
-        # )
-
-        # result = pd.DataFrame(index=self.items_labels, data={"score": scores})
-        # result["rank"] = result["score"].rank(method="min",
-        # ascending=False).astype(int)
-        # result.sort_values("rank", inplace=True)
-
-        # return result
+        games = list(games)
+        scores = (
+            self._similarity_scores(games).mean(axis=0).reshape(1, -1)
+            if games
+            else np.zeros((1, self.num_games))
+        )
+        return dataframe_from_scores(
+            users=["_all"],
+            games=self.items_labels,
+            scores=scores,
+        )
 
     def similar_games(
         self,
         games: Iterable[int],
-        **kwargs,
+        **kwargs: Any,  # noqa: ARG002
     ) -> pl.DataFrame:
         """
         Find games similar to the given games based on
         cosine similarity of latent factors.
         """
 
-        msg = "Not implemented yet"
-        raise NotImplementedError(msg)
-
-        # games = list(games)
-        # game_ids = np.array([self.items_indexes[game] for game in games])
-        # game_factors = self.items_factors[:, game_ids]
-
-        # scores = cosine_similarity(game_factors, self.items_factors[:, :-1])
-
-        # return dataframe_from_scores(games, self.items_labels, scores)
+        games = list(games)
+        return dataframe_from_scores(
+            users=games,  # type: ignore[arg-type]
+            games=self.items_labels,
+            scores=self._similarity_scores(games),
+        )
 
 
 def cosine_similarity(matrix_1: np.ndarray, matrix_2: np.ndarray) -> np.ndarray:
@@ -316,7 +318,7 @@ def cosine_similarity(matrix_1: np.ndarray, matrix_2: np.ndarray) -> np.ndarray:
     Calculates the cosine similarity between two matrices.
 
     The input matrices need to be of shape (m,n) and (m,l);
-    the result shape will be (n,l).
+    the result shape will be (n,l). Columns with zero norm score 0 throughout.
     """
 
     dot_product = matrix_1.T @ matrix_2  # (n,l)
@@ -324,4 +326,11 @@ def cosine_similarity(matrix_1: np.ndarray, matrix_2: np.ndarray) -> np.ndarray:
     matrix_2_norm = np.linalg.norm(matrix_2, axis=0)  # (l,)
     outer_prod_norm = np.outer(matrix_1_norm, matrix_2_norm)  # (n,l)
 
-    return dot_product / outer_prod_norm  # (n,l)
+    # Zero vectors are orthogonal to everything by convention, rather than NaN:
+    # a single unknown game would otherwise poison an entire recommendation.
+    return np.divide(
+        dot_product,
+        outer_prod_norm,
+        out=np.zeros_like(dot_product),
+        where=outer_prod_norm != 0,
+    )  # (n,l)

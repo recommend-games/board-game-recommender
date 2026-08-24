@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   ratings from power users. Ported from v3 with no Turi Create or scikit-learn
   dependency; the effective catalog size formula is corrected (v3 computed
   `2 * sum(p * rank) + 1` where the definition is `- 1`, an offset of 2).
+- `LightGamesRecommender.recommend_similar()` and `.similar_games()`, which were
+  left unimplemented in 4.0.0. Both are back, now returning polars rather than
+  pandas frames. Unlike in v3, an unknown game scores 0 against everything
+  instead of returning `NaN` for every game.
 
 ## [4.0.0] - 2025-05-09
 ### Added
