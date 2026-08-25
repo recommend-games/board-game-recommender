@@ -44,6 +44,12 @@ jobs:
       - uses: ./.github/actions/python-poetry-env
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install CPU-only PyTorch
+        # The optional torch extra is not installed by `poetry install`, so the
+        # tests for the dnn module would otherwise always skip. The wheels on
+        # PyPI bundle several GB of CUDA that the runner cannot use, hence the
+        # CPU index.
+        run: poetry run pip install torch --index-url https://download.pytorch.org/whl/cpu
       - run: poetry run pytest
 
   docs:
