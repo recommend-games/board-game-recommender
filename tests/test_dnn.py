@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import polars as pl
 import pytest
@@ -19,6 +21,9 @@ from board_game_recommender.light import (
     CollaborativeFilteringData,
     LightGamesRecommender,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 NUM_USERS = 5
 NUM_ITEMS = 7
@@ -344,33 +349,66 @@ def test_train_is_reproducible_with_a_seed() -> None:
     )
 
 
-def test_train_result_feeds_the_light_recommender() -> None:
-    """
-    A trained model can be wrapped for serving without any extra plumbing.
+def _model_scores(
+    model: CollaborativeFilteringModel,
+    user_labels: np.ndarray,
+    item_labels: np.ndarray,
+) -> np.ndarray:
+    users = torch.arange(len(user_labels)).repeat_interleave(len(item_labels))
+    items = torch.arange(len(item_labels)).repeat(len(user_labels))
+    with torch.no_grad():
+        return model(users, items).reshape(len(user_labels), len(item_labels)).numpy()
 
-    This is the contract the eventual `.npz` export will rely on.
-    """
+
+def test_to_collaborative_filtering_data_feeds_the_light_recommender() -> None:
+    """A trained model can be wrapped for serving without any extra plumbing."""
 
     ratings = _synthetic_ratings(num_users=5, num_items=6, seed=4)
     result = train(ratings, num_factors=3, num_epochs=5, seed=SEED)
-    model = result.model
 
-    recommender = LightGamesRecommender(
-        CollaborativeFilteringData(
-            intercept=float(model.intercept),
-            users_labels=result.user_labels,
-            users_linear_terms=model.user_biases.weight.detach().numpy().reshape(-1),
-            users_factors=model.user_factors.weight.detach().numpy(),
-            items_labels=result.item_labels,
-            items_linear_terms=model.item_biases.weight.detach().numpy().reshape(-1),
-            items_factors=model.item_factors.weight.detach().numpy().T,
-        ),
-    )
-
-    scores = recommender.recommend_as_numpy(
+    recommender = LightGamesRecommender(result.to_collaborative_filtering_data())
+    served = recommender.recommend_as_numpy(
         users=list(result.user_labels),
         games=list(result.item_labels),
     )
 
-    assert scores.shape == (5, 6)
-    assert np.isfinite(scores).all()
+    np.testing.assert_allclose(
+        served,
+        _model_scores(result.model, result.user_labels, result.item_labels),
+        rtol=1e-5,
+        atol=1e-6,
+    )
+
+
+def test_train_result_labels_are_npz_safe() -> None:
+    """Object-dtype arrays, which polars gives string columns, can't be saved
+    to `.npz` without `allow_pickle=True`."""
+
+    ratings = _synthetic_ratings(num_users=NUM_USERS, num_items=NUM_ITEMS, seed=8)
+    result = train(ratings, num_factors=NUM_FACTORS, num_epochs=0, seed=SEED)
+
+    assert result.user_labels.dtype != object
+    assert result.item_labels.dtype != object
+
+
+def test_to_collaborative_filtering_data_survives_an_npz_round_trip(
+    tmp_path: Path,
+) -> None:
+    ratings = _synthetic_ratings(num_users=5, num_items=6, seed=7)
+    result = train(ratings, num_factors=3, num_epochs=5, seed=SEED)
+
+    path = tmp_path / "model.npz"
+    result.to_collaborative_filtering_data().to_npz(path)
+    reloaded = LightGamesRecommender.from_npz(path)
+
+    served = reloaded.recommend_as_numpy(
+        users=list(result.user_labels),
+        games=list(result.item_labels),
+    )
+
+    np.testing.assert_allclose(
+        served,
+        _model_scores(result.model, result.user_labels, result.item_labels),
+        rtol=1e-5,
+        atol=1e-6,
+    )
