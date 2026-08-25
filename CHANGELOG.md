@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `dnn` module with a PyTorch implementation of the linear collaborative
   filtering model Turi Create produced, behind a new optional `torch` extra.
   Model only for now: no training loop, no `.npz` export.
+- Tests for the PyTorch `CollaborativeFilteringModel`, including one pinning
+  down that its scores match what `LightGamesRecommender` serves. They skip
+  where the optional `torch` extra is not installed.
 
 
 ## [4.1.1] - 2026-08-24
