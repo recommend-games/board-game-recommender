@@ -154,7 +154,7 @@ class PopularGamesRecommender(BaseGamesRecommender):
         self.game_ids = tuple(game_ids)
         self.scores = defaultdict(
             self.default_factory,
-            zip(self.game_ids, self.raw_scores),
+            zip(self.game_ids, self.raw_scores, strict=True),
         )
 
     @classmethod
@@ -278,7 +278,7 @@ class PopularMeanGamesRecommender(PopularGamesRecommender):
         return cls(
             game_ids=data[cls.id_field],
             scores=data["mean"].to_numpy(),
-            default_value=cast(float, ratings[cls.rating_id_field].mean()),
+            default_value=cast("float", ratings[cls.rating_id_field].mean()),
         )
 
 
@@ -292,7 +292,7 @@ class PopularBayesianGamesRecommender(PopularGamesRecommender):
     def train(cls, ratings: pl.DataFrame) -> Self:
         num_dummies = len(ratings) / cls.ratings_per_dummy
         dummy_rating = cast(
-            float,
+            "float",
             ratings[cls.rating_id_field].mean()
             if cls.dummy_rating is None
             else cls.dummy_rating,

@@ -83,7 +83,7 @@ class LightGamesRecommender(BaseGamesRecommender):
         self.users_labels: list[str] = list(data.users_labels)
         self.users_indexes = defaultdict(
             lambda: -1,
-            zip(data.users_labels, range(num_users)),
+            zip(data.users_labels, range(num_users), strict=True),
         )
         self.users_linear_terms = np.concatenate((data.users_linear_terms, np.zeros(1)))
         self.users_factors = np.concatenate(
@@ -95,7 +95,7 @@ class LightGamesRecommender(BaseGamesRecommender):
         self.items_labels: list[int] = list(data.items_labels)
         self.items_indexes = defaultdict(
             lambda: -1,
-            zip(data.items_labels, range(num_items)),
+            zip(data.items_labels, range(num_items), strict=True),
         )
         self.items_linear_terms = np.concatenate((data.items_linear_terms, np.zeros(1)))
         self.items_factors = np.concatenate(

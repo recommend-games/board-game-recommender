@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -13,11 +13,8 @@ if TYPE_CHECKING:
 
     import polars as pl
 
-GameKeyType = TypeVar("GameKeyType")
-UserKeyType = TypeVar("UserKeyType")
 
-
-class BaseGamesRecommender(ABC, Generic[GameKeyType, UserKeyType]):
+class BaseGamesRecommender[GameKeyType, UserKeyType](ABC):
     """Abstract base games recommender class."""
 
     @property

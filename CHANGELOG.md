@@ -12,6 +12,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   down that its scores match what `LightGamesRecommender` serves. They skip
   where the optional `torch` extra is not installed.
 
+### Changed
+- Require Python 3.12 or newer, dropping 3.9 through 3.11. Every core
+  dependency had already moved past 3.9, so this unlocks current numpy (2.0 ->
+  2.5), polars (1.17 -> 1.44) and torch (2.7 -> 2.13).
+- Modernised the code for 3.12: PEP 695 type parameters in place of explicit
+  `TypeVar`s, and an explicit `strict=` on every `zip()`.
+
 
 ## [4.1.1] - 2026-08-24
 ### Fixed
