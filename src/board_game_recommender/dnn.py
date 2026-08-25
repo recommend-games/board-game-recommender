@@ -15,6 +15,7 @@ from board_game_recommender.evaluation import (
     DEFAULT_RATINGS_KEY,
     DEFAULT_USER_ID_KEY,
 )
+from board_game_recommender.light import CollaborativeFilteringData
 
 if TYPE_CHECKING:
     import numpy as np
@@ -100,6 +101,32 @@ class TrainingResult:
     user_labels: np.ndarray
     item_labels: np.ndarray
 
+    def to_collaborative_filtering_data(self) -> CollaborativeFilteringData:
+        """Convert to the format `LightGamesRecommender` serves."""
+
+        user_biases = self.model.user_biases.weight.detach().numpy()
+        item_biases = self.model.item_biases.weight.detach().numpy()
+
+        return CollaborativeFilteringData(
+            intercept=float(self.model.intercept),
+            users_labels=self.user_labels,
+            users_linear_terms=user_biases.reshape(-1),
+            users_factors=self.model.user_factors.weight.detach().numpy(),
+            items_labels=self.item_labels,
+            items_linear_terms=item_biases.reshape(-1),
+            items_factors=self.model.item_factors.weight.detach().numpy().T,
+        )
+
+
+def _numpy_safe(labels: np.ndarray) -> np.ndarray:
+    """
+    Give string labels a fixed-width dtype rather than polars' `object`.
+
+    `.npz` files can't store object arrays without `allow_pickle=True`, which
+    `CollaborativeFilteringData.from_npz()` deliberately doesn't set.
+    """
+    return labels.astype(str) if labels.dtype == object else labels
+
 
 def train(  # noqa: PLR0913
     ratings: pl.DataFrame,
@@ -126,8 +153,12 @@ def train(  # noqa: PLR0913
 
     ratings = ratings.filter(pl.col(ratings_key).is_not_null())
 
-    user_labels = ratings[user_id_key].unique(maintain_order=True).to_numpy()
-    item_labels = ratings[game_id_key].unique(maintain_order=True).to_numpy()
+    user_labels = _numpy_safe(
+        ratings[user_id_key].unique(maintain_order=True).to_numpy(),
+    )
+    item_labels = _numpy_safe(
+        ratings[game_id_key].unique(maintain_order=True).to_numpy(),
+    )
     user_index = {label: index for index, label in enumerate(user_labels)}
     item_index = {label: index for index, label in enumerate(item_labels)}
 
