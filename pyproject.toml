@@ -37,6 +37,11 @@ python = ">=3.9.0, <4.0"
 numpy = "*"
 polars = "*"
 
+torch = {version = "*", optional = true}
+
+[tool.poetry.extras]
+torch = ["torch"]
+
 [tool.poetry.group.dev.dependencies]
 ipython = "*"
 mkdocstrings = {version = ">=0.23", extras = ["python"]}

@@ -31,9 +31,15 @@ def test_recommenders_are_exported() -> None:
     base = board_game_recommender.BaseGamesRecommender
 
     for module_info in pkgutil.iter_modules(board_game_recommender.__path__):
-        module = importlib.import_module(
-            f"{board_game_recommender.__name__}.{module_info.name}",
-        )
+        try:
+            module = importlib.import_module(
+                f"{board_game_recommender.__name__}.{module_info.name}",
+            )
+        except ImportError:
+            # Modules behind an optional extra cannot be inspected when that
+            # extra is not installed, which is the case in CI.
+            continue
+
         for name in dir(module):
             obj = getattr(module, name)
             if (
