@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `train()` in the `dnn` module: a plain training loop for
+  `CollaborativeFilteringModel`, minimising mean squared error with `Adam`
+  over shuffled minibatches. No L2 or ranking regularisation yet, and no
+  `.npz` export; both are left for a follow-up.
+
 ## [4.2.0] - 2026-08-25
 
 ### Added

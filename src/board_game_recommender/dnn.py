@@ -2,8 +2,24 @@
 
 from __future__ import annotations
 
+import logging
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+import polars as pl
 import torch  # type: ignore[import-not-found]
-from torch import nn  # type: ignore[import-not-found]
+from torch import nn, optim  # type: ignore[import-not-found]
+
+from board_game_recommender.evaluation import (
+    DEFAULT_GAME_ID_KEY,
+    DEFAULT_RATINGS_KEY,
+    DEFAULT_USER_ID_KEY,
+)
+
+if TYPE_CHECKING:
+    import numpy as np
+
+LOGGER = logging.getLogger(__name__)
 
 
 class CollaborativeFilteringModel(nn.Module):
@@ -74,3 +90,87 @@ class CollaborativeFilteringModel(nn.Module):
             + self.item_biases(items).squeeze(-1)
             + self.intercept
         )
+
+
+@dataclass(frozen=True)
+class TrainingResult:
+    """A trained model, together with the labels its indexes refer to."""
+
+    model: CollaborativeFilteringModel
+    user_labels: np.ndarray
+    item_labels: np.ndarray
+
+
+def train(  # noqa: PLR0913
+    ratings: pl.DataFrame,
+    *,
+    user_id_key: str = DEFAULT_USER_ID_KEY,
+    game_id_key: str = DEFAULT_GAME_ID_KEY,
+    ratings_key: str = DEFAULT_RATINGS_KEY,
+    num_factors: int = 32,
+    num_epochs: int = 20,
+    batch_size: int = 1 << 16,
+    learning_rate: float = 1e-3,
+    seed: int | None = None,
+) -> TrainingResult:
+    """
+    Train a `CollaborativeFilteringModel` by minimising mean squared error.
+
+    A plain training loop: dense minibatches shuffled each epoch, `Adam`,
+    nothing else. No L2 or ranking regularisation yet, and no early stopping;
+    both are left for a follow-up once this is proven to converge.
+    """
+
+    if seed is not None:
+        torch.manual_seed(seed)
+
+    ratings = ratings.filter(pl.col(ratings_key).is_not_null())
+
+    user_labels = ratings[user_id_key].unique(maintain_order=True).to_numpy()
+    item_labels = ratings[game_id_key].unique(maintain_order=True).to_numpy()
+    user_index = {label: index for index, label in enumerate(user_labels)}
+    item_index = {label: index for index, label in enumerate(item_labels)}
+
+    indexed = ratings.select(
+        pl.col(user_id_key)
+        .replace_strict(user_index, return_dtype=pl.Int64)
+        .alias("user"),
+        pl.col(game_id_key)
+        .replace_strict(item_index, return_dtype=pl.Int64)
+        .alias("item"),
+        pl.col(ratings_key).cast(pl.Float32).alias("rating"),
+    )
+
+    # polars may hand back a read-only view; torch.from_numpy on one of those is
+    # undefined behaviour, so copy explicitly rather than suppress the warning.
+    users = torch.from_numpy(indexed["user"].to_numpy().copy())
+    items = torch.from_numpy(indexed["item"].to_numpy().copy())
+    target = torch.from_numpy(indexed["rating"].to_numpy().copy())
+
+    model = CollaborativeFilteringModel(
+        num_users=len(user_labels),
+        num_items=len(item_labels),
+        num_factors=num_factors,
+    )
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    num_rows = len(users)
+    for epoch in range(num_epochs):
+        permutation = torch.randperm(num_rows)
+        epoch_loss = 0.0
+        for start in range(0, num_rows, batch_size):
+            batch = permutation[start : start + batch_size]
+            optimizer.zero_grad()
+            prediction = model(users[batch], items[batch])
+            loss = nn.functional.mse_loss(prediction, target[batch])
+            loss.backward()
+            optimizer.step()
+            epoch_loss += float(loss) * len(batch)
+        LOGGER.info(
+            "Epoch %d/%d: MSE %.4f",
+            epoch + 1,
+            num_epochs,
+            epoch_loss / num_rows,
+        )
+
+    return TrainingResult(model=model, user_labels=user_labels, item_labels=item_labels)
