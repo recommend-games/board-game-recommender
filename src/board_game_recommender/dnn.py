@@ -152,6 +152,26 @@ def train(  # noqa: PLR0913
         num_items=len(item_labels),
         num_factors=num_factors,
     )
+
+    # Adam's step size is roughly bounded by the learning rate regardless of
+    # gradient magnitude, so leaving these at 0 would take far more epochs
+    # than is practical to reach a realistic rating scale. Seed them with the
+    # standard baseline predictor instead: global mean, then each user's and
+    # item's average deviation from it.
+    global_mean = float(target.mean())
+    user_means = indexed.group_by("user").agg(pl.col("rating").mean()).sort("user")
+    item_means = indexed.group_by("item").agg(pl.col("rating").mean()).sort("item")
+    user_bias_init = user_means["rating"].to_numpy() - global_mean
+    item_bias_init = item_means["rating"].to_numpy() - global_mean
+
+    model.intercept.data.fill_(global_mean)
+    model.user_biases.weight.data.copy_(
+        torch.from_numpy(user_bias_init.astype("float32")).reshape(-1, 1),
+    )
+    model.item_biases.weight.data.copy_(
+        torch.from_numpy(item_bias_init.astype("float32")).reshape(-1, 1),
+    )
+
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     num_rows = len(users)

@@ -208,6 +208,55 @@ def _synthetic_ratings(
     )
 
 
+def test_train_initializes_the_intercept_at_the_mean_rating() -> None:
+    """`num_epochs=0` isolates the initialisation from any training step."""
+
+    ratings = _synthetic_ratings(num_users=NUM_USERS, num_items=NUM_ITEMS, seed=5)
+    expected_mean = float(
+        ratings["bgg_user_rating"].cast(pl.Float32).to_numpy().mean(),
+    )
+
+    result = train(ratings, num_factors=NUM_FACTORS, num_epochs=0, seed=SEED)
+
+    assert float(result.model.intercept) == pytest.approx(expected_mean, abs=1e-3)
+
+
+def test_train_initializes_biases_from_rating_means() -> None:
+    """Same reasoning as the intercept, per user and per item."""
+
+    ratings = _synthetic_ratings(num_users=NUM_USERS, num_items=NUM_ITEMS, seed=6)
+    global_mean = float(ratings["bgg_user_rating"].cast(pl.Float32).to_numpy().mean())
+
+    user_mean_by_label = dict(
+        ratings.group_by("bgg_user_name").agg(pl.col("bgg_user_rating").mean()).rows(),
+    )
+    item_mean_by_label = dict(
+        ratings.group_by("bgg_id").agg(pl.col("bgg_user_rating").mean()).rows(),
+    )
+
+    result = train(ratings, num_factors=NUM_FACTORS, num_epochs=0, seed=SEED)
+
+    expected_user_bias = (
+        np.array([user_mean_by_label[label] for label in result.user_labels])
+        - global_mean
+    )
+    expected_item_bias = (
+        np.array([item_mean_by_label[label] for label in result.item_labels])
+        - global_mean
+    )
+
+    np.testing.assert_allclose(
+        result.model.user_biases.weight.detach().numpy().reshape(-1),
+        expected_user_bias,
+        atol=1e-4,
+    )
+    np.testing.assert_allclose(
+        result.model.item_biases.weight.detach().numpy().reshape(-1),
+        expected_item_bias,
+        atol=1e-4,
+    )
+
+
 def test_train_result_shapes() -> None:
     ratings = _synthetic_ratings(num_users=NUM_USERS, num_items=NUM_ITEMS, seed=1)
 
