@@ -29,7 +29,7 @@ pip install board-game-recommender
 * Clone this repository
 * Requirements:
   * [Poetry](https://python-poetry.org/)
-  * Python 3.8+
+  * Python 3.12+
 * Create a virtual environment and install the dependencies
 
 ```sh

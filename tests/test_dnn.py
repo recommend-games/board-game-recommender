@@ -7,12 +7,12 @@ import pytest
 
 pytest.importorskip("torch", reason="the torch extra is not installed")
 
-import torch  # type: ignore[import-not-found] # noqa: E402
+import torch  # type: ignore[import-not-found]
 
-from board_game_recommender.dnn import (  # noqa: E402
+from board_game_recommender.dnn import (
     CollaborativeFilteringModel,
 )
-from board_game_recommender.light import (  # noqa: E402
+from board_game_recommender.light import (
     CollaborativeFilteringData,
     LightGamesRecommender,
 )

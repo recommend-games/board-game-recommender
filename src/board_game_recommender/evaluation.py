@@ -5,12 +5,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Generic
+from typing import TYPE_CHECKING
 
 import numpy as np
 import polars as pl
-
-from board_game_recommender.abc import GameKeyType, UserKeyType
 
 if TYPE_CHECKING:
     import os
@@ -26,7 +24,7 @@ DEFAULT_RATINGS_KEY = "bgg_user_rating"
 
 
 @dataclass(frozen=True)
-class RecommenderTestData(Generic[GameKeyType, UserKeyType]):
+class RecommenderTestData[GameKeyType, UserKeyType]:
     """Test data for recommender model evaluation."""
 
     user_ids: tuple[UserKeyType, ...]  # (num_users,)
@@ -168,7 +166,7 @@ def load_test_data(
     )
 
 
-def prediction_scores(
+def prediction_scores[GameKeyType, UserKeyType](
     recommender: BaseGamesRecommender[GameKeyType, UserKeyType],
     test_data: RecommenderTestData[GameKeyType, UserKeyType],
 ) -> np.ndarray:
@@ -176,7 +174,7 @@ def prediction_scores(
     return np.array(
         [
             recommender.recommend_as_numpy(users=(user,), games=games)[0, :]
-            for user, games in zip(test_data.user_ids, test_data.game_ids)
+            for user, games in zip(test_data.user_ids, test_data.game_ids, strict=True)
         ],
     )
 
@@ -207,7 +205,7 @@ def ndcg_score(y_true: np.ndarray, y_score: np.ndarray, k: int) -> float:
     return float(scores.mean())
 
 
-def effective_catalog_size(
+def effective_catalog_size[GameKeyType, UserKeyType](
     test_data: RecommenderTestData[GameKeyType, UserKeyType],
     y_pred: np.ndarray,
 ) -> np.ndarray:
@@ -264,11 +262,11 @@ def effective_catalog_size(
     return 2 * (probs * ranks).sum(axis=-1) - 1
 
 
-def calculate_metrics(
+def calculate_metrics[GameKeyType, UserKeyType](
     recommender: BaseGamesRecommender[GameKeyType, UserKeyType],
     test_data: RecommenderTestData[GameKeyType, UserKeyType],
     *,
-    k_values: None | int | Iterable[int] = None,
+    k_values: int | Iterable[int] | None = None,
 ) -> RecommenderMetrics:
     """Calculate RecommenderMetrics for given recommender model and test data."""
 

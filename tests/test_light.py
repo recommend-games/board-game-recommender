@@ -46,7 +46,7 @@ def fixture_recommender() -> LightGamesRecommender:
 
 def _scores(frame: pl.DataFrame, column: str) -> dict[int, float]:
     """Map game ID to score, so assertions do not depend on row order."""
-    return dict(zip(frame["index"].to_list(), frame[column].to_list()))
+    return dict(zip(frame["index"].to_list(), frame[column].to_list(), strict=True))
 
 
 def test_cosine_similarity() -> None:
