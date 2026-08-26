@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import argparse
 import logging
+import sys
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import polars as pl
@@ -14,8 +18,14 @@ from board_game_recommender.evaluation import (
     DEFAULT_GAME_ID_KEY,
     DEFAULT_RATINGS_KEY,
     DEFAULT_USER_ID_KEY,
+    calculate_metrics,
+    load_test_data,
+    ratings_train_test_split,
 )
-from board_game_recommender.light import CollaborativeFilteringData
+from board_game_recommender.light import (
+    CollaborativeFilteringData,
+    LightGamesRecommender,
+)
 
 if TYPE_CHECKING:
     import numpy as np
@@ -286,3 +296,133 @@ def train(  # noqa: PLR0913
         )
 
     return TrainingResult(model=model, user_labels=user_labels, item_labels=item_labels)
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Train a collaborative filtering model and evaluate it against "
+            "a held-out sample of power users."
+        ),
+    )
+    parser.add_argument("ratings", help="path to ratings in JSON lines format")
+    parser.add_argument("output", help="path to save the trained model as .npz")
+
+    parser.add_argument("--user-id-key", default=DEFAULT_USER_ID_KEY)
+    parser.add_argument("--game-id-key", default=DEFAULT_GAME_ID_KEY)
+    parser.add_argument("--ratings-key", default=DEFAULT_RATINGS_KEY)
+
+    parser.add_argument("--num-factors", type=int, default=32)
+    parser.add_argument("--num-epochs", type=int, default=20)
+    parser.add_argument("--batch-size", type=int, default=1 << 16)
+    parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument("--regularization", type=float, default=1e-9)
+    parser.add_argument("--linear-regularization", type=float, default=1e-9)
+    parser.add_argument("--ranking-regularization", type=float, default=0.25)
+    parser.add_argument(
+        "--unobserved-rating-value",
+        type=float,
+        default=None,
+        help="defaults to the data's estimated 5%% quantile, mean - 1.96 * std",
+    )
+    parser.add_argument("--num-sampled-negative-examples", type=int, default=4)
+
+    parser.add_argument(
+        "--power-users",
+        type=int,
+        default=200,
+        help="users with at least this many ratings are eligible for the test set",
+    )
+    parser.add_argument(
+        "--test-rows",
+        type=int,
+        default=100,
+        help="number of held-out ratings per power user",
+    )
+    parser.add_argument(
+        "--k-values",
+        type=int,
+        nargs="+",
+        default=(10,),
+        help="top-k cutoffs to report metrics at",
+    )
+
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--verbose", "-v", action="count", default=0)
+
+    return parser.parse_args()
+
+
+def _main() -> None:
+    args = _parse_args()
+
+    logging.basicConfig(
+        stream=sys.stdout,
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s %(levelname)-7s %(message)s",
+    )
+    LOGGER.info(args)
+
+    train_data, test_data_raw = ratings_train_test_split(
+        path_in=args.ratings,
+        threshold_power_users=args.power_users,
+        num_test_rows=args.test_rows,
+        user_id_key=args.user_id_key,
+        game_id_key=args.game_id_key,
+        ratings_key=args.ratings_key,
+        seed=args.seed,
+    )
+
+    # load_test_data() reads from a CSV path; train() takes a DataFrame
+    # directly, so only the much smaller test split needs the round trip.
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        test_path = Path(tmp_dir) / "test.csv"
+        test_data_raw.write_csv(test_path)
+        test_data = load_test_data(
+            path=test_path,
+            ratings_per_user=args.test_rows,
+            user_id_key=args.user_id_key,
+            game_id_key=args.game_id_key,
+            ratings_key=args.ratings_key,
+        )
+
+    result = train(
+        train_data,
+        user_id_key=args.user_id_key,
+        game_id_key=args.game_id_key,
+        ratings_key=args.ratings_key,
+        num_factors=args.num_factors,
+        num_epochs=args.num_epochs,
+        batch_size=args.batch_size,
+        learning_rate=args.learning_rate,
+        regularization=args.regularization,
+        linear_regularization=args.linear_regularization,
+        ranking_regularization=args.ranking_regularization,
+        unobserved_rating_value=args.unobserved_rating_value,
+        num_sampled_negative_examples=args.num_sampled_negative_examples,
+        seed=args.seed,
+    )
+
+    data = result.to_collaborative_filtering_data()
+    metrics = calculate_metrics(
+        LightGamesRecommender(data),
+        test_data,
+        k_values=args.k_values,
+    )
+    LOGGER.info("RMSE: %.4f", metrics.rmse)
+    for k in sorted(args.k_values):
+        LOGGER.info(
+            "nDCG@%d: %.4f  nDCG_exp@%d: %.4f  ECS@%d: %.1f",
+            k,
+            metrics.ndcg[k],
+            k,
+            metrics.ndcg_exp[k],
+            k,
+            metrics.effective_catalog_size[k],
+        )
+
+    data.to_npz(args.output)
+
+
+if __name__ == "__main__":
+    _main()
