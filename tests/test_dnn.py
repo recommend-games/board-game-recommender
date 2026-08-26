@@ -314,11 +314,18 @@ def test_train_overfits_a_small_dataset() -> None:
     true_ratings = ratings["bgg_user_rating"].to_numpy()
     baseline_mse = float(np.mean((true_ratings - true_ratings.mean()) ** 2))
 
+    # Every user rates every item here, so ranking regularisation would
+    # fight the fit: it pushes scores down for items sampled as "unrated"
+    # that are, in this fixture, actually rated. Regularisation is its own
+    # concern, tested separately.
     result = train(
         ratings,
         num_factors=8,
         num_epochs=300,
         learning_rate=0.05,
+        regularization=0,
+        linear_regularization=0,
+        ranking_regularization=0,
         seed=SEED,
     )
 
@@ -412,3 +419,140 @@ def test_to_collaborative_filtering_data_survives_an_npz_round_trip(
         rtol=1e-5,
         atol=1e-6,
     )
+
+
+def _sparse_synthetic_ratings(
+    *,
+    num_users: int,
+    num_items: int,
+    num_ratings_per_user: int,
+    seed: int,
+) -> pl.DataFrame:
+    """
+    Like `_synthetic_ratings()`, but each user rates only a subset of items.
+
+    Ranking regularisation only has something to push down if some items are
+    actually unrated, which the dense fixture rules out by construction.
+    """
+
+    rng = np.random.default_rng(seed)
+    user_factors = rng.normal(size=(num_users, 2))
+    item_factors = rng.normal(size=(num_items, 2))
+    true_scores = 5.0 + user_factors @ item_factors.T
+    noisy_scores = true_scores + rng.normal(scale=0.1, size=true_scores.shape)
+
+    users: list[str] = []
+    items: list[int] = []
+    values: list[float] = []
+    for user in range(num_users):
+        rated = rng.choice(num_items, size=num_ratings_per_user, replace=False)
+        for item in rated:
+            users.append(f"user{user}")
+            items.append(int(item))
+            values.append(float(noisy_scores[user, item]))
+
+    return pl.DataFrame(
+        {"bgg_user_name": users, "bgg_id": items, "bgg_user_rating": values},
+    )
+
+
+def _mean_unrated_score(result: TrainingResult, ratings: pl.DataFrame) -> float:
+    """Average predicted score over every user's un-rated items."""
+
+    user_index = {label: index for index, label in enumerate(result.user_labels)}
+    item_index = {label: index for index, label in enumerate(result.item_labels)}
+    rated_ids_by_user = dict(
+        ratings.group_by("bgg_user_name").agg(pl.col("bgg_id")).rows(),
+    )
+
+    scores = []
+    with torch.no_grad():
+        for label, rated_ids in rated_ids_by_user.items():
+            rated = set(rated_ids)
+            unrated_items = torch.tensor(
+                [item_index[item] for item in result.item_labels if item not in rated],
+            )
+            unrated_users = torch.full_like(unrated_items, user_index[label])
+            scores.append(result.model(unrated_users, unrated_items))
+
+    return float(torch.cat(scores).mean())
+
+
+def test_ranking_regularization_lowers_scores_for_unrated_items() -> None:
+    """The point of the ranking term: push scores down for items a user
+    never rated, towards `unobserved_rating_value`."""
+
+    ratings = _sparse_synthetic_ratings(
+        num_users=20,
+        num_items=50,
+        num_ratings_per_user=10,
+        seed=10,
+    )
+    without_ranking = train(
+        ratings,
+        num_factors=8,
+        num_epochs=100,
+        learning_rate=0.05,
+        regularization=0,
+        linear_regularization=0,
+        ranking_regularization=0,
+        seed=SEED,
+    )
+    with_ranking = train(
+        ratings,
+        num_factors=8,
+        num_epochs=100,
+        learning_rate=0.05,
+        regularization=0,
+        linear_regularization=0,
+        ranking_regularization=1.0,
+        seed=SEED,
+    )
+
+    assert _mean_unrated_score(with_ranking, ratings) < _mean_unrated_score(
+        without_ranking,
+        ratings,
+    )
+
+
+def test_regularization_shrinks_factor_magnitudes() -> None:
+    ratings = _synthetic_ratings(num_users=NUM_USERS, num_items=NUM_ITEMS, seed=11)
+    unregularized = train(
+        ratings,
+        num_factors=NUM_FACTORS,
+        num_epochs=50,
+        learning_rate=0.05,
+        regularization=0,
+        linear_regularization=0,
+        ranking_regularization=0,
+        seed=SEED,
+    )
+    regularized = train(
+        ratings,
+        num_factors=NUM_FACTORS,
+        num_epochs=50,
+        learning_rate=0.05,
+        regularization=1.0,
+        linear_regularization=0,
+        ranking_regularization=0,
+        seed=SEED,
+    )
+
+    assert regularized.model.user_factors.weight.norm() < (
+        unregularized.model.user_factors.weight.norm()
+    )
+
+
+def test_unobserved_rating_value_is_estimated_from_the_data(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Turi's own default: the estimated 5% quantile, mean - 1.96 * std."""
+
+    ratings = _synthetic_ratings(num_users=NUM_USERS, num_items=NUM_ITEMS, seed=12)
+    values = ratings["bgg_user_rating"].cast(pl.Float32).to_numpy()
+    expected = float(values.mean() - 1.96 * values.std(ddof=1))
+
+    with caplog.at_level("INFO"):
+        train(ratings, num_factors=NUM_FACTORS, num_epochs=0, seed=SEED)
+
+    assert f"{expected:.4f}" in caplog.text

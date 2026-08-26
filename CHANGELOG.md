@@ -10,11 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - `train()` in the `dnn` module: a plain training loop for
   `CollaborativeFilteringModel`, minimising mean squared error with `Adam`
-  over shuffled minibatches. No L2 or ranking regularisation yet, and no
-  `.npz` export; ranking regularisation is left for a follow-up. Intercept
-  and biases start from the data's global and per-user/item mean ratings
-  rather than 0, which matters a lot in practice: on a 1.1M-row sample of
-  real BGG ratings, RMSE after 10 untuned epochs went from 6.4 to 1.3.
+  over shuffled minibatches. Intercept and biases start from the data's
+  global and per-user/item mean ratings rather than 0, which matters a lot
+  in practice: on a 1.1M-row sample of real BGG ratings, RMSE after 10
+  untuned epochs went from 6.4 to 1.3.
+- `train()` now also matches Turi's `RankingFactorizationRecommender`
+  objective, not just plain MSE: `regularization`/`linear_regularization`
+  (L2 on factors/biases) and `ranking_regularization` (for each row, sample
+  `num_sampled_negative_examples` items for that user, push the
+  highest-scoring one towards `unobserved_rating_value`), all defaulting to
+  Turi's own values. `ranking_regularization=0` disables the ranking term.
 - `TrainingResult.to_collaborative_filtering_data()`, converting a trained
   model into what `LightGamesRecommender` serves. Chains with the existing
   `.to_npz()` to save a trained model.
