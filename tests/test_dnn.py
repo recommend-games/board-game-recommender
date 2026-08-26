@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -15,6 +16,8 @@ import torch  # type: ignore[import-not-found]
 from board_game_recommender.dnn import (
     CollaborativeFilteringModel,
     TrainingResult,
+    _main,
+    _parse_args,
     train,
 )
 from board_game_recommender.light import (
@@ -30,6 +33,10 @@ NUM_ITEMS = 7
 NUM_FACTORS = 3
 INTERCEPT = 7.5
 SEED = 23
+
+# Turi's own defaults, matched by train()'s and the CLI's.
+DEFAULT_NUM_FACTORS = 32
+DEFAULT_RANKING_REGULARIZATION = 0.25
 
 
 @pytest.fixture(name="model")
@@ -556,3 +563,64 @@ def test_unobserved_rating_value_is_estimated_from_the_data(
         train(ratings, num_factors=NUM_FACTORS, num_epochs=0, seed=SEED)
 
     assert f"{expected:.4f}" in caplog.text
+
+
+def test_parse_args_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["dnn.py", "ratings.jl", "model.npz"])
+
+    args = _parse_args()
+
+    assert args.ratings == "ratings.jl"
+    assert args.output == "model.npz"
+    assert args.num_factors == DEFAULT_NUM_FACTORS
+    assert args.ranking_regularization == DEFAULT_RANKING_REGULARIZATION
+    assert args.unobserved_rating_value is None
+    assert args.k_values == (10,)
+    assert args.seed is None
+
+
+def test_main_trains_evaluates_and_saves_a_model(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    An end-to-end run of the actual CLI entry point: parse arguments, split,
+    train, evaluate, save. This is the one test covering all of that wiring
+    at once, rather than each piece in isolation.
+    """
+
+    ratings = _synthetic_ratings(num_users=10, num_items=15, seed=20)
+    ratings_path = tmp_path / "ratings.jl"
+    ratings.write_ndjson(ratings_path)
+    output_path = tmp_path / "model.npz"
+
+    # --test-rows must be at least the default --k-values (10), or
+    # calculate_metrics() has too few candidate columns for nDCG@10.
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "dnn.py",
+            str(ratings_path),
+            str(output_path),
+            "--power-users",
+            "10",
+            "--test-rows",
+            "10",
+            "--num-epochs",
+            "1",
+            "--seed",
+            str(SEED),
+        ],
+    )
+
+    _main()
+
+    assert output_path.exists()
+
+    recommender = LightGamesRecommender.from_npz(output_path)
+    scores = recommender.recommend_as_numpy(
+        users=list(recommender.known_users),
+        games=list(recommender.known_games),
+    )
+    assert np.isfinite(scores).all()

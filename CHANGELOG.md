@@ -23,6 +23,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `TrainingResult.to_collaborative_filtering_data()`, converting a trained
   model into what `LightGamesRecommender` serves. Chains with the existing
   `.to_npz()` to save a trained model.
+- `python -m board_game_recommender.dnn ratings.jl model.npz`: splits off a
+  held-out sample of power users, trains, logs RMSE/nDCG/ECS against it, and
+  saves the result. Exposes every `train()` hyperparameter as a flag.
 
 ## [4.2.0] - 2026-08-25
 
