@@ -128,6 +128,29 @@ def _numpy_safe(labels: np.ndarray) -> np.ndarray:
     return labels.astype(str) if labels.dtype == object else labels
 
 
+def _ranking_loss(
+    model: CollaborativeFilteringModel,
+    batch_users: torch.Tensor,
+    num_sampled_negative_examples: int,
+    unobserved_rating_value: float,
+) -> torch.Tensor:
+    """
+    Turi's ranking term for one batch: for each user, sample random items and
+    score them, take the highest-scoring one (the worst ranking violation),
+    and measure its distance from `unobserved_rating_value`.
+    """
+
+    negative_items = torch.randint(
+        0,
+        model.num_items,
+        (len(batch_users), num_sampled_negative_examples),
+    )
+    negative_users = batch_users.unsqueeze(1).expand(-1, num_sampled_negative_examples)
+    hardest_negative = model(negative_users, negative_items).amax(dim=-1)
+    unobserved_target = torch.full_like(hardest_negative, unobserved_rating_value)
+    return nn.functional.mse_loss(hardest_negative, unobserved_target)
+
+
 def train(  # noqa: PLR0913
     ratings: pl.DataFrame,
     *,
@@ -138,14 +161,24 @@ def train(  # noqa: PLR0913
     num_epochs: int = 20,
     batch_size: int = 1 << 16,
     learning_rate: float = 1e-3,
+    regularization: float = 1e-9,
+    linear_regularization: float = 1e-9,
+    ranking_regularization: float = 0.25,
+    unobserved_rating_value: float | None = None,
+    num_sampled_negative_examples: int = 4,
     seed: int | None = None,
 ) -> TrainingResult:
     """
-    Train a `CollaborativeFilteringModel` by minimising mean squared error.
+    Train a `CollaborativeFilteringModel` on mean squared error plus the
+    ranking objective from Turi Create's RankingFactorizationRecommender.
 
-    A plain training loop: dense minibatches shuffled each epoch, `Adam`,
-    nothing else. No L2 or ranking regularisation yet, and no early stopping;
-    both are left for a follow-up once this is proven to converge.
+    Dense minibatches, shuffled each epoch, `Adam`. Defaults match Turi's.
+    For each training row, `num_sampled_negative_examples` random items are
+    scored for that row's user; the highest-scoring one, the worst ranking
+    violation, is pushed towards `unobserved_rating_value`. `regularization`
+    and `linear_regularization` are standard L2 penalties on the factors and
+    biases touched in each batch. Set `ranking_regularization=0` to disable
+    the ranking term.
     """
 
     if seed is not None:
@@ -203,6 +236,12 @@ def train(  # noqa: PLR0913
         torch.from_numpy(item_bias_init.astype("float32")).reshape(-1, 1),
     )
 
+    # Turi's own default: an unrated item should be pushed towards the low
+    # end of the rating scale, not towards 0.
+    if unobserved_rating_value is None:
+        unobserved_rating_value = global_mean - 1.96 * float(target.std())
+        LOGGER.info("Estimated unobserved_rating_value: %.4f", unobserved_rating_value)
+
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     num_rows = len(users)
@@ -211,14 +250,36 @@ def train(  # noqa: PLR0913
         epoch_loss = 0.0
         for start in range(0, num_rows, batch_size):
             batch = permutation[start : start + batch_size]
+            batch_users = users[batch]
+            batch_items = items[batch]
+
             optimizer.zero_grad()
-            prediction = model(users[batch], items[batch])
+            prediction = model(batch_users, batch_items)
             loss = nn.functional.mse_loss(prediction, target[batch])
+
+            if regularization:
+                loss = loss + regularization * (
+                    model.user_factors(batch_users).pow(2).sum()
+                    + model.item_factors(batch_items).pow(2).sum()
+                )
+            if linear_regularization:
+                loss = loss + linear_regularization * (
+                    model.user_biases(batch_users).pow(2).sum()
+                    + model.item_biases(batch_items).pow(2).sum()
+                )
+            if ranking_regularization:
+                loss = loss + ranking_regularization * _ranking_loss(
+                    model,
+                    batch_users,
+                    num_sampled_negative_examples,
+                    unobserved_rating_value,
+                )
+
             loss.backward()
             optimizer.step()
             epoch_loss += float(loss) * len(batch)
         LOGGER.info(
-            "Epoch %d/%d: MSE %.4f",
+            "Epoch %d/%d: loss %.4f",
             epoch + 1,
             num_epochs,
             epoch_loss / num_rows,
