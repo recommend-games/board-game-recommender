@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import polars as pl
-import torch  # type: ignore[import-not-found]
-from torch import nn, optim  # type: ignore[import-not-found]
+import torch
+from torch import nn, optim
 
 from board_game_recommender.evaluation import (
     DEFAULT_GAME_ID_KEY,

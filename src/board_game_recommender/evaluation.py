@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import polars as pl
@@ -132,7 +132,7 @@ def load_test_data(
     user_id_key: str = DEFAULT_USER_ID_KEY,
     game_id_key: str = DEFAULT_GAME_ID_KEY,
     ratings_key: str = DEFAULT_RATINGS_KEY,
-) -> RecommenderTestData:
+) -> RecommenderTestData[int, str]:
     """Load RecommenderTestData from CSV."""
 
     path = Path(path).resolve()
@@ -259,7 +259,7 @@ def effective_catalog_size[GameKeyType, UserKeyType](
     probs = counts / counts.sum(axis=-1, keepdims=True)
     ranks = np.argsort(-counts, axis=-1).argsort(axis=-1) + 1
 
-    return 2 * (probs * ranks).sum(axis=-1) - 1
+    return cast("np.ndarray", 2 * (probs * ranks).sum(axis=-1) - 1)
 
 
 def calculate_metrics[GameKeyType, UserKeyType](
