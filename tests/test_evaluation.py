@@ -273,10 +273,11 @@ def test_calculate_metrics(
 ) -> None:
     metrics = calculate_metrics(recommender, test_data, k_values=1)
 
-    # The full width is always included alongside the requested k values
+    # The full width is always included alongside the requested k values,
+    # but not for ECS: at k == full width it is degenerate (see below).
     assert sorted(metrics.ndcg) == [1, 3]
     assert sorted(metrics.ndcg_exp) == [1, 3]
-    assert sorted(metrics.effective_catalog_size) == [1, 3]
+    assert sorted(metrics.effective_catalog_size) == [1]
 
     y_pred = prediction_scores(recommender, test_data)
     expected_rmse = float(np.sqrt(np.square(test_data.ratings - y_pred).mean()))
@@ -300,6 +301,22 @@ def test_calculate_metrics_k_values_variants(
     assert sorted(
         calculate_metrics(recommender, test_data, k_values=(1, 2)).ndcg,
     ) == [1, 2, 3]
+
+
+def test_calculate_metrics_ecs_excludes_auto_added_full_width(
+    recommender: LightGamesRecommender,
+    test_data: RecommenderTestData[int, str],
+) -> None:
+    # Full width is auto-added to ndcg/rmse's k's but must not leak into ECS,
+    # where k == full width is always degenerate (see calculate_metrics).
+    assert calculate_metrics(recommender, test_data).effective_catalog_size == {}
+    assert sorted(
+        calculate_metrics(
+            recommender,
+            test_data,
+            k_values=(1, 2),
+        ).effective_catalog_size,
+    ) == [1, 2]
 
 
 def test_calculate_metrics_rejects_shape_mismatch(
