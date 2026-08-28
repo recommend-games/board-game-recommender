@@ -88,7 +88,7 @@ def ratings_train_test_split(  # noqa: PLR0913
 
     ratings = (
         pl.scan_ndjson(path_in)
-        .filter(pl.col(ratings_key).is_not_null())
+        .drop_nulls(subset=[ratings_key, game_id_key, user_id_key])
         .select(
             game_id_key,
             user_id_key,

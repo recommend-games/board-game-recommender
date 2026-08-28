@@ -113,6 +113,29 @@ def test_ratings_train_test_split(tmp_path: Path) -> None:
     assert test["bgg_user_name"].to_list() == ["alice", "alice", "bob", "bob"]
 
 
+def test_ratings_train_test_split_drops_rows_with_missing_ids(
+    tmp_path: Path,
+) -> None:
+    # A null game or user id survives as NaN once the label array round-trips
+    # through numpy, which then breaks the label -> index lookup in train().
+    rows: list[dict[str, object]] = [
+        {"bgg_user_name": "alice", "bgg_id": 1, "bgg_user_rating": 7.0},
+        {"bgg_user_name": "alice", "bgg_id": None, "bgg_user_rating": 8.0},
+        {"bgg_user_name": None, "bgg_id": 2, "bgg_user_rating": 6.0},
+    ]
+    path_in = _write_ndjson(tmp_path / "ratings.jl", rows)
+
+    train, test = ratings_train_test_split(
+        path_in=path_in,
+        threshold_power_users=1,
+        num_test_rows=0,
+    )
+
+    assert len(train) == 1
+    assert len(test) == 0
+    assert train["bgg_id"].to_list() == [1]
+
+
 def test_ratings_train_test_split_without_output_paths(tmp_path: Path) -> None:
     rows = [
         {"bgg_user_name": "alice", "bgg_id": i, "bgg_user_rating": 7.0}
