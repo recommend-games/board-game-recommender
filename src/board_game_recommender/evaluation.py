@@ -292,6 +292,10 @@ def calculate_metrics[GameKeyType, UserKeyType](
     ks = sorted(k_values | {y_true.shape[-1]})
 
     ecs_all = effective_catalog_size(test_data, y_pred)
+    # At k == the full candidate width, every game is "recommended" to every
+    # user, so ECS collapses to a property of the test split, not the model.
+    # Only report it for k's the caller actually asked for.
+    ecs_ks = sorted(k_values)
 
     y_true_exp = np.exp2(y_true) - 1
 
@@ -299,5 +303,5 @@ def calculate_metrics[GameKeyType, UserKeyType](
         ndcg={k: ndcg_score(y_true=y_true, y_score=y_pred, k=k) for k in ks},
         ndcg_exp={k: ndcg_score(y_true=y_true_exp, y_score=y_pred, k=k) for k in ks},
         rmse=rmse,
-        effective_catalog_size={k: float(ecs_all[k - 1]) for k in ks},
+        effective_catalog_size={k: float(ecs_all[k - 1]) for k in ecs_ks},
     )

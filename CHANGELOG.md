@@ -32,6 +32,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - A rating with a missing game or user id crashed `train()`. Rows with a
   missing game or user id are now dropped, same as rows with a missing
   rating already were.
+- `calculate_metrics()` no longer reports effective catalog size (ECS) at the
+  test set's full width. At that cutoff every candidate is "recommended" to
+  every user, so ECS collapses to a property of the test split rather than
+  the model's ranking, silently producing a meaningless number whenever a
+  caller's requested `k` happened to equal that width.
 
 ## [4.2.0] - 2026-08-25
 
