@@ -27,6 +27,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   held-out sample of power users, trains, logs RMSE/nDCG/ECS against it, and
   saves the result. Exposes every `train()` hyperparameter as a flag.
 
+### Fixed
+
+- A rating with a missing game or user id crashed `train()`. Rows with a
+  missing game or user id are now dropped, same as rows with a missing
+  rating already were.
+
 ## [4.2.0] - 2026-08-25
 
 ### Added

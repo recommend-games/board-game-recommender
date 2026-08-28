@@ -194,7 +194,7 @@ def train(  # noqa: PLR0913
     if seed is not None:
         torch.manual_seed(seed)
 
-    ratings = ratings.filter(pl.col(ratings_key).is_not_null())
+    ratings = ratings.drop_nulls(subset=[ratings_key, game_id_key, user_id_key])
 
     user_labels = _numpy_safe(
         ratings[user_id_key].unique(maintain_order=True).to_numpy(),
