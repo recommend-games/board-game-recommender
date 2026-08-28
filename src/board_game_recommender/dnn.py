@@ -287,7 +287,7 @@ def train(  # noqa: PLR0913
 
             loss.backward()
             optimizer.step()
-            epoch_loss += float(loss) * len(batch)
+            epoch_loss += loss.detach().item() * len(batch)
         LOGGER.info(
             "Epoch %d/%d: loss %.4f",
             epoch + 1,
