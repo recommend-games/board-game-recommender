@@ -113,6 +113,29 @@ def test_ratings_train_test_split(tmp_path: Path) -> None:
     assert test["bgg_user_name"].to_list() == ["alice", "alice", "bob", "bob"]
 
 
+def test_ratings_train_test_split_drops_rows_with_missing_ids(
+    tmp_path: Path,
+) -> None:
+    # A null game or user id survives as NaN once the label array round-trips
+    # through numpy, which then breaks the label -> index lookup in train().
+    rows: list[dict[str, object]] = [
+        {"bgg_user_name": "alice", "bgg_id": 1, "bgg_user_rating": 7.0},
+        {"bgg_user_name": "alice", "bgg_id": None, "bgg_user_rating": 8.0},
+        {"bgg_user_name": None, "bgg_id": 2, "bgg_user_rating": 6.0},
+    ]
+    path_in = _write_ndjson(tmp_path / "ratings.jl", rows)
+
+    train, test = ratings_train_test_split(
+        path_in=path_in,
+        threshold_power_users=1,
+        num_test_rows=0,
+    )
+
+    assert len(train) == 1
+    assert len(test) == 0
+    assert train["bgg_id"].to_list() == [1]
+
+
 def test_ratings_train_test_split_without_output_paths(tmp_path: Path) -> None:
     rows = [
         {"bgg_user_name": "alice", "bgg_id": i, "bgg_user_rating": 7.0}
@@ -273,10 +296,11 @@ def test_calculate_metrics(
 ) -> None:
     metrics = calculate_metrics(recommender, test_data, k_values=1)
 
-    # The full width is always included alongside the requested k values
+    # The full width is always included alongside the requested k values,
+    # but not for ECS: at k == full width it is degenerate (see below).
     assert sorted(metrics.ndcg) == [1, 3]
     assert sorted(metrics.ndcg_exp) == [1, 3]
-    assert sorted(metrics.effective_catalog_size) == [1, 3]
+    assert sorted(metrics.effective_catalog_size) == [1]
 
     y_pred = prediction_scores(recommender, test_data)
     expected_rmse = float(np.sqrt(np.square(test_data.ratings - y_pred).mean()))
@@ -300,6 +324,22 @@ def test_calculate_metrics_k_values_variants(
     assert sorted(
         calculate_metrics(recommender, test_data, k_values=(1, 2)).ndcg,
     ) == [1, 2, 3]
+
+
+def test_calculate_metrics_ecs_excludes_auto_added_full_width(
+    recommender: LightGamesRecommender,
+    test_data: RecommenderTestData[int, str],
+) -> None:
+    # Full width is auto-added to ndcg/rmse's k's but must not leak into ECS,
+    # where k == full width is always degenerate (see calculate_metrics).
+    assert calculate_metrics(recommender, test_data).effective_catalog_size == {}
+    assert sorted(
+        calculate_metrics(
+            recommender,
+            test_data,
+            k_values=(1, 2),
+        ).effective_catalog_size,
+    ) == [1, 2]
 
 
 def test_calculate_metrics_rejects_shape_mismatch(

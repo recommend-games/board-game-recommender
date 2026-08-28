@@ -299,6 +299,23 @@ def test_train_drops_null_ratings() -> None:
     assert set(result.item_labels) == {1}
 
 
+def test_train_drops_rows_with_missing_ids() -> None:
+    # A null id round-trips through numpy as NaN, which breaks the label ->
+    # index lookup below rather than just being silently ignored.
+    ratings = pl.DataFrame(
+        {
+            "bgg_user_name": ["a", "a", None],
+            "bgg_id": [1, None, 2],
+            "bgg_user_rating": [7.0, 8.0, 6.0],
+        },
+    )
+
+    result = train(ratings, num_factors=2, num_epochs=1, seed=SEED)
+
+    assert set(result.user_labels) == {"a"}
+    assert set(result.item_labels) == {1}
+
+
 def _all_pairs_for(
     result: TrainingResult,
     ratings: pl.DataFrame,
