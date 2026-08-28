@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-08-28
+
 ### Added
 
 - `train()` in the `dnn` module: a plain training loop for
@@ -96,7 +98,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Initial v4 implementation containing ABC, baseline and light recommenders
 
-[Unreleased]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.2.0...master
+[Unreleased]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.3.0...master
+[4.3.0]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.2.0...4.3.0
 [4.2.0]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.1.1...4.2.0
 [4.1.1]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.1.0...4.1.1
 [4.1.0]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.0.0...4.1.0
