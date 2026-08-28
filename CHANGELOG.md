@@ -37,6 +37,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   every user, so ECS collapses to a property of the test split rather than
   the model's ranking, silently producing a meaningless number whenever a
   caller's requested `k` happened to equal that width.
+- `mypy --strict` was silently disabled project-wide: a leftover template
+  override in `pyproject.toml` applied `ignore_missing_imports`/
+  `implicit_reexport` with no `module` filter, matching everything. Removed
+  it, added a properly scoped override for the optional `torch` import, and
+  fixed the 24 type errors it had been hiding.
 
 ## [4.2.0] - 2026-08-25
 

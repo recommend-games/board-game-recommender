@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import polars as pl
@@ -11,7 +11,7 @@ import pytest
 
 pytest.importorskip("torch", reason="the torch extra is not installed")
 
-import torch  # type: ignore[import-not-found]
+import torch
 
 from board_game_recommender.dnn import (
     CollaborativeFilteringModel,
@@ -67,7 +67,10 @@ def _all_pairs() -> tuple[torch.Tensor, torch.Tensor]:
 def _score_matrix(model: CollaborativeFilteringModel) -> np.ndarray:
     users, items = _all_pairs()
     with torch.no_grad():
-        return model(users, items).reshape(NUM_USERS, NUM_ITEMS).numpy()
+        return cast(
+            "np.ndarray",
+            model(users, items).reshape(NUM_USERS, NUM_ITEMS).numpy(),
+        )
 
 
 def _parameters(
@@ -111,7 +114,7 @@ def test_initialisation() -> None:
 def test_rejects_non_positive_dimensions(field: str, value: int) -> None:
     kwargs = {"num_users": 2, "num_items": 2, "num_factors": 2, field: value}
     with pytest.raises(ValueError, match="must be positive"):
-        CollaborativeFilteringModel(**kwargs)  # type: ignore[arg-type]
+        CollaborativeFilteringModel(**kwargs)
 
 
 def test_forward_shape(model: CollaborativeFilteringModel) -> None:
@@ -388,7 +391,10 @@ def _model_scores(
     users = torch.arange(len(user_labels)).repeat_interleave(len(item_labels))
     items = torch.arange(len(item_labels)).repeat(len(user_labels))
     with torch.no_grad():
-        return model(users, items).reshape(len(user_labels), len(item_labels)).numpy()
+        return cast(
+            "np.ndarray",
+            model(users, items).reshape(len(user_labels), len(item_labels)).numpy(),
+        )
 
 
 def test_to_collaborative_filtering_data_feeds_the_light_recommender() -> None:

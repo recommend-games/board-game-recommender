@@ -7,7 +7,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
@@ -64,7 +64,7 @@ class CollaborativeFilteringData:
             return cls(**files_dict)  # type: ignore[arg-type]
 
 
-class LightGamesRecommender(BaseGamesRecommender):
+class LightGamesRecommender(BaseGamesRecommender[int, str]):
     """Light recommender without Turi Create dependency."""
 
     _known_games: frozenset[int] | None = None
@@ -177,11 +177,12 @@ class LightGamesRecommender(BaseGamesRecommender):
             items_factors = self.items_factors[:, :-1]
             items_linear_terms = self.items_linear_terms[:-1].reshape(1, -1)
 
-        return (
+        return cast(
+            "np.ndarray",
             users_factors @ items_factors  # (num_users, num_items)
             + users_linear_terms  # (num_users, 1)
             + items_linear_terms  # (1, num_items)
-            + self.intercept  # (1,)
+            + self.intercept,  # (1,)
         )
 
     def _game_scores(
@@ -196,7 +197,7 @@ class LightGamesRecommender(BaseGamesRecommender):
         else:
             items_linear_terms = self.items_linear_terms[:-1]
 
-        return items_linear_terms + self.intercept
+        return cast("np.ndarray", items_linear_terms + self.intercept)
 
     def recommend(
         self,
@@ -328,9 +329,12 @@ def cosine_similarity(matrix_1: np.ndarray, matrix_2: np.ndarray) -> np.ndarray:
 
     # Zero vectors are orthogonal to everything by convention, rather than NaN:
     # a single unknown game would otherwise poison an entire recommendation.
-    return np.divide(
-        dot_product,
-        outer_prod_norm,
-        out=np.zeros_like(dot_product),
-        where=outer_prod_norm != 0,
+    return cast(
+        "np.ndarray",
+        np.divide(
+            dot_product,
+            outer_prod_norm,
+            out=np.zeros_like(dot_product),
+            where=outer_prod_norm != 0,
+        ),
     )  # (n,l)

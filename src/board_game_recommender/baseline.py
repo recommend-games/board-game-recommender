@@ -52,7 +52,7 @@ def dataframe_from_scores(
     return result.collect()
 
 
-class RandomGamesRecommender(BaseGamesRecommender):
+class RandomGamesRecommender(BaseGamesRecommender[int, str]):
     """Random recommender."""
 
     def __init__(self) -> None:
@@ -78,7 +78,7 @@ class RandomGamesRecommender(BaseGamesRecommender):
         self,
         users: Iterable[str],
         games: Iterable[int],
-        **kwargs,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> pl.DataFrame:
         """Random recommendations for certain users."""
 
@@ -102,7 +102,7 @@ class RandomGamesRecommender(BaseGamesRecommender):
         self,
         users: Iterable[str],  # noqa: ARG002
         games: Iterable[int],
-        **kwargs,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> pl.DataFrame:
         """Random recommendations for a group of users."""
 
@@ -120,14 +120,14 @@ class RandomGamesRecommender(BaseGamesRecommender):
         games = list(games)
         return self._recommendation_scores(users=1, games=len(games))
 
-    def recommend_similar(self, games: Iterable[int], **kwargs) -> pl.DataFrame:
+    def recommend_similar(self, games: Iterable[int], **kwargs: Any) -> pl.DataFrame:
         raise NotImplementedError
 
-    def similar_games(self, games: Iterable[int], **kwargs) -> pl.DataFrame:
+    def similar_games(self, games: Iterable[int], **kwargs: Any) -> pl.DataFrame:
         raise NotImplementedError
 
 
-class PopularGamesRecommender(BaseGamesRecommender):
+class PopularGamesRecommender(BaseGamesRecommender[int, str]):
     """Popular games recommender."""
 
     id_field: str = "bgg_id"
@@ -217,7 +217,7 @@ class PopularGamesRecommender(BaseGamesRecommender):
     def recommend(
         self,
         users: Iterable[str],
-        **kwargs,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> pl.DataFrame:
         """Popular recommendations for certain users."""
         users = list(users)
@@ -237,7 +237,7 @@ class PopularGamesRecommender(BaseGamesRecommender):
     def recommend_group(
         self,
         users: Iterable[str],  # noqa: ARG002
-        **kwargs,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ) -> pl.DataFrame:
         """Popular recommendations for a group of users."""
         scores = self._recommendation_scores(users=1)
@@ -255,14 +255,14 @@ class PopularGamesRecommender(BaseGamesRecommender):
     def recommend_similar(
         self,
         games: Iterable[int],
-        **kwargs,
+        **kwargs: Any,
     ) -> pl.DataFrame:
         raise NotImplementedError
 
     def similar_games(
         self,
         games: Iterable[int],
-        **kwargs,
+        **kwargs: Any,
     ) -> pl.DataFrame:
         raise NotImplementedError
 

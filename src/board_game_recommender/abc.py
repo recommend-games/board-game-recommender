@@ -10,6 +10,7 @@ import numpy as np
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Set as AbstractSet
+    from typing import Any
 
     import polars as pl
 
@@ -46,7 +47,7 @@ class BaseGamesRecommender[GameKeyType, UserKeyType](ABC):
     def recommend(
         self,
         users: Iterable[UserKeyType],
-        **kwargs,
+        **kwargs: Any,
     ) -> pl.DataFrame:
         """Recommend games for given users."""
 
@@ -62,7 +63,7 @@ class BaseGamesRecommender[GameKeyType, UserKeyType](ABC):
     def recommend_group(
         self,
         users: Iterable[UserKeyType],
-        **kwargs,
+        **kwargs: Any,
     ) -> pl.DataFrame:
         """Recommend games for given group of users."""
 
@@ -78,7 +79,7 @@ class BaseGamesRecommender[GameKeyType, UserKeyType](ABC):
     def recommend_similar(
         self,
         games: Iterable[GameKeyType],
-        **kwargs,
+        **kwargs: Any,
     ) -> pl.DataFrame:
         """Recommend games similar to the given ones."""
 
@@ -86,7 +87,7 @@ class BaseGamesRecommender[GameKeyType, UserKeyType](ABC):
     def similar_games(
         self,
         games: Iterable[GameKeyType],
-        **kwargs,
+        **kwargs: Any,
     ) -> pl.DataFrame:
         """Find games similar to the given ones."""
 
