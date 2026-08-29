@@ -444,13 +444,18 @@ def _main() -> None:
     LOGGER.info("RMSE: %.4f", metrics.rmse)
     for k in sorted(args.k_values):
         LOGGER.info(
-            "nDCG@%d: %.4f  nDCG_exp@%d: %.4f  ECS@%d: %.1f",
+            "nDCG@%d: %.4f  nDCG_exp@%d: %.4f  ECS@%d: %.1f  "
+            "Coverage@%d: %.4f  Novelty@%d: %.4f",
             k,
             metrics.ndcg[k],
             k,
             metrics.ndcg_exp[k],
             k,
             metrics.effective_catalog_size[k],
+            k,
+            metrics.catalog_coverage[k],
+            k,
+            metrics.novelty[k],
         )
 
     data.to_npz(args.output)
