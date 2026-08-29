@@ -13,9 +13,11 @@ import pytest
 from board_game_recommender.evaluation import (
     RecommenderTestData,
     calculate_metrics,
+    catalog_coverage,
     effective_catalog_size,
     load_test_data,
     ndcg_score,
+    novelty,
     prediction_scores,
     ratings_train_test_split,
 )
@@ -290,17 +292,87 @@ def test_effective_catalog_size_rejects_shape_mismatch(
         effective_catalog_size(test_data, np.zeros((2, 4)))
 
 
+def test_catalog_coverage_identical_rankings() -> None:
+    num_users = 5
+    test_data: RecommenderTestData[int, str] = RecommenderTestData(
+        user_ids=tuple(f"u{i}" for i in range(num_users)),
+        game_ids=np.tile([10, 20, 30], (num_users, 1)),
+        ratings=np.zeros((num_users, 3)),
+    )
+    y_pred = np.tile([3.0, 2.0, 1.0], (num_users, 1))
+
+    # Every user sees the same ranking, so top k only ever covers k of the 3 games
+    np.testing.assert_allclose(
+        catalog_coverage(test_data, y_pred),
+        [1 / 3, 2 / 3, 1.0],
+    )
+
+
+def test_catalog_coverage_spread_rankings() -> None:
+    num_users = 3
+    test_data: RecommenderTestData[int, str] = RecommenderTestData(
+        user_ids=tuple(f"u{i}" for i in range(num_users)),
+        game_ids=np.tile([10, 20, 30], (num_users, 1)),
+        ratings=np.zeros((num_users, 3)),
+    )
+    # Cyclic rotations: even the top 1 alone already covers all three games
+    y_pred = np.array([np.roll([3.0, 2.0, 1.0], i) for i in range(num_users)])
+
+    np.testing.assert_allclose(catalog_coverage(test_data, y_pred), [1.0, 1.0, 1.0])
+
+
+def test_catalog_coverage_rejects_shape_mismatch(
+    test_data: RecommenderTestData[int, str],
+) -> None:
+    with pytest.raises(ValueError, match="Shape of game IDs"):
+        catalog_coverage(test_data, np.zeros((2, 4)))
+
+
+def test_novelty_penalizes_popular_picks() -> None:
+    # Game 10 appears in every user's candidates; the rest appear only once
+    test_data: RecommenderTestData[int, str] = RecommenderTestData(
+        user_ids=("u0", "u1", "u2"),
+        game_ids=np.array([[10, 20, 99], [10, 30, 98], [10, 40, 97]]),
+        ratings=np.zeros((3, 3)),
+    )
+    y_pred = np.tile([3.0, 2.0, 1.0], (3, 1))  # always rank the first column top
+
+    # Game 10's share of all 9 candidate slots is 1/3
+    assert novelty(test_data, y_pred, k=1) == pytest.approx(-math.log2(1 / 3))
+
+
+def test_novelty_is_zero_for_the_only_game_in_the_data() -> None:
+    test_data: RecommenderTestData[int, str] = RecommenderTestData(
+        user_ids=("u0", "u1", "u2"),
+        game_ids=np.full((3, 1), 42),
+        ratings=np.zeros((3, 1)),
+    )
+    y_pred = np.zeros((3, 1))
+
+    assert novelty(test_data, y_pred, k=1) == pytest.approx(0.0)
+
+
+def test_novelty_rejects_shape_mismatch(
+    test_data: RecommenderTestData[int, str],
+) -> None:
+    with pytest.raises(ValueError, match="Shape of game IDs"):
+        novelty(test_data, np.zeros((2, 4)), k=1)
+
+
 def test_calculate_metrics(
     recommender: LightGamesRecommender,
     test_data: RecommenderTestData[int, str],
 ) -> None:
     metrics = calculate_metrics(recommender, test_data, k_values=1)
 
-    # The full width is always included alongside the requested k values,
-    # but not for ECS: at k == full width it is degenerate (see below).
+    # The full width is always included alongside the requested k values, but
+    # not for ECS, coverage, or novelty: at k == full width they're degenerate
+    # (see below).
     assert sorted(metrics.ndcg) == [1, 3]
     assert sorted(metrics.ndcg_exp) == [1, 3]
     assert sorted(metrics.effective_catalog_size) == [1]
+    assert sorted(metrics.catalog_coverage) == [1]
+    assert sorted(metrics.novelty) == [1]
 
     y_pred = prediction_scores(recommender, test_data)
     expected_rmse = float(np.sqrt(np.square(test_data.ratings - y_pred).mean()))
@@ -331,15 +403,17 @@ def test_calculate_metrics_ecs_excludes_auto_added_full_width(
     test_data: RecommenderTestData[int, str],
 ) -> None:
     # Full width is auto-added to ndcg/rmse's k's but must not leak into ECS,
-    # where k == full width is always degenerate (see calculate_metrics).
-    assert calculate_metrics(recommender, test_data).effective_catalog_size == {}
-    assert sorted(
-        calculate_metrics(
-            recommender,
-            test_data,
-            k_values=(1, 2),
-        ).effective_catalog_size,
-    ) == [1, 2]
+    # coverage, or novelty, where k == full width is always degenerate (see
+    # calculate_metrics).
+    metrics = calculate_metrics(recommender, test_data)
+    assert metrics.effective_catalog_size == {}
+    assert metrics.catalog_coverage == {}
+    assert metrics.novelty == {}
+
+    metrics = calculate_metrics(recommender, test_data, k_values=(1, 2))
+    assert sorted(metrics.effective_catalog_size) == [1, 2]
+    assert sorted(metrics.catalog_coverage) == [1, 2]
+    assert sorted(metrics.novelty) == [1, 2]
 
 
 def test_calculate_metrics_rejects_shape_mismatch(

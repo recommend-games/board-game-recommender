@@ -40,6 +40,8 @@ class RecommenderMetrics:
     ndcg_exp: dict[int, float]
     rmse: float
     effective_catalog_size: dict[int, float]
+    catalog_coverage: dict[int, float]
+    novelty: dict[int, float]
 
 
 def ratings_train_test_split(  # noqa: PLR0913
@@ -205,6 +207,53 @@ def ndcg_score(y_true: np.ndarray, y_score: np.ndarray, k: int) -> float:
     return float(scores.mean())
 
 
+def _validate_test_shapes[GameKeyType, UserKeyType](
+    test_data: RecommenderTestData[GameKeyType, UserKeyType],
+    y_pred: np.ndarray,
+) -> None:
+    if len(test_data.user_ids) != len(y_pred):
+        msg = (
+            f"Number of users ({len(test_data.user_ids)}) does not match "
+            f"number of prediction rows ({len(y_pred)})"
+        )
+        raise ValueError(msg)
+    if test_data.game_ids.shape != y_pred.shape:
+        msg = (
+            f"Shape of game IDs ({test_data.game_ids.shape}) does not match "
+            f"shape of predictions ({y_pred.shape})"
+        )
+        raise ValueError(msg)
+
+
+def _top_k_counts[GameKeyType, UserKeyType](
+    test_data: RecommenderTestData[GameKeyType, UserKeyType],
+    y_pred: np.ndarray,
+) -> np.ndarray:
+    """counts[k - 1, g]: how often game g appears in a user's top k recommendations."""
+
+    _validate_test_shapes(test_data, y_pred)
+    num_ranks = y_pred.shape[-1]
+
+    # The games each user would be recommended, in descending order of prediction
+    ranked_games = np.take_along_axis(
+        test_data.game_ids,
+        np.argsort(-y_pred, axis=-1),
+        axis=-1,
+    )
+    game_indexes = np.reshape(
+        np.unique(ranked_games, return_inverse=True)[1],
+        ranked_games.shape,
+    )
+    num_games = game_indexes.max() + 1
+
+    return np.array(
+        [
+            np.bincount(game_indexes[:, rank], minlength=num_games)
+            for rank in range(num_ranks)
+        ],
+    ).cumsum(axis=0)
+
+
 def effective_catalog_size[GameKeyType, UserKeyType](
     test_data: RecommenderTestData[GameKeyType, UserKeyType],
     y_pred: np.ndarray,
@@ -221,45 +270,62 @@ def effective_catalog_size[GameKeyType, UserKeyType](
     the top k recommendations.
     """
 
-    if len(test_data.user_ids) != len(y_pred):
-        msg = (
-            f"Number of users ({len(test_data.user_ids)}) does not match "
-            f"number of prediction rows ({len(y_pred)})"
-        )
-        raise ValueError(msg)
-    if test_data.game_ids.shape != y_pred.shape:
-        msg = (
-            f"Shape of game IDs ({test_data.game_ids.shape}) does not match "
-            f"shape of predictions ({y_pred.shape})"
-        )
-        raise ValueError(msg)
-
-    num_ranks = y_pred.shape[-1]
-
-    # The games each user would be recommended, in descending order of prediction
-    ranked_games = np.take_along_axis(
-        test_data.game_ids,
-        np.argsort(-y_pred, axis=-1),
-        axis=-1,
-    )
-    game_indexes = np.reshape(
-        np.unique(ranked_games, return_inverse=True)[1],
-        ranked_games.shape,
-    )
-    num_games = game_indexes.max() + 1
-
-    # counts[k - 1, g]: how often game g appears in a user's top k recommendations
-    counts = np.array(
-        [
-            np.bincount(game_indexes[:, rank], minlength=num_games)
-            for rank in range(num_ranks)
-        ],
-    ).cumsum(axis=0)
-
+    counts = _top_k_counts(test_data, y_pred)
     probs = counts / counts.sum(axis=-1, keepdims=True)
     ranks = np.argsort(-counts, axis=-1).argsort(axis=-1) + 1
 
     return cast("np.ndarray", 2 * (probs * ranks).sum(axis=-1) - 1)
+
+
+def catalog_coverage[GameKeyType, UserKeyType](
+    test_data: RecommenderTestData[GameKeyType, UserKeyType],
+    y_pred: np.ndarray,
+) -> np.ndarray:
+    """
+    Calculate the fraction of games seen in the test data that appear in
+    anyone's top-k recommendations, for every top-k cutoff.
+
+    Complements `effective_catalog_size()`: ECS can look reasonable even when
+    most of the candidate pool is never recommended to anyone, as long as
+    whatever *is* recommended is spread evenly. Coverage catches that
+    directly, going from 0 (nobody's top-k ever includes a given game) to 1
+    (every game in the test data is somebody's top-k pick at that cutoff).
+
+    The returned array is indexed by k - 1, same as `effective_catalog_size()`.
+    """
+
+    counts = _top_k_counts(test_data, y_pred)
+    num_games = counts.shape[-1]
+
+    return cast("np.ndarray", (counts > 0).sum(axis=-1) / num_games)
+
+
+def novelty[GameKeyType, UserKeyType](
+    test_data: RecommenderTestData[GameKeyType, UserKeyType],
+    y_pred: np.ndarray,
+    k: int,
+) -> float:
+    """
+    Mean self-information of the top-k recommendations, averaged over users.
+
+    Popularity is each game's frequency across all users' test rows, as a
+    proxy for how widely known it is: games many different power users have
+    rated tend to be broadly popular. A recommender that always suggests the
+    single most common game scores 0; rarer picks score higher.
+    """
+
+    _validate_test_shapes(test_data, y_pred)
+
+    top_k_games = np.take_along_axis(
+        test_data.game_ids,
+        np.argsort(-y_pred, axis=-1)[:, :k],
+        axis=-1,
+    )
+    unique_games, counts = np.unique(test_data.game_ids, return_counts=True)
+    frequency = counts / counts.sum()
+
+    probs = frequency[np.searchsorted(unique_games, top_k_games)]
+    return float(-np.log2(probs).mean())
 
 
 def calculate_metrics[GameKeyType, UserKeyType](
@@ -291,11 +357,12 @@ def calculate_metrics[GameKeyType, UserKeyType](
 
     ks = sorted(k_values | {y_true.shape[-1]})
 
-    ecs_all = effective_catalog_size(test_data, y_pred)
     # At k == the full candidate width, every game is "recommended" to every
-    # user, so ECS collapses to a property of the test split, not the model.
-    # Only report it for k's the caller actually asked for.
+    # user, so ECS and coverage collapse to a property of the test split, not
+    # the model. Only report those for k's the caller actually asked for.
     ecs_ks = sorted(k_values)
+    ecs_all = effective_catalog_size(test_data, y_pred)
+    coverage_all = catalog_coverage(test_data, y_pred)
 
     y_true_exp = np.exp2(y_true) - 1
 
@@ -304,4 +371,6 @@ def calculate_metrics[GameKeyType, UserKeyType](
         ndcg_exp={k: ndcg_score(y_true=y_true_exp, y_score=y_pred, k=k) for k in ks},
         rmse=rmse,
         effective_catalog_size={k: float(ecs_all[k - 1]) for k in ecs_ks},
+        catalog_coverage={k: float(coverage_all[k - 1]) for k in ecs_ks},
+        novelty={k: novelty(test_data, y_pred, k=k) for k in ecs_ks},
     )

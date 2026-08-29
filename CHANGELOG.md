@@ -13,6 +13,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   this as `--checkpoint-every N`, saving the model alongside the final
   output every N epochs, for inspecting a long run's trajectory instead of
   only its final result.
+- `catalog_coverage()`: the fraction of games seen in the test data that
+  appear in anyone's top-k, for every top-k cutoff. Complements
+  `effective_catalog_size()`, which can look fine even when most of the
+  candidate pool is never recommended to anyone, as long as whatever is
+  recommended is spread evenly.
+- `novelty()`: mean self-information of the top-k recommendations, using
+  each game's frequency across all users' test rows as a popularity proxy.
+  Both are now part of `calculate_metrics()` and the CLI's logged output.
 
 ## [4.3.0] - 2026-08-28
 
