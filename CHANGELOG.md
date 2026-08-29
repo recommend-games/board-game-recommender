@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- `train()`'s `on_epoch_end` callback can now request an early stop by
+  returning a truthy value. The CLI exposes this as
+  `--early-stopping-metric` (any `RecommenderMetrics` field, e.g. `rmse`,
+  `ndcg`, `catalog_coverage`), `--early-stopping-patience`, and
+  `--early-stopping-eval-every`. Restores the best weights seen, not just
+  whatever the last non-improving epoch produced. RMSE is a valid choice
+  but not the default one to reach for: it can get slightly worse while
+  ranking/diversity metrics keep improving, so picking the metric that
+  matches what more training is meant to buy is on the caller.
+
 - `train()` takes an `on_epoch_end` callback, called after every epoch with
   the model trained so far. `python -m board_game_recommender.dnn` exposes
   this as `--checkpoint-every N`, saving the model alongside the final

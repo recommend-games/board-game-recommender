@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import logging
 import sys
 import tempfile
@@ -31,6 +32,22 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     import numpy as np
+
+    from board_game_recommender.evaluation import RecommenderTestData
+
+# Metrics an early-stopping run can monitor, and whether higher is better.
+# RMSE is deliberately excluded from the "typical" choice but still valid:
+# it can go slightly the wrong way while ranking/diversity keep improving
+# (see the ranking_regularization trade-off), so it's on the caller to pick
+# a metric that matches what they actually want more training to buy them.
+_HIGHER_IS_BETTER = {
+    "rmse": False,
+    "ndcg": True,
+    "ndcg_exp": True,
+    "effective_catalog_size": True,
+    "catalog_coverage": True,
+    "novelty": True,
+}
 
 LOGGER = logging.getLogger(__name__)
 
@@ -163,6 +180,90 @@ def _ranking_loss(
     return nn.functional.mse_loss(hardest_negative, unobserved_target)
 
 
+def _early_stopping_callback(
+    test_data: RecommenderTestData[int, str],
+    *,
+    metric: str,
+    k: int | None,
+    patience: int,
+    eval_every: int,
+) -> Callable[[int, TrainingResult], bool]:
+    """
+    Stop once `metric` hasn't improved for `patience` epochs, evaluating
+    every `eval_every` epochs. Restores the best weights seen before
+    signalling a stop, so the returned model isn't just whatever the last
+    non-improving epoch happened to produce.
+    """
+
+    if metric not in _HIGHER_IS_BETTER:
+        msg = f"Unknown metric {metric!r}, must be one of {sorted(_HIGHER_IS_BETTER)}"
+        raise ValueError(msg)
+    if metric != "rmse" and k is None:
+        msg = f"metric {metric!r} needs a k to evaluate at"
+        raise ValueError(msg)
+
+    higher_is_better = _HIGHER_IS_BETTER[metric]
+    best_value: float | None = None
+    best_state: dict[str, torch.Tensor] | None = None
+    epochs_without_improvement = 0
+
+    def callback(epoch: int, result: TrainingResult) -> bool:
+        nonlocal best_value, best_state, epochs_without_improvement
+
+        if epoch % eval_every != 0:
+            return False
+
+        recommender = LightGamesRecommender(result.to_collaborative_filtering_data())
+        metrics = calculate_metrics(recommender, test_data, k_values=k)
+        value = metrics.rmse if metric == "rmse" else getattr(metrics, metric)[k]
+
+        improved = best_value is None or (
+            value > best_value if higher_is_better else value < best_value
+        )
+        if improved:
+            best_value, best_state = value, copy.deepcopy(result.model.state_dict())
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += eval_every
+
+        LOGGER.info(
+            "Epoch %d: %s=%.4f (best=%.4f, %d epochs without improvement)",
+            epoch,
+            metric,
+            value,
+            best_value,
+            epochs_without_improvement,
+        )
+
+        if epochs_without_improvement < patience:
+            return False
+
+        LOGGER.info(
+            "Stopping early: %s hasn't improved in %d epochs, restoring the best",
+            metric,
+            patience,
+        )
+        if best_state is not None:
+            result.model.load_state_dict(best_state)
+        return True
+
+    return callback
+
+
+def _combine_callbacks(
+    *callbacks: Callable[[int, TrainingResult], bool | None],
+) -> Callable[[int, TrainingResult], bool]:
+    """Run every callback every epoch; stop if any of them says to."""
+
+    def combined(epoch: int, result: TrainingResult) -> bool:
+        # A list, not a generator: every callback must run regardless of
+        # what an earlier one returned, e.g. still checkpoint on the epoch
+        # early stopping decides to stop on.
+        return any([callback(epoch, result) for callback in callbacks])  # noqa: C419
+
+    return combined
+
+
 def train(  # noqa: PLR0913
     ratings: pl.DataFrame,
     *,
@@ -179,7 +280,7 @@ def train(  # noqa: PLR0913
     unobserved_rating_value: float | None = None,
     num_sampled_negative_examples: int = 4,
     seed: int | None = None,
-    on_epoch_end: Callable[[int, TrainingResult], None] | None = None,
+    on_epoch_end: Callable[[int, TrainingResult], bool | None] | None = None,
 ) -> TrainingResult:
     """
     Train a `CollaborativeFilteringModel` on mean squared error plus the
@@ -194,7 +295,8 @@ def train(  # noqa: PLR0913
     the ranking term.
 
     `on_epoch_end`, if given, is called after every epoch with the 1-based
-    epoch number and the result so far, e.g. to checkpoint long runs.
+    epoch number and the result so far, e.g. to checkpoint long runs. If it
+    returns a truthy value, training stops after that epoch.
     """
 
     if seed is not None:
@@ -300,15 +402,16 @@ def train(  # noqa: PLR0913
             num_epochs,
             epoch_loss / num_rows,
         )
-        if on_epoch_end is not None:
-            on_epoch_end(
-                epoch + 1,
-                TrainingResult(
-                    model=model,
-                    user_labels=user_labels,
-                    item_labels=item_labels,
-                ),
-            )
+        if on_epoch_end is not None and on_epoch_end(
+            epoch + 1,
+            TrainingResult(
+                model=model,
+                user_labels=user_labels,
+                item_labels=item_labels,
+            ),
+        ):
+            LOGGER.info("Stopping early after epoch %d/%d", epoch + 1, num_epochs)
+            break
 
     return TrainingResult(model=model, user_labels=user_labels, item_labels=item_labels)
 
@@ -346,6 +449,31 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         default=None,
         help="save the model every N epochs, alongside the final output",
+    )
+    parser.add_argument(
+        "--early-stopping-metric",
+        choices=sorted(_HIGHER_IS_BETTER),
+        default=None,
+        help="stop once this metric stops improving; disabled by default",
+    )
+    parser.add_argument(
+        "--early-stopping-k",
+        type=int,
+        default=None,
+        help="k to evaluate --early-stopping-metric at; defaults to the "
+        "smallest --k-values. Unused for rmse",
+    )
+    parser.add_argument(
+        "--early-stopping-patience",
+        type=int,
+        default=10,
+        help="stop after this many epochs without improvement",
+    )
+    parser.add_argument(
+        "--early-stopping-eval-every",
+        type=int,
+        default=5,
+        help="check --early-stopping-metric every N epochs",
     )
 
     parser.add_argument(
@@ -407,15 +535,28 @@ def _main() -> None:
             ratings_key=args.ratings_key,
         )
 
-    on_epoch_end = None
+    callbacks: list[Callable[[int, TrainingResult], bool | None]] = []
     if args.checkpoint_every:
         output = Path(args.output)
         checkpoint_every = args.checkpoint_every
 
-        def on_epoch_end(epoch: int, result: TrainingResult) -> None:
+        def checkpoint(epoch: int, result: TrainingResult) -> None:
             if epoch % checkpoint_every == 0:
                 path = output.with_stem(f"{output.stem}_epoch{epoch:04d}")
                 result.to_collaborative_filtering_data().to_npz(path)
+
+        callbacks.append(checkpoint)
+    if args.early_stopping_metric:
+        callbacks.append(
+            _early_stopping_callback(
+                test_data,
+                metric=args.early_stopping_metric,
+                k=args.early_stopping_k or min(args.k_values),
+                patience=args.early_stopping_patience,
+                eval_every=args.early_stopping_eval_every,
+            ),
+        )
+    on_epoch_end = _combine_callbacks(*callbacks) if callbacks else None
 
     result = train(
         train_data,

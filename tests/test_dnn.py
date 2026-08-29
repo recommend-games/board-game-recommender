@@ -16,10 +16,13 @@ import torch
 from board_game_recommender.dnn import (
     CollaborativeFilteringModel,
     TrainingResult,
+    _combine_callbacks,
+    _early_stopping_callback,
     _main,
     _parse_args,
     train,
 )
+from board_game_recommender.evaluation import RecommenderTestData
 from board_game_recommender.light import (
     CollaborativeFilteringData,
     LightGamesRecommender,
@@ -299,6 +302,147 @@ def test_train_calls_on_epoch_end_every_epoch() -> None:
 
     assert [epoch for epoch, _ in calls] == list(range(1, num_epochs + 1))
     assert all(isinstance(result, TrainingResult) for _, result in calls)
+
+
+def test_train_stops_early_when_on_epoch_end_returns_true() -> None:
+    ratings = _synthetic_ratings(num_users=NUM_USERS, num_items=NUM_ITEMS, seed=4)
+    calls: list[int] = []
+
+    def stop_after_two(epoch: int, _result: TrainingResult) -> bool:
+        calls.append(epoch)
+        return epoch >= 2  # noqa: PLR2004
+
+    train(
+        ratings,
+        num_factors=NUM_FACTORS,
+        num_epochs=10,
+        seed=SEED,
+        on_epoch_end=stop_after_two,
+    )
+
+    assert calls == [1, 2]
+
+
+def _small_test_data() -> RecommenderTestData[int, str]:
+    """Every user's own held-out ratings equal the item index, for a
+    predictable target: an untrained model (predicting ~0 everywhere) is
+    far from it, matching `intercept` closer gets RMSE down deterministically.
+    """
+    return RecommenderTestData(
+        user_ids=tuple(f"user{u}" for u in range(NUM_USERS)),
+        game_ids=np.tile(np.arange(NUM_ITEMS), (NUM_USERS, 1)),
+        ratings=np.tile(np.arange(NUM_ITEMS, dtype=float), (NUM_USERS, 1)),
+    )
+
+
+def _test_result(model: CollaborativeFilteringModel) -> TrainingResult:
+    return TrainingResult(
+        model=model,
+        user_labels=np.array([f"user{u}" for u in range(NUM_USERS)]),
+        item_labels=np.arange(NUM_ITEMS),
+    )
+
+
+def test_early_stopping_callback_only_evaluates_every_n_epochs(
+    model: CollaborativeFilteringModel,
+) -> None:
+    callback = _early_stopping_callback(
+        _small_test_data(),
+        metric="rmse",
+        k=None,
+        patience=100,
+        eval_every=3,
+    )
+    result = _test_result(model)
+
+    assert [callback(epoch, result) for epoch in (1, 2, 3, 4, 5, 6)] == [
+        False,
+        False,
+        False,
+        False,
+        False,
+        False,
+    ]
+
+
+def test_early_stopping_callback_stops_after_patience_epochs(
+    model: CollaborativeFilteringModel,
+) -> None:
+    # The model never changes between calls, so nothing ever "improves"
+    # after the first evaluation.
+    callback = _early_stopping_callback(
+        _small_test_data(),
+        metric="rmse",
+        k=None,
+        patience=2,
+        eval_every=1,
+    )
+    result = _test_result(model)
+
+    assert [callback(epoch, result) for epoch in (1, 2, 3)] == [False, False, True]
+
+
+def test_early_stopping_callback_restores_the_best_weights(
+    model: CollaborativeFilteringModel,
+) -> None:
+    callback = _early_stopping_callback(
+        _small_test_data(),
+        metric="rmse",
+        k=None,
+        patience=1,
+        eval_every=1,
+    )
+    result = _test_result(model)
+
+    model.intercept.data.fill_(0.0)
+    assert callback(1, result) is False
+    best_intercept = float(model.intercept)
+
+    model.intercept.data.fill_(100.0)  # a much worse prediction
+    assert callback(2, result) is True
+
+    assert float(model.intercept) == pytest.approx(best_intercept)
+
+
+def test_early_stopping_callback_rejects_unknown_metric(
+    model: CollaborativeFilteringModel,
+) -> None:
+    with pytest.raises(ValueError, match="Unknown metric"):
+        _early_stopping_callback(
+            _small_test_data(),
+            metric="not_a_real_metric",
+            k=None,
+            patience=1,
+            eval_every=1,
+        )
+
+
+def test_early_stopping_callback_rejects_missing_k_for_non_rmse_metric() -> None:
+    with pytest.raises(ValueError, match="needs a k"):
+        _early_stopping_callback(
+            _small_test_data(),
+            metric="ndcg",
+            k=None,
+            patience=1,
+            eval_every=1,
+        )
+
+
+def test_combine_callbacks_runs_all_and_stops_if_any_do() -> None:
+    calls: list[str] = []
+
+    def first(_epoch: int, _result: TrainingResult) -> bool:
+        calls.append("first")
+        return True
+
+    def second(_epoch: int, _result: TrainingResult) -> bool:
+        calls.append("second")
+        return False
+
+    combined = _combine_callbacks(first, second)
+
+    assert combined(1, cast("TrainingResult", None)) is True
+    assert calls == ["first", "second"]
 
 
 def test_train_drops_null_ratings() -> None:
@@ -706,3 +850,50 @@ def test_main_writes_checkpoints_every_n_epochs(
 
     checkpoint = LightGamesRecommender.from_npz(tmp_path / "model_epoch0002.npz")
     assert checkpoint.num_users > 0
+
+
+def test_main_stops_early_when_the_metric_plateaus(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    ratings = _synthetic_ratings(num_users=10, num_items=15, seed=22)
+    ratings_path = tmp_path / "ratings.jl"
+    ratings.write_ndjson(ratings_path)
+    output_path = tmp_path / "model.npz"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "dnn.py",
+            str(ratings_path),
+            str(output_path),
+            "--power-users",
+            "10",
+            "--test-rows",
+            "10",
+            "--num-epochs",
+            "10",
+            # A frozen model can never improve, so this deterministically
+            # triggers a stop rather than depending on how training happens
+            # to go.
+            "--learning-rate",
+            "0",
+            "--early-stopping-metric",
+            "rmse",
+            "--early-stopping-patience",
+            "2",
+            "--early-stopping-eval-every",
+            "1",
+            "--seed",
+            str(SEED),
+        ],
+    )
+
+    with caplog.at_level("INFO"):
+        _main()
+
+    assert output_path.exists()
+    assert "Stopping early" in caplog.text
+    assert "Epoch 10/10" not in caplog.text
