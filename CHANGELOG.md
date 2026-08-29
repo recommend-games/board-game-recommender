@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `train()` takes an `on_epoch_end` callback, called after every epoch with
+  the model trained so far. `python -m board_game_recommender.dnn` exposes
+  this as `--checkpoint-every N`, saving the model alongside the final
+  output every N epochs, for inspecting a long run's trajectory instead of
+  only its final result.
+
 ## [4.3.0] - 2026-08-28
 
 ### Added

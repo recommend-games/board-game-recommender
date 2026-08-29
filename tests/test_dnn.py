@@ -284,6 +284,23 @@ def test_train_result_shapes() -> None:
     assert result.model.num_factors == NUM_FACTORS
 
 
+def test_train_calls_on_epoch_end_every_epoch() -> None:
+    ratings = _synthetic_ratings(num_users=NUM_USERS, num_items=NUM_ITEMS, seed=3)
+    num_epochs = 4
+    calls: list[tuple[int, TrainingResult]] = []
+
+    train(
+        ratings,
+        num_factors=NUM_FACTORS,
+        num_epochs=num_epochs,
+        seed=SEED,
+        on_epoch_end=lambda epoch, result: calls.append((epoch, result)),
+    )
+
+    assert [epoch for epoch, _ in calls] == list(range(1, num_epochs + 1))
+    assert all(isinstance(result, TrainingResult) for _, result in calls)
+
+
 def test_train_drops_null_ratings() -> None:
     ratings = pl.DataFrame(
         {
@@ -647,3 +664,45 @@ def test_main_trains_evaluates_and_saves_a_model(
         games=list(recommender.known_games),
     )
     assert np.isfinite(scores).all()
+
+
+def test_main_writes_checkpoints_every_n_epochs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ratings = _synthetic_ratings(num_users=10, num_items=15, seed=21)
+    ratings_path = tmp_path / "ratings.jl"
+    ratings.write_ndjson(ratings_path)
+    output_path = tmp_path / "model.npz"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "dnn.py",
+            str(ratings_path),
+            str(output_path),
+            "--power-users",
+            "10",
+            "--test-rows",
+            "10",
+            "--num-epochs",
+            "5",
+            "--checkpoint-every",
+            "2",
+            "--seed",
+            str(SEED),
+        ],
+    )
+
+    _main()
+
+    assert output_path.exists()
+    assert (tmp_path / "model_epoch0002.npz").exists()
+    assert (tmp_path / "model_epoch0004.npz").exists()
+    # 5 is not a multiple of 2, and the final epoch is saved as the plain
+    # output above rather than another checkpoint.
+    assert not (tmp_path / "model_epoch0005.npz").exists()
+
+    checkpoint = LightGamesRecommender.from_npz(tmp_path / "model_epoch0002.npz")
+    assert checkpoint.num_users > 0

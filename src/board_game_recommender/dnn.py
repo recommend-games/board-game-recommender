@@ -28,6 +28,8 @@ from board_game_recommender.light import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import numpy as np
 
 LOGGER = logging.getLogger(__name__)
@@ -177,6 +179,7 @@ def train(  # noqa: PLR0913
     unobserved_rating_value: float | None = None,
     num_sampled_negative_examples: int = 4,
     seed: int | None = None,
+    on_epoch_end: Callable[[int, TrainingResult], None] | None = None,
 ) -> TrainingResult:
     """
     Train a `CollaborativeFilteringModel` on mean squared error plus the
@@ -189,6 +192,9 @@ def train(  # noqa: PLR0913
     and `linear_regularization` are standard L2 penalties on the factors and
     biases touched in each batch. Set `ranking_regularization=0` to disable
     the ranking term.
+
+    `on_epoch_end`, if given, is called after every epoch with the 1-based
+    epoch number and the result so far, e.g. to checkpoint long runs.
     """
 
     if seed is not None:
@@ -294,6 +300,15 @@ def train(  # noqa: PLR0913
             num_epochs,
             epoch_loss / num_rows,
         )
+        if on_epoch_end is not None:
+            on_epoch_end(
+                epoch + 1,
+                TrainingResult(
+                    model=model,
+                    user_labels=user_labels,
+                    item_labels=item_labels,
+                ),
+            )
 
     return TrainingResult(model=model, user_labels=user_labels, item_labels=item_labels)
 
@@ -326,6 +341,12 @@ def _parse_args() -> argparse.Namespace:
         help="defaults to the data's estimated 5%% quantile, mean - 1.96 * std",
     )
     parser.add_argument("--num-sampled-negative-examples", type=int, default=4)
+    parser.add_argument(
+        "--checkpoint-every",
+        type=int,
+        default=None,
+        help="save the model every N epochs, alongside the final output",
+    )
 
     parser.add_argument(
         "--power-users",
@@ -386,6 +407,16 @@ def _main() -> None:
             ratings_key=args.ratings_key,
         )
 
+    on_epoch_end = None
+    if args.checkpoint_every:
+        output = Path(args.output)
+        checkpoint_every = args.checkpoint_every
+
+        def on_epoch_end(epoch: int, result: TrainingResult) -> None:
+            if epoch % checkpoint_every == 0:
+                path = output.with_stem(f"{output.stem}_epoch{epoch:04d}")
+                result.to_collaborative_filtering_data().to_npz(path)
+
     result = train(
         train_data,
         user_id_key=args.user_id_key,
@@ -401,6 +432,7 @@ def _main() -> None:
         unobserved_rating_value=args.unobserved_rating_value,
         num_sampled_negative_examples=args.num_sampled_negative_examples,
         seed=args.seed,
+        on_epoch_end=on_epoch_end,
     )
 
     data = result.to_collaborative_filtering_data()
