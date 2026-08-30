@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [4.4.0] - 2026-08-30
+
 ### Added
 
 - `train()`'s `on_epoch_end` callback can now request an early stop by
@@ -17,7 +19,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   but not the default one to reach for: it can get slightly worse while
   ranking/diversity metrics keep improving, so picking the metric that
   matches what more training is meant to buy is on the caller.
-
 - `train()` takes an `on_epoch_end` callback, called after every epoch with
   the model trained so far. `python -m board_game_recommender.dnn` exposes
   this as `--checkpoint-every N`, saving the model alongside the final
@@ -124,7 +125,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Initial v4 implementation containing ABC, baseline and light recommenders
 
-[Unreleased]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.3.0...master
+[Unreleased]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.4.0...master
+[4.4.0]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.3.0...4.4.0
 [4.3.0]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.2.0...4.3.0
 [4.2.0]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.1.1...4.2.0
 [4.1.1]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.1.0...4.1.1

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "board-game-recommender"
-version = "4.3.0"
+version = "4.4.0"
 description = "Board game recommendation engine"
 authors = [
     "Markus Shepherd <markus@recommend.games>",
