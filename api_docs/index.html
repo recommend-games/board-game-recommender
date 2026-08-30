@@ -914,6 +914,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#board_game_recommender.evaluation.catalog_coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        catalog_coverage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#board_game_recommender.evaluation.effective_catalog_size" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -940,6 +951,17 @@
     <span class="md-ellipsis">
       
         ndcg_score
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#board_game_recommender.evaluation.novelty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        novelty
       
     </span>
   </a>
@@ -1632,6 +1654,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#board_game_recommender.evaluation.catalog_coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        catalog_coverage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#board_game_recommender.evaluation.effective_catalog_size" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1658,6 +1691,17 @@
     <span class="md-ellipsis">
       
         ndcg_score
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#board_game_recommender.evaluation.novelty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        novelty
       
     </span>
   </a>
@@ -1799,8 +1843,7 @@
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/board_game_recommender/abc.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 17</span>
-<span class="normal"> 18</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 18</span>
 <span class="normal"> 19</span>
 <span class="normal"> 20</span>
 <span class="normal"> 21</span>
@@ -1904,7 +1947,8 @@
 <span class="normal">119</span>
 <span class="normal">120</span>
 <span class="normal">121</span>
-<span class="normal">122</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BaseGamesRecommender</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">](</span><span class="n">ABC</span><span class="p">):</span>
+<span class="normal">122</span>
+<span class="normal">123</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BaseGamesRecommender</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">](</span><span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Abstract base games recommender class."""</span>
 
     <span class="nd">@property</span>
@@ -1936,7 +1980,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">recommend</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">UserKeyType</span><span class="p">],</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Recommend games for given users."""</span>
 
@@ -1952,7 +1996,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">recommend_group</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">UserKeyType</span><span class="p">],</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Recommend games for given group of users."""</span>
 
@@ -1968,7 +2012,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">recommend_similar</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">],</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Recommend games similar to the given ones."""</span>
 
@@ -1976,7 +2020,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">similar_games</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">],</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Find games similar to the given ones."""</span>
 
@@ -2143,7 +2187,7 @@
 
 
 <h3 id="board_game_recommender.BaseGamesRecommender.recommend" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">recommend</span><span class="p">(</span><span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">UserKeyType</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
+            <code class="highlight language-python"><span class="n">recommend</span><span class="p">(</span><span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">UserKeyType</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
@@ -2159,17 +2203,17 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/abc.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">45</span>
-<span class="normal">46</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">46</span>
 <span class="normal">47</span>
 <span class="normal">48</span>
 <span class="normal">49</span>
 <span class="normal">50</span>
-<span class="normal">51</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
+<span class="normal">51</span>
+<span class="normal">52</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">recommend</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">UserKeyType</span><span class="p">],</span>
-    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Recommend games for given users."""</span>
 </code></pre></div></td></tr></table></div>
@@ -2198,13 +2242,13 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/abc.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">53</span>
-<span class="normal">54</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">54</span>
 <span class="normal">55</span>
 <span class="normal">56</span>
 <span class="normal">57</span>
 <span class="normal">58</span>
-<span class="normal">59</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
+<span class="normal">59</span>
+<span class="normal">60</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">recommend_as_numpy</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">UserKeyType</span><span class="p">],</span>
@@ -2221,7 +2265,7 @@
 
 
 <h3 id="board_game_recommender.BaseGamesRecommender.recommend_group" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">recommend_group</span><span class="p">(</span><span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">UserKeyType</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
+            <code class="highlight language-python"><span class="n">recommend_group</span><span class="p">(</span><span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">UserKeyType</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
@@ -2237,17 +2281,17 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/abc.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">61</span>
-<span class="normal">62</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">62</span>
 <span class="normal">63</span>
 <span class="normal">64</span>
 <span class="normal">65</span>
 <span class="normal">66</span>
-<span class="normal">67</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
+<span class="normal">67</span>
+<span class="normal">68</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">recommend_group</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">UserKeyType</span><span class="p">],</span>
-    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Recommend games for given group of users."""</span>
 </code></pre></div></td></tr></table></div>
@@ -2276,13 +2320,13 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/abc.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">69</span>
-<span class="normal">70</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">70</span>
 <span class="normal">71</span>
 <span class="normal">72</span>
 <span class="normal">73</span>
 <span class="normal">74</span>
-<span class="normal">75</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
+<span class="normal">75</span>
+<span class="normal">76</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">recommend_group_as_numpy</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">UserKeyType</span><span class="p">],</span>
@@ -2312,8 +2356,7 @@ users and games as a numpy array.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/abc.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 93</span>
-<span class="normal"> 94</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 94</span>
 <span class="normal"> 95</span>
 <span class="normal"> 96</span>
 <span class="normal"> 97</span>
@@ -2341,7 +2384,8 @@ users and games as a numpy array.</p>
 <span class="normal">119</span>
 <span class="normal">120</span>
 <span class="normal">121</span>
-<span class="normal">122</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend_random_games_as_numpy</span><span class="p">(</span>
+<span class="normal">122</span>
+<span class="normal">123</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend_random_games_as_numpy</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">UserKeyType</span><span class="p">],</span>
     <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">],</span>
@@ -2381,7 +2425,7 @@ users and games as a numpy array.</p>
 
 
 <h3 id="board_game_recommender.BaseGamesRecommender.recommend_similar" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">recommend_similar</span><span class="p">(</span><span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
+            <code class="highlight language-python"><span class="n">recommend_similar</span><span class="p">(</span><span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
@@ -2397,17 +2441,17 @@ users and games as a numpy array.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/abc.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">77</span>
-<span class="normal">78</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">78</span>
 <span class="normal">79</span>
 <span class="normal">80</span>
 <span class="normal">81</span>
 <span class="normal">82</span>
-<span class="normal">83</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
+<span class="normal">83</span>
+<span class="normal">84</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">recommend_similar</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">],</span>
-    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Recommend games similar to the given ones."""</span>
 </code></pre></div></td></tr></table></div>
@@ -2420,7 +2464,7 @@ users and games as a numpy array.</p>
 
 
 <h3 id="board_game_recommender.BaseGamesRecommender.similar_games" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">similar_games</span><span class="p">(</span><span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
+            <code class="highlight language-python"><span class="n">similar_games</span><span class="p">(</span><span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
@@ -2436,17 +2480,17 @@ users and games as a numpy array.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/abc.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">85</span>
-<span class="normal">86</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">86</span>
 <span class="normal">87</span>
 <span class="normal">88</span>
 <span class="normal">89</span>
 <span class="normal">90</span>
-<span class="normal">91</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
+<span class="normal">91</span>
+<span class="normal">92</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">similar_games</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">],</span>
-    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Find games similar to the given ones."""</span>
 </code></pre></div></td></tr></table></div>
@@ -2701,7 +2745,7 @@ users and games as a numpy array.</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="BaseGamesRecommender (board_game_recommender.abc.BaseGamesRecommender)" href="#board_game_recommender.BaseGamesRecommender">BaseGamesRecommender</a></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="BaseGamesRecommender (board_game_recommender.abc.BaseGamesRecommender)" href="#board_game_recommender.BaseGamesRecommender">BaseGamesRecommender</a>[<span title="int">int</span>, <span title="str">str</span>]</code></p>
 
 
 
@@ -2962,7 +3006,8 @@ users and games as a numpy array.</p>
 <span class="normal">310</span>
 <span class="normal">311</span>
 <span class="normal">312</span>
-<span class="normal">313</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LightGamesRecommender</span><span class="p">(</span><span class="n">BaseGamesRecommender</span><span class="p">):</span>
+<span class="normal">313</span>
+<span class="normal">314</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LightGamesRecommender</span><span class="p">(</span><span class="n">BaseGamesRecommender</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
 <span class="w">    </span><span class="sd">"""Light recommender without Turi Create dependency."""</span>
 
     <span class="n">_known_games</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
@@ -3075,11 +3120,12 @@ users and games as a numpy array.</p>
             <span class="n">items_factors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">items_factors</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
             <span class="n">items_linear_terms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">items_linear_terms</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="p">(</span>
+        <span class="k">return</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="s2">"np.ndarray"</span><span class="p">,</span>
             <span class="n">users_factors</span> <span class="o">@</span> <span class="n">items_factors</span>  <span class="c1"># (num_users, num_items)</span>
             <span class="o">+</span> <span class="n">users_linear_terms</span>  <span class="c1"># (num_users, 1)</span>
             <span class="o">+</span> <span class="n">items_linear_terms</span>  <span class="c1"># (1, num_items)</span>
-            <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">intercept</span>  <span class="c1"># (1,)</span>
+            <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">intercept</span><span class="p">,</span>  <span class="c1"># (1,)</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_game_scores</span><span class="p">(</span>
@@ -3094,7 +3140,7 @@ users and games as a numpy array.</p>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">items_linear_terms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">items_linear_terms</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
 
-        <span class="k">return</span> <span class="n">items_linear_terms</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">intercept</span>
+        <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="s2">"np.ndarray"</span><span class="p">,</span> <span class="n">items_linear_terms</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">intercept</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">recommend</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -3282,8 +3328,7 @@ users and games as a numpy array.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/light.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">201</span>
-<span class="normal">202</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">202</span>
 <span class="normal">203</span>
 <span class="normal">204</span>
 <span class="normal">205</span>
@@ -3295,7 +3340,8 @@ users and games as a numpy array.</p>
 <span class="normal">211</span>
 <span class="normal">212</span>
 <span class="normal">213</span>
-<span class="normal">214</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend</span><span class="p">(</span>
+<span class="normal">214</span>
+<span class="normal">215</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
@@ -3331,8 +3377,7 @@ users and games as a numpy array.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/light.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">216</span>
-<span class="normal">217</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">217</span>
 <span class="normal">218</span>
 <span class="normal">219</span>
 <span class="normal">220</span>
@@ -3341,7 +3386,8 @@ users and games as a numpy array.</p>
 <span class="normal">223</span>
 <span class="normal">224</span>
 <span class="normal">225</span>
-<span class="normal">226</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend_as_numpy</span><span class="p">(</span>
+<span class="normal">226</span>
+<span class="normal">227</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend_as_numpy</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
@@ -3374,8 +3420,7 @@ users and games as a numpy array.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/light.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">228</span>
-<span class="normal">229</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">229</span>
 <span class="normal">230</span>
 <span class="normal">231</span>
 <span class="normal">232</span>
@@ -3391,7 +3436,8 @@ users and games as a numpy array.</p>
 <span class="normal">242</span>
 <span class="normal">243</span>
 <span class="normal">244</span>
-<span class="normal">245</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend_group</span><span class="p">(</span>
+<span class="normal">245</span>
+<span class="normal">246</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend_group</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
@@ -3431,8 +3477,7 @@ users and games as a numpy array.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/light.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">247</span>
-<span class="normal">248</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">248</span>
 <span class="normal">249</span>
 <span class="normal">250</span>
 <span class="normal">251</span>
@@ -3446,7 +3491,8 @@ users and games as a numpy array.</p>
 <span class="normal">259</span>
 <span class="normal">260</span>
 <span class="normal">261</span>
-<span class="normal">262</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend_group_as_numpy</span><span class="p">(</span>
+<span class="normal">262</span>
+<span class="normal">263</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend_group_as_numpy</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
@@ -3485,8 +3531,7 @@ of latent factors, averaged over all the given games.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/light.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">276</span>
-<span class="normal">277</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">277</span>
 <span class="normal">278</span>
 <span class="normal">279</span>
 <span class="normal">280</span>
@@ -3505,7 +3550,8 @@ of latent factors, averaged over all the given games.</p>
 <span class="normal">293</span>
 <span class="normal">294</span>
 <span class="normal">295</span>
-<span class="normal">296</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend_similar</span><span class="p">(</span>
+<span class="normal">296</span>
+<span class="normal">297</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend_similar</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
@@ -3549,8 +3595,7 @@ cosine similarity of latent factors.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/light.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">298</span>
-<span class="normal">299</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">299</span>
 <span class="normal">300</span>
 <span class="normal">301</span>
 <span class="normal">302</span>
@@ -3564,7 +3609,8 @@ cosine similarity of latent factors.</p>
 <span class="normal">310</span>
 <span class="normal">311</span>
 <span class="normal">312</span>
-<span class="normal">313</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">similar_games</span><span class="p">(</span>
+<span class="normal">313</span>
+<span class="normal">314</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">similar_games</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
@@ -3751,7 +3797,7 @@ cosine similarity of latent factors.</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="BaseGamesRecommender (board_game_recommender.abc.BaseGamesRecommender)" href="#board_game_recommender.BaseGamesRecommender">BaseGamesRecommender</a></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="BaseGamesRecommender (board_game_recommender.abc.BaseGamesRecommender)" href="#board_game_recommender.BaseGamesRecommender">BaseGamesRecommender</a>[<span title="int">int</span>, <span title="str">str</span>]</code></p>
 
 
 
@@ -3903,7 +3949,7 @@ cosine similarity of latent factors.</p>
 <span class="normal">264</span>
 <span class="normal">265</span>
 <span class="normal">266</span>
-<span class="normal">267</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PopularGamesRecommender</span><span class="p">(</span><span class="n">BaseGamesRecommender</span><span class="p">):</span>
+<span class="normal">267</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PopularGamesRecommender</span><span class="p">(</span><span class="n">BaseGamesRecommender</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
 <span class="w">    </span><span class="sd">"""Popular games recommender."""</span>
 
     <span class="n">id_field</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"bgg_id"</span>
@@ -3993,7 +4039,7 @@ cosine similarity of latent factors.</p>
     <span class="k">def</span><span class="w"> </span><span class="nf">recommend</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Popular recommendations for certain users."""</span>
         <span class="n">users</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">users</span><span class="p">)</span>
@@ -4013,7 +4059,7 @@ cosine similarity of latent factors.</p>
     <span class="k">def</span><span class="w"> </span><span class="nf">recommend_group</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>  <span class="c1"># noqa: ARG002</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Popular recommendations for a group of users."""</span>
         <span class="n">scores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recommendation_scores</span><span class="p">(</span><span class="n">users</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
@@ -4031,14 +4077,14 @@ cosine similarity of latent factors.</p>
     <span class="k">def</span><span class="w"> </span><span class="nf">recommend_similar</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">similar_games</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 </code></pre></div></td></tr></table></div>
@@ -4088,7 +4134,7 @@ cosine similarity of latent factors.</p>
 
 
 <h3 id="board_game_recommender.PopularGamesRecommender.recommend" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">recommend</span><span class="p">(</span><span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
+            <code class="highlight language-python"><span class="n">recommend</span><span class="p">(</span><span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
 
 </h3>
 
@@ -4111,7 +4157,7 @@ cosine similarity of latent factors.</p>
 <span class="normal">225</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Popular recommendations for certain users."""</span>
     <span class="n">users</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">users</span><span class="p">)</span>
@@ -4166,7 +4212,7 @@ cosine similarity of latent factors.</p>
 
 
 <h3 id="board_game_recommender.PopularGamesRecommender.recommend_group" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">recommend_group</span><span class="p">(</span><span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
+            <code class="highlight language-python"><span class="n">recommend_group</span><span class="p">(</span><span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
 
 </h3>
 
@@ -4188,7 +4234,7 @@ cosine similarity of latent factors.</p>
 <span class="normal">244</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">recommend_group</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>  <span class="c1"># noqa: ARG002</span>
-    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Popular recommendations for a group of users."""</span>
     <span class="n">scores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recommendation_scores</span><span class="p">(</span><span class="n">users</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
@@ -4516,7 +4562,7 @@ cosine similarity of latent factors.</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="BaseGamesRecommender (board_game_recommender.abc.BaseGamesRecommender)" href="#board_game_recommender.BaseGamesRecommender">BaseGamesRecommender</a></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="BaseGamesRecommender (board_game_recommender.abc.BaseGamesRecommender)" href="#board_game_recommender.BaseGamesRecommender">BaseGamesRecommender</a>[<span title="int">int</span>, <span title="str">str</span>]</code></p>
 
 
 
@@ -4603,7 +4649,7 @@ cosine similarity of latent factors.</p>
 <span class="normal">124</span>
 <span class="normal">125</span>
 <span class="normal">126</span>
-<span class="normal">127</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RandomGamesRecommender</span><span class="p">(</span><span class="n">BaseGamesRecommender</span><span class="p">):</span>
+<span class="normal">127</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RandomGamesRecommender</span><span class="p">(</span><span class="n">BaseGamesRecommender</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
 <span class="w">    </span><span class="sd">"""Random recommender."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -4629,7 +4675,7 @@ cosine similarity of latent factors.</p>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
         <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Random recommendations for certain users."""</span>
 
@@ -4653,7 +4699,7 @@ cosine similarity of latent factors.</p>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>  <span class="c1"># noqa: ARG002</span>
         <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Random recommendations for a group of users."""</span>
 
@@ -4671,10 +4717,10 @@ cosine similarity of latent factors.</p>
         <span class="n">games</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">games</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recommendation_scores</span><span class="p">(</span><span class="n">users</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">games</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">games</span><span class="p">))</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">recommend_similar</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recommend_similar</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">similar_games</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">similar_games</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 </code></pre></div></td></tr></table></div>
               </details>
@@ -4696,7 +4742,7 @@ cosine similarity of latent factors.</p>
 
 
 <h3 id="board_game_recommender.RandomGamesRecommender.recommend" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">recommend</span><span class="p">(</span><span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
+            <code class="highlight language-python"><span class="n">recommend</span><span class="p">(</span><span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
 
 </h3>
 
@@ -4724,7 +4770,7 @@ cosine similarity of latent factors.</p>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
-    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Random recommendations for certain users."""</span>
 
@@ -4782,7 +4828,7 @@ cosine similarity of latent factors.</p>
 
 
 <h3 id="board_game_recommender.RandomGamesRecommender.recommend_group" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">recommend_group</span><span class="p">(</span><span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
+            <code class="highlight language-python"><span class="n">recommend_group</span><span class="p">(</span><span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span></code>
 
 </h3>
 
@@ -4809,7 +4855,7 @@ cosine similarity of latent factors.</p>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">users</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>  <span class="c1"># noqa: ARG002</span>
     <span class="n">games</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
-    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># noqa: ARG002</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Random recommendations for a group of users."""</span>
 
@@ -4943,7 +4989,9 @@ cosine similarity of latent factors.</p>
 <span class="normal">39</span>
 <span class="normal">40</span>
 <span class="normal">41</span>
-<span class="normal">42</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">RecommenderMetrics</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Recommender model evaluation metrics."""</span>
 
@@ -4951,6 +4999,8 @@ cosine similarity of latent factors.</p>
     <span class="n">ndcg_exp</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
     <span class="n">rmse</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">effective_catalog_size</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+    <span class="n">catalog_coverage</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+    <span class="n">novelty</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -5059,45 +5109,52 @@ cosine similarity of latent factors.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/evaluation.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">265</span>
-<span class="normal">266</span>
-<span class="normal">267</span>
-<span class="normal">268</span>
-<span class="normal">269</span>
-<span class="normal">270</span>
-<span class="normal">271</span>
-<span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span>
-<span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span>
-<span class="normal">285</span>
-<span class="normal">286</span>
-<span class="normal">287</span>
-<span class="normal">288</span>
-<span class="normal">289</span>
-<span class="normal">290</span>
-<span class="normal">291</span>
-<span class="normal">292</span>
-<span class="normal">293</span>
-<span class="normal">294</span>
-<span class="normal">295</span>
-<span class="normal">296</span>
-<span class="normal">297</span>
-<span class="normal">298</span>
-<span class="normal">299</span>
-<span class="normal">300</span>
-<span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">calculate_metrics</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">](</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">calculate_metrics</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">](</span>
     <span class="n">recommender</span><span class="p">:</span> <span class="n">BaseGamesRecommender</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">],</span>
     <span class="n">test_data</span><span class="p">:</span> <span class="n">RecommenderTestData</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">],</span>
     <span class="o">*</span><span class="p">,</span>
@@ -5126,7 +5183,12 @@ cosine similarity of latent factors.</p>
 
     <span class="n">ks</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">k_values</span> <span class="o">|</span> <span class="p">{</span><span class="n">y_true</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]})</span>
 
+    <span class="c1"># At k == the full candidate width, every game is "recommended" to every</span>
+    <span class="c1"># user, so ECS and coverage collapse to a property of the test split, not</span>
+    <span class="c1"># the model. Only report those for k's the caller actually asked for.</span>
+    <span class="n">ecs_ks</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">k_values</span><span class="p">)</span>
     <span class="n">ecs_all</span> <span class="o">=</span> <span class="n">effective_catalog_size</span><span class="p">(</span><span class="n">test_data</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span>
+    <span class="n">coverage_all</span> <span class="o">=</span> <span class="n">catalog_coverage</span><span class="p">(</span><span class="n">test_data</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span>
 
     <span class="n">y_true_exp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp2</span><span class="p">(</span><span class="n">y_true</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
 
@@ -5134,8 +5196,80 @@ cosine similarity of latent factors.</p>
         <span class="n">ndcg</span><span class="o">=</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">ndcg_score</span><span class="p">(</span><span class="n">y_true</span><span class="o">=</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_score</span><span class="o">=</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">ks</span><span class="p">},</span>
         <span class="n">ndcg_exp</span><span class="o">=</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">ndcg_score</span><span class="p">(</span><span class="n">y_true</span><span class="o">=</span><span class="n">y_true_exp</span><span class="p">,</span> <span class="n">y_score</span><span class="o">=</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">ks</span><span class="p">},</span>
         <span class="n">rmse</span><span class="o">=</span><span class="n">rmse</span><span class="p">,</span>
-        <span class="n">effective_catalog_size</span><span class="o">=</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">ecs_all</span><span class="p">[</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">ks</span><span class="p">},</span>
+        <span class="n">effective_catalog_size</span><span class="o">=</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">ecs_all</span><span class="p">[</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">ecs_ks</span><span class="p">},</span>
+        <span class="n">catalog_coverage</span><span class="o">=</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">coverage_all</span><span class="p">[</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">ecs_ks</span><span class="p">},</span>
+        <span class="n">novelty</span><span class="o">=</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">novelty</span><span class="p">(</span><span class="n">test_data</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">ecs_ks</span><span class="p">},</span>
     <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="board_game_recommender.evaluation.catalog_coverage" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">catalog_coverage</span><span class="p">(</span><span class="n">test_data</span><span class="p">:</span> <span class="n">RecommenderTestData</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">],</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Calculate the fraction of games seen in the test data that appear in
+anyone's top-k recommendations, for every top-k cutoff.</p>
+<p>Complements <code>effective_catalog_size()</code>: ECS can look reasonable even when
+most of the candidate pool is never recommended to anyone, as long as
+whatever <em>is</em> recommended is spread evenly. Coverage catches that
+directly, going from 0 (nobody's top-k ever includes a given game) to 1
+(every game in the test data is somebody's top-k pick at that cutoff).</p>
+<p>The returned array is indexed by k - 1, same as <code>effective_catalog_size()</code>.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/board_game_recommender/evaluation.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">catalog_coverage</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">](</span>
+    <span class="n">test_data</span><span class="p">:</span> <span class="n">RecommenderTestData</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">],</span>
+    <span class="n">y_pred</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Calculate the fraction of games seen in the test data that appear in</span>
+<span class="sd">    anyone's top-k recommendations, for every top-k cutoff.</span>
+
+<span class="sd">    Complements `effective_catalog_size()`: ECS can look reasonable even when</span>
+<span class="sd">    most of the candidate pool is never recommended to anyone, as long as</span>
+<span class="sd">    whatever *is* recommended is spread evenly. Coverage catches that</span>
+<span class="sd">    directly, going from 0 (nobody's top-k ever includes a given game) to 1</span>
+<span class="sd">    (every game in the test data is somebody's top-k pick at that cutoff).</span>
+
+<span class="sd">    The returned array is indexed by k - 1, same as `effective_catalog_size()`.</span>
+<span class="sd">    """</span>
+
+    <span class="n">counts</span> <span class="o">=</span> <span class="n">_top_k_counts</span><span class="p">(</span><span class="n">test_data</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span>
+    <span class="n">num_games</span> <span class="o">=</span> <span class="n">counts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="s2">"np.ndarray"</span><span class="p">,</span> <span class="p">(</span><span class="n">counts</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">num_games</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5164,61 +5298,27 @@ the top k recommendations.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/evaluation.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
-<span class="normal">227</span>
-<span class="normal">228</span>
-<span class="normal">229</span>
-<span class="normal">230</span>
-<span class="normal">231</span>
-<span class="normal">232</span>
-<span class="normal">233</span>
-<span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
-<span class="normal">240</span>
-<span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">257</span>
 <span class="normal">258</span>
 <span class="normal">259</span>
 <span class="normal">260</span>
 <span class="normal">261</span>
-<span class="normal">262</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">effective_catalog_size</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">](</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">effective_catalog_size</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">](</span>
     <span class="n">test_data</span><span class="p">:</span> <span class="n">RecommenderTestData</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">],</span>
     <span class="n">y_pred</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -5234,45 +5334,11 @@ the top k recommendations.</p>
 <span class="sd">    the top k recommendations.</span>
 <span class="sd">    """</span>
 
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_data</span><span class="o">.</span><span class="n">user_ids</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y_pred</span><span class="p">):</span>
-        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">"Number of users (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">test_data</span><span class="o">.</span><span class="n">user_ids</span><span class="p">)</span><span class="si">}</span><span class="s2">) does not match "</span>
-            <span class="sa">f</span><span class="s2">"number of prediction rows (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">y_pred</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
-        <span class="p">)</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">test_data</span><span class="o">.</span><span class="n">game_ids</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">y_pred</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
-        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">"Shape of game IDs (</span><span class="si">{</span><span class="n">test_data</span><span class="o">.</span><span class="n">game_ids</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">) does not match "</span>
-            <span class="sa">f</span><span class="s2">"shape of predictions (</span><span class="si">{</span><span class="n">y_pred</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">)"</span>
-        <span class="p">)</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-
-    <span class="n">num_ranks</span> <span class="o">=</span> <span class="n">y_pred</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-
-    <span class="c1"># The games each user would be recommended, in descending order of prediction</span>
-    <span class="n">ranked_games</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">take_along_axis</span><span class="p">(</span>
-        <span class="n">test_data</span><span class="o">.</span><span class="n">game_ids</span><span class="p">,</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="o">-</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span>
-        <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">game_indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">ranked_games</span><span class="p">,</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">1</span><span class="p">],</span>
-        <span class="n">ranked_games</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">num_games</span> <span class="o">=</span> <span class="n">game_indexes</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
-
-    <span class="c1"># counts[k - 1, g]: how often game g appears in a user's top k recommendations</span>
-    <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
-        <span class="p">[</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">game_indexes</span><span class="p">[:,</span> <span class="n">rank</span><span class="p">],</span> <span class="n">minlength</span><span class="o">=</span><span class="n">num_games</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">rank</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_ranks</span><span class="p">)</span>
-        <span class="p">],</span>
-    <span class="p">)</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-
+    <span class="n">counts</span> <span class="o">=</span> <span class="n">_top_k_counts</span><span class="p">(</span><span class="n">test_data</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span>
     <span class="n">probs</span> <span class="o">=</span> <span class="n">counts</span> <span class="o">/</span> <span class="n">counts</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">ranks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="o">-</span><span class="n">counts</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
 
-    <span class="k">return</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">probs</span> <span class="o">*</span> <span class="n">ranks</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="s2">"np.ndarray"</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">probs</span> <span class="o">*</span> <span class="n">ranks</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5283,7 +5349,7 @@ the top k recommendations.</p>
 
 
 <h2 id="board_game_recommender.evaluation.load_test_data" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">load_test_data</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">ratings_per_user</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">user_id_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_USER_ID_KEY</span><span class="p">,</span> <span class="n">game_id_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_GAME_ID_KEY</span><span class="p">,</span> <span class="n">ratings_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_RATINGS_KEY</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RecommenderTestData</span></code>
+            <code class="highlight language-python"><span class="n">load_test_data</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">ratings_per_user</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">user_id_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_USER_ID_KEY</span><span class="p">,</span> <span class="n">game_id_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_GAME_ID_KEY</span><span class="p">,</span> <span class="n">ratings_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_RATINGS_KEY</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RecommenderTestData</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span></code>
 
 </h2>
 
@@ -5295,9 +5361,7 @@ the top k recommendations.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/evaluation.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">131</span>
 <span class="normal">132</span>
 <span class="normal">133</span>
 <span class="normal">134</span>
@@ -5332,13 +5396,15 @@ the top k recommendations.</p>
 <span class="normal">163</span>
 <span class="normal">164</span>
 <span class="normal">165</span>
-<span class="normal">166</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_test_data</span><span class="p">(</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_test_data</span><span class="p">(</span>
     <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">ratings_per_user</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">user_id_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_USER_ID_KEY</span><span class="p">,</span>
     <span class="n">game_id_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_GAME_ID_KEY</span><span class="p">,</span>
     <span class="n">ratings_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_RATINGS_KEY</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RecommenderTestData</span><span class="p">:</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RecommenderTestData</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">"""Load RecommenderTestData from CSV."""</span>
 
     <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
@@ -5396,9 +5462,7 @@ factorisation models produce.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/evaluation.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">190</span>
 <span class="normal">191</span>
 <span class="normal">192</span>
 <span class="normal">193</span>
@@ -5413,7 +5477,9 @@ factorisation models produce.</p>
 <span class="normal">202</span>
 <span class="normal">203</span>
 <span class="normal">204</span>
-<span class="normal">205</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">ndcg_score</span><span class="p">(</span><span class="n">y_true</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y_score</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">ndcg_score</span><span class="p">(</span><span class="n">y_true</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y_score</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Normalised discounted cumulative gain, averaged over all rows.</span>
 
@@ -5440,6 +5506,83 @@ factorisation models produce.</p>
 <div class="doc doc-object doc-function">
 
 
+<h2 id="board_game_recommender.evaluation.novelty" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">novelty</span><span class="p">(</span><span class="n">test_data</span><span class="p">:</span> <span class="n">RecommenderTestData</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">],</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Mean self-information of the top-k recommendations, averaged over users.</p>
+<p>Popularity is each game's frequency across all users' test rows, as a
+proxy for how widely known it is: games many different power users have
+rated tend to be broadly popular. A recommender that always suggests the
+single most common game scores 0; rarer picks score higher.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/board_game_recommender/evaluation.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">novelty</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">](</span>
+    <span class="n">test_data</span><span class="p">:</span> <span class="n">RecommenderTestData</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">],</span>
+    <span class="n">y_pred</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">k</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Mean self-information of the top-k recommendations, averaged over users.</span>
+
+<span class="sd">    Popularity is each game's frequency across all users' test rows, as a</span>
+<span class="sd">    proxy for how widely known it is: games many different power users have</span>
+<span class="sd">    rated tend to be broadly popular. A recommender that always suggests the</span>
+<span class="sd">    single most common game scores 0; rarer picks score higher.</span>
+<span class="sd">    """</span>
+
+    <span class="n">_validate_test_shapes</span><span class="p">(</span><span class="n">test_data</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span>
+
+    <span class="n">top_k_games</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">take_along_axis</span><span class="p">(</span>
+        <span class="n">test_data</span><span class="o">.</span><span class="n">game_ids</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="o">-</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)[:,</span> <span class="p">:</span><span class="n">k</span><span class="p">],</span>
+        <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">unique_games</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">test_data</span><span class="o">.</span><span class="n">game_ids</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">frequency</span> <span class="o">=</span> <span class="n">counts</span> <span class="o">/</span> <span class="n">counts</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+    <span class="n">probs</span> <span class="o">=</span> <span class="n">frequency</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">unique_games</span><span class="p">,</span> <span class="n">top_k_games</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">probs</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h2 id="board_game_recommender.evaluation.prediction_scores" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">prediction_scores</span><span class="p">(</span><span class="n">recommender</span><span class="p">:</span> <span class="n">BaseGamesRecommender</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">],</span> <span class="n">test_data</span><span class="p">:</span> <span class="n">RecommenderTestData</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span></code>
 
@@ -5453,9 +5596,7 @@ factorisation models produce.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/evaluation.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">171</span>
 <span class="normal">172</span>
 <span class="normal">173</span>
 <span class="normal">174</span>
@@ -5463,7 +5604,9 @@ factorisation models produce.</p>
 <span class="normal">176</span>
 <span class="normal">177</span>
 <span class="normal">178</span>
-<span class="normal">179</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prediction_scores</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">](</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prediction_scores</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">](</span>
     <span class="n">recommender</span><span class="p">:</span> <span class="n">BaseGamesRecommender</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">],</span>
     <span class="n">test_data</span><span class="p">:</span> <span class="n">RecommenderTestData</span><span class="p">[</span><span class="n">GameKeyType</span><span class="p">,</span> <span class="n">UserKeyType</span><span class="p">],</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -5499,9 +5642,7 @@ held out. All other ratings end up in the training data.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/evaluation.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 45</span>
-<span class="normal"> 46</span>
-<span class="normal"> 47</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 47</span>
 <span class="normal"> 48</span>
 <span class="normal"> 49</span>
 <span class="normal"> 50</span>
@@ -5580,7 +5721,9 @@ held out. All other ratings end up in the training data.</p>
 <span class="normal">123</span>
 <span class="normal">124</span>
 <span class="normal">125</span>
-<span class="normal">126</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">ratings_train_test_split</span><span class="p">(</span>  <span class="c1"># noqa: PLR0913</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">ratings_train_test_split</span><span class="p">(</span>  <span class="c1"># noqa: PLR0913</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">path_in</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">path_out_train</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -5626,7 +5769,7 @@ held out. All other ratings end up in the training data.</p>
 
     <span class="n">ratings</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">pl</span><span class="o">.</span><span class="n">scan_ndjson</span><span class="p">(</span><span class="n">path_in</span><span class="p">)</span>
-        <span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="n">ratings_key</span><span class="p">)</span><span class="o">.</span><span class="n">is_not_null</span><span class="p">())</span>
+        <span class="o">.</span><span class="n">drop_nulls</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">ratings_key</span><span class="p">,</span> <span class="n">game_id_key</span><span class="p">,</span> <span class="n">user_id_key</span><span class="p">])</span>
         <span class="o">.</span><span class="n">select</span><span class="p">(</span>
             <span class="n">game_id_key</span><span class="p">,</span>
             <span class="n">user_id_key</span><span class="p">,</span>
@@ -5776,8 +5919,7 @@ the result shape will be (n,l). Columns with zero norm score 0 throughout.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/board_game_recommender/light.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">316</span>
-<span class="normal">317</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">317</span>
 <span class="normal">318</span>
 <span class="normal">319</span>
 <span class="normal">320</span>
@@ -5796,7 +5938,11 @@ the result shape will be (n,l). Columns with zero norm score 0 throughout.</p>
 <span class="normal">333</span>
 <span class="normal">334</span>
 <span class="normal">335</span>
-<span class="normal">336</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">cosine_similarity</span><span class="p">(</span><span class="n">matrix_1</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">matrix_2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">cosine_similarity</span><span class="p">(</span><span class="n">matrix_1</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">matrix_2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Calculates the cosine similarity between two matrices.</span>
 
@@ -5811,11 +5957,14 @@ the result shape will be (n,l). Columns with zero norm score 0 throughout.</p>
 
     <span class="c1"># Zero vectors are orthogonal to everything by convention, rather than NaN:</span>
     <span class="c1"># a single unknown game would otherwise poison an entire recommendation.</span>
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span>
-        <span class="n">dot_product</span><span class="p">,</span>
-        <span class="n">outer_prod_norm</span><span class="p">,</span>
-        <span class="n">out</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">dot_product</span><span class="p">),</span>
-        <span class="n">where</span><span class="o">=</span><span class="n">outer_prod_norm</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span>
+        <span class="s2">"np.ndarray"</span><span class="p">,</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span>
+            <span class="n">dot_product</span><span class="p">,</span>
+            <span class="n">outer_prod_norm</span><span class="p">,</span>
+            <span class="n">out</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">dot_product</span><span class="p">),</span>
+            <span class="n">where</span><span class="o">=</span><span class="n">outer_prod_norm</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">),</span>
     <span class="p">)</span>  <span class="c1"># (n,l)</span>
 </code></pre></div></td></tr></table></div>
             </details>
