@@ -20,6 +20,8 @@ from board_game_recommender.evaluation import (
     novelty,
     prediction_scores,
     ratings_train_test_split,
+    recommender_test_data_from_frame,
+    split_train_test,
 )
 from board_game_recommender.light import (
     CollaborativeFilteringData,
@@ -163,6 +165,68 @@ def test_ratings_train_test_split_rejects_impossible_holdout(tmp_path: Path) -> 
             threshold_power_users=10,
             num_test_rows=100,
         )
+
+
+def test_split_train_test() -> None:
+    rows: list[dict[str, object]] = []
+    for user, count in USER_RATING_COUNTS.items():
+        rows += [
+            {"bgg_user_name": user, "bgg_id": i, "bgg_user_rating": 5.0 + i % 5}
+            for i in range(count)
+        ]
+    rows.append(
+        {"bgg_user_name": "alice", "bgg_id": UNRATED_GAME_ID, "bgg_user_rating": None},
+    )
+    ratings = pl.DataFrame(rows)
+
+    train, test = split_train_test(
+        ratings,
+        threshold_power_users=POWER_USER_THRESHOLD,
+        num_test_rows=NUM_TEST_ROWS,
+        seed=13,
+    )
+
+    # Same behaviour as ratings_train_test_split, minus the file I/O
+    assert len(test) == NUM_POWER_USERS * NUM_TEST_ROWS
+    assert sorted(test["bgg_user_name"].unique()) == ["alice", "bob"]
+    assert len(train) == NUM_RATED_ROWS - len(test)
+    assert UNRATED_GAME_ID not in train["bgg_id"]
+
+
+def test_split_train_test_rejects_impossible_holdout() -> None:
+    with pytest.raises(ValueError, match="Cannot hold out"):
+        split_train_test(
+            pl.DataFrame(
+                {"bgg_user_name": [], "bgg_id": [], "bgg_user_rating": []},
+            ),
+            threshold_power_users=10,
+            num_test_rows=100,
+        )
+
+
+def test_recommender_test_data_from_frame_consumes_split_output() -> None:
+    # The server's in-process path: split already-loaded ratings, then build
+    # RecommenderTestData directly from the test split, no file round trip.
+    rows: list[dict[str, object]] = []
+    for user, count in USER_RATING_COUNTS.items():
+        rows += [
+            {"bgg_user_name": user, "bgg_id": i, "bgg_user_rating": 5.0 + i % 5}
+            for i in range(count)
+        ]
+    ratings = pl.DataFrame(rows)
+
+    _, test = split_train_test(
+        ratings,
+        threshold_power_users=POWER_USER_THRESHOLD,
+        num_test_rows=NUM_TEST_ROWS,
+        seed=13,
+    )
+
+    data = recommender_test_data_from_frame(test, ratings_per_user=NUM_TEST_ROWS)
+
+    assert data.user_ids == ("alice", "bob")
+    assert data.game_ids.shape == (NUM_POWER_USERS, NUM_TEST_ROWS)
+    assert data.ratings.shape == (NUM_POWER_USERS, NUM_TEST_ROWS)
 
 
 def test_load_test_data(tmp_path: Path) -> None:

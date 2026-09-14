@@ -17,9 +17,9 @@ from board_game_recommender.dnn import (
     CollaborativeFilteringModel,
     TrainingResult,
     _combine_callbacks,
-    _early_stopping_callback,
     _main,
     _parse_args,
+    early_stopping_callback,
     train,
 )
 from board_game_recommender.evaluation import RecommenderTestData
@@ -346,7 +346,7 @@ def _test_result(model: CollaborativeFilteringModel) -> TrainingResult:
 def test_early_stopping_callback_only_evaluates_every_n_epochs(
     model: CollaborativeFilteringModel,
 ) -> None:
-    callback = _early_stopping_callback(
+    callback = early_stopping_callback(
         _small_test_data(),
         metric="rmse",
         k=None,
@@ -370,7 +370,7 @@ def test_early_stopping_callback_stops_after_patience_epochs(
 ) -> None:
     # The model never changes between calls, so nothing ever "improves"
     # after the first evaluation.
-    callback = _early_stopping_callback(
+    callback = early_stopping_callback(
         _small_test_data(),
         metric="rmse",
         k=None,
@@ -385,7 +385,7 @@ def test_early_stopping_callback_stops_after_patience_epochs(
 def test_early_stopping_callback_restores_the_best_weights(
     model: CollaborativeFilteringModel,
 ) -> None:
-    callback = _early_stopping_callback(
+    callback = early_stopping_callback(
         _small_test_data(),
         metric="rmse",
         k=None,
@@ -408,7 +408,7 @@ def test_early_stopping_callback_rejects_unknown_metric(
     model: CollaborativeFilteringModel,
 ) -> None:
     with pytest.raises(ValueError, match="Unknown metric"):
-        _early_stopping_callback(
+        early_stopping_callback(
             _small_test_data(),
             metric="not_a_real_metric",
             k=None,
@@ -419,7 +419,7 @@ def test_early_stopping_callback_rejects_unknown_metric(
 
 def test_early_stopping_callback_rejects_missing_k_for_non_rmse_metric() -> None:
     with pytest.raises(ValueError, match="needs a k"):
-        _early_stopping_callback(
+        early_stopping_callback(
             _small_test_data(),
             metric="ndcg",
             k=None,

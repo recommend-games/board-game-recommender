@@ -6,7 +6,6 @@ import argparse
 import copy
 import logging
 import sys
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -20,8 +19,8 @@ from board_game_recommender.evaluation import (
     DEFAULT_RATINGS_KEY,
     DEFAULT_USER_ID_KEY,
     calculate_metrics,
-    load_test_data,
     ratings_train_test_split,
+    recommender_test_data_from_frame,
 )
 from board_game_recommender.light import (
     CollaborativeFilteringData,
@@ -180,7 +179,7 @@ def _ranking_loss(
     return nn.functional.mse_loss(hardest_negative, unobserved_target)
 
 
-def _early_stopping_callback(
+def early_stopping_callback(
     test_data: RecommenderTestData[int, str],
     *,
     metric: str,
@@ -522,18 +521,13 @@ def _main() -> None:
         seed=args.seed,
     )
 
-    # load_test_data() reads from a CSV path; train() takes a DataFrame
-    # directly, so only the much smaller test split needs the round trip.
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        test_path = Path(tmp_dir) / "test.csv"
-        test_data_raw.write_csv(test_path)
-        test_data = load_test_data(
-            path=test_path,
-            ratings_per_user=args.test_rows,
-            user_id_key=args.user_id_key,
-            game_id_key=args.game_id_key,
-            ratings_key=args.ratings_key,
-        )
+    test_data = recommender_test_data_from_frame(
+        test_data_raw,
+        ratings_per_user=args.test_rows,
+        user_id_key=args.user_id_key,
+        game_id_key=args.game_id_key,
+        ratings_key=args.ratings_key,
+    )
 
     callbacks: list[Callable[[int, TrainingResult], bool | None]] = []
     if args.checkpoint_every:
@@ -548,7 +542,7 @@ def _main() -> None:
         callbacks.append(checkpoint)
     if args.early_stopping_metric:
         callbacks.append(
-            _early_stopping_callback(
+            early_stopping_callback(
                 test_data,
                 metric=args.early_stopping_metric,
                 k=args.early_stopping_k or min(args.k_values),
