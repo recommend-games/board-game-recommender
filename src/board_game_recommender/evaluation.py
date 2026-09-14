@@ -44,6 +44,64 @@ class RecommenderMetrics:
     novelty: dict[int, float]
 
 
+def split_train_test(  # noqa: PLR0913
+    ratings: pl.DataFrame,
+    *,
+    threshold_power_users: int = 200,
+    num_test_rows: int = 100,
+    user_id_key: str = DEFAULT_USER_ID_KEY,
+    game_id_key: str = DEFAULT_GAME_ID_KEY,
+    ratings_key: str = DEFAULT_RATINGS_KEY,
+    seed: int | None = None,
+) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """
+    Split already-loaded ratings into train and test data.
+
+    Test rows are sampled from "power users", i.e., users with at least
+    `threshold_power_users` ratings; exactly `num_test_rows` of their ratings are
+    held out. All other ratings end up in the training data. Callers that
+    already hold ratings in memory (e.g., a build task orchestrating training
+    in-process) can use this directly instead of going through
+    `ratings_train_test_split`'s file I/O.
+    """
+
+    if num_test_rows > threshold_power_users:
+        msg = (
+            f"Cannot hold out {num_test_rows} rows per user "
+            f"from users with as few as {threshold_power_users} ratings"
+        )
+        raise ValueError(msg)
+
+    is_power_user = pl.len().over(user_id_key) >= threshold_power_users
+    is_sampled = (
+        pl.int_range(pl.len()).shuffle(seed=seed).over(user_id_key) < num_test_rows
+    )
+
+    ratings = ratings.drop_nulls(subset=[ratings_key, game_id_key, user_id_key]).select(
+        game_id_key,
+        user_id_key,
+        ratings_key,
+        (is_power_user & is_sampled).alias("is_test_row"),
+    )
+
+    data_train = (
+        ratings.filter(~pl.col("is_test_row"))
+        .drop("is_test_row")
+        .sort(user_id_key, game_id_key)
+    )
+    data_test = (
+        ratings.filter("is_test_row").drop("is_test_row").sort(user_id_key, game_id_key)
+    )
+
+    LOGGER.info(
+        "Split into %d training and %d test rows",
+        len(data_train),
+        len(data_test),
+    )
+
+    return data_train, data_test
+
+
 def ratings_train_test_split(  # noqa: PLR0913
     *,
     path_in: str | os.PathLike[str],
@@ -59,9 +117,9 @@ def ratings_train_test_split(  # noqa: PLR0913
     """
     Split the ratings in the given JSON lines file into train and test data.
 
-    Test rows are sampled from "power users", i.e., users with at least
-    `threshold_power_users` ratings; exactly `num_test_rows` of their ratings are
-    held out. All other ratings end up in the training data.
+    See `split_train_test` for the splitting logic; this additionally reads
+    `path_in` and, if given, writes the two splits to `path_out_train` and
+    `path_out_test` as CSV.
     """
 
     if num_test_rows > threshold_power_users:
@@ -83,39 +141,21 @@ def ratings_train_test_split(  # noqa: PLR0913
         threshold_power_users,
     )
 
-    is_power_user = pl.len().over(user_id_key) >= threshold_power_users
-    is_sampled = (
-        pl.int_range(pl.len()).shuffle(seed=seed).over(user_id_key) < num_test_rows
-    )
-
     ratings = (
-        pl.scan_ndjson(path_in)
-        .drop_nulls(subset=[ratings_key, game_id_key, user_id_key])
-        .select(
-            game_id_key,
-            user_id_key,
-            ratings_key,
-            (is_power_user & is_sampled).alias("is_test_row"),
-        )
-        .collect()
+        pl.scan_ndjson(path_in).select(game_id_key, user_id_key, ratings_key).collect()
     )
     LOGGER.info("Done reading %d ratings from <%s>", len(ratings), path_in)
 
-    data_train = (
-        ratings.filter(~pl.col("is_test_row"))
-        .drop("is_test_row")
-        .sort(user_id_key, game_id_key)
-    )
-    data_test = (
-        ratings.filter("is_test_row").drop("is_test_row").sort(user_id_key, game_id_key)
+    data_train, data_test = split_train_test(
+        ratings,
+        threshold_power_users=threshold_power_users,
+        num_test_rows=num_test_rows,
+        user_id_key=user_id_key,
+        game_id_key=game_id_key,
+        ratings_key=ratings_key,
+        seed=seed,
     )
     del ratings
-
-    LOGGER.info(
-        "Split into %d training and %d test rows",
-        len(data_train),
-        len(data_test),
-    )
 
     if path_out_train:
         LOGGER.info("Writing training data to <%s>", path_out_train)
@@ -128,20 +168,19 @@ def ratings_train_test_split(  # noqa: PLR0913
     return data_train, data_test
 
 
-def load_test_data(
-    path: str | os.PathLike[str],
+def recommender_test_data_from_frame(
+    data: pl.DataFrame,
     ratings_per_user: int,
     user_id_key: str = DEFAULT_USER_ID_KEY,
     game_id_key: str = DEFAULT_GAME_ID_KEY,
     ratings_key: str = DEFAULT_RATINGS_KEY,
 ) -> RecommenderTestData[int, str]:
-    """Load RecommenderTestData from CSV."""
+    """
+    Build RecommenderTestData from an already-loaded DataFrame.
 
-    path = Path(path).resolve()
-    LOGGER.info("Loading test data from <%s>…", path)
-
-    data = pl.read_csv(path)
-    LOGGER.info("Read %d rows", len(data))
+    `data` must be sorted into contiguous blocks of `ratings_per_user` rows per
+    user, which is what `split_train_test`'s test split already gives you.
+    """
 
     if len(data) % ratings_per_user != 0:
         msg = (
@@ -165,6 +204,30 @@ def load_test_data(
         user_ids=tuple(user_ids[:, 0]),
         game_ids=game_ids,
         ratings=ratings,
+    )
+
+
+def load_test_data(
+    path: str | os.PathLike[str],
+    ratings_per_user: int,
+    user_id_key: str = DEFAULT_USER_ID_KEY,
+    game_id_key: str = DEFAULT_GAME_ID_KEY,
+    ratings_key: str = DEFAULT_RATINGS_KEY,
+) -> RecommenderTestData[int, str]:
+    """Load RecommenderTestData from CSV."""
+
+    path = Path(path).resolve()
+    LOGGER.info("Loading test data from <%s>…", path)
+
+    data = pl.read_csv(path)
+    LOGGER.info("Read %d rows", len(data))
+
+    return recommender_test_data_from_frame(
+        data,
+        ratings_per_user,
+        user_id_key=user_id_key,
+        game_id_key=game_id_key,
+        ratings_key=ratings_key,
     )
 
 

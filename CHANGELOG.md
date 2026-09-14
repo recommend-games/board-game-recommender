@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `early_stopping_callback()` in the `dnn` module: previously private, now
+  public and importable directly from `board_game_recommender.dnn`, for a
+  caller orchestrating training in-process (e.g. a build task that already
+  has ratings loaded) rather than through the CLI. It now returns the
+  callback together with an `EarlyStoppingState` tracking best value, best
+  epoch, and whether it fired, so the outcome can be inspected after
+  training instead of only appearing in logs.
+- `split_train_test()` and `recommender_test_data_from_frame()` in the
+  `evaluation` module: the DataFrame-facing halves of
+  `ratings_train_test_split()` and `load_test_data()`, for splitting and
+  evaluating ratings already held in memory without a file round trip.
+  `ratings_train_test_split()` and `load_test_data()` are now thin
+  file-reading/writing wrappers around them.
+- `train()`'s `on_epoch_end` now also accepts an iterable of callbacks, run
+  together every epoch (stopping if any of them do), so combining early
+  stopping with checkpointing or metadata capture no longer needs a private
+  helper.
+
 ## [4.4.0] - 2026-08-30
 
 ### Added
