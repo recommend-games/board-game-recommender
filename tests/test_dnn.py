@@ -15,6 +15,7 @@ import torch
 
 from board_game_recommender.dnn import (
     CollaborativeFilteringModel,
+    EarlyStoppingState,
     TrainingResult,
     _combine_callbacks,
     _main,
@@ -323,6 +324,31 @@ def test_train_stops_early_when_on_epoch_end_returns_true() -> None:
     assert calls == [1, 2]
 
 
+def test_train_accepts_a_list_of_on_epoch_end_callbacks() -> None:
+    ratings = _synthetic_ratings(num_users=NUM_USERS, num_items=NUM_ITEMS, seed=5)
+    first_calls: list[int] = []
+    second_calls: list[int] = []
+
+    def stop_after_two(epoch: int, _result: TrainingResult) -> bool:
+        first_calls.append(epoch)
+        return epoch >= 2  # noqa: PLR2004
+
+    def record(epoch: int, _result: TrainingResult) -> None:
+        second_calls.append(epoch)
+
+    train(
+        ratings,
+        num_factors=NUM_FACTORS,
+        num_epochs=10,
+        seed=SEED,
+        on_epoch_end=[stop_after_two, record],
+    )
+
+    # Both callbacks ran on every epoch up to the stop, regardless of order
+    assert first_calls == [1, 2]
+    assert second_calls == [1, 2]
+
+
 def _small_test_data() -> RecommenderTestData[int, str]:
     """Every user's own held-out ratings equal the item index, for a
     predictable target: an untrained model (predicting ~0 everywhere) is
@@ -346,7 +372,7 @@ def _test_result(model: CollaborativeFilteringModel) -> TrainingResult:
 def test_early_stopping_callback_only_evaluates_every_n_epochs(
     model: CollaborativeFilteringModel,
 ) -> None:
-    callback = early_stopping_callback(
+    callback, state = early_stopping_callback(
         _small_test_data(),
         metric="rmse",
         k=None,
@@ -355,6 +381,7 @@ def test_early_stopping_callback_only_evaluates_every_n_epochs(
     )
     result = _test_result(model)
 
+    assert isinstance(state, EarlyStoppingState)
     assert [callback(epoch, result) for epoch in (1, 2, 3, 4, 5, 6)] == [
         False,
         False,
@@ -363,6 +390,7 @@ def test_early_stopping_callback_only_evaluates_every_n_epochs(
         False,
         False,
     ]
+    assert state.stopped is False
 
 
 def test_early_stopping_callback_stops_after_patience_epochs(
@@ -370,7 +398,7 @@ def test_early_stopping_callback_stops_after_patience_epochs(
 ) -> None:
     # The model never changes between calls, so nothing ever "improves"
     # after the first evaluation.
-    callback = early_stopping_callback(
+    callback, state = early_stopping_callback(
         _small_test_data(),
         metric="rmse",
         k=None,
@@ -380,12 +408,16 @@ def test_early_stopping_callback_stops_after_patience_epochs(
     result = _test_result(model)
 
     assert [callback(epoch, result) for epoch in (1, 2, 3)] == [False, False, True]
+    assert state.stopped is True
+    assert state.best_epoch == 1
+    assert state.best_value is not None
+    assert state.epochs_without_improvement == 2  # noqa: PLR2004
 
 
 def test_early_stopping_callback_restores_the_best_weights(
     model: CollaborativeFilteringModel,
 ) -> None:
-    callback = early_stopping_callback(
+    callback, state = early_stopping_callback(
         _small_test_data(),
         metric="rmse",
         k=None,
@@ -397,11 +429,15 @@ def test_early_stopping_callback_restores_the_best_weights(
     model.intercept.data.fill_(0.0)
     assert callback(1, result) is False
     best_intercept = float(model.intercept)
+    assert state.best_epoch == 1
+    assert state.best_value is not None
 
     model.intercept.data.fill_(100.0)  # a much worse prediction
     assert callback(2, result) is True
 
     assert float(model.intercept) == pytest.approx(best_intercept)
+    assert state.stopped is True
+    assert state.best_epoch == 1  # unchanged: epoch 2 never improved on it
 
 
 def test_early_stopping_callback_rejects_unknown_metric(

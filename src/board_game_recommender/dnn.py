@@ -28,7 +28,7 @@ from board_game_recommender.light import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable
 
     import numpy as np
 
@@ -179,6 +179,25 @@ def _ranking_loss(
     return nn.functional.mse_loss(hardest_negative, unobserved_target)
 
 
+@dataclass
+class EarlyStoppingState:
+    """
+    Live progress of an `early_stopping_callback` run.
+
+    Unlike `TrainingResult`, this isn't frozen: `early_stopping_callback`
+    mutates the same instance in place as training proceeds, so a caller can
+    hold onto it and inspect the outcome afterwards, e.g. to record what
+    triggered the stop as part of a model's provenance.
+    """
+
+    metric: str
+    k: int | None
+    best_value: float | None = None
+    best_epoch: int | None = None
+    epochs_without_improvement: int = 0
+    stopped: bool = False
+
+
 def early_stopping_callback(
     test_data: RecommenderTestData[int, str],
     *,
@@ -186,12 +205,16 @@ def early_stopping_callback(
     k: int | None,
     patience: int,
     eval_every: int,
-) -> Callable[[int, TrainingResult], bool]:
+) -> tuple[Callable[[int, TrainingResult], bool], EarlyStoppingState]:
     """
     Stop once `metric` hasn't improved for `patience` epochs, evaluating
     every `eval_every` epochs. Restores the best weights seen before
     signalling a stop, so the returned model isn't just whatever the last
     non-improving epoch happened to produce.
+
+    Returns the callback together with an `EarlyStoppingState` that tracks
+    its progress, so the caller can inspect the outcome (best value, best
+    epoch, whether it stopped) once training is done.
     """
 
     if metric not in _HIGHER_IS_BETTER:
@@ -202,12 +225,11 @@ def early_stopping_callback(
         raise ValueError(msg)
 
     higher_is_better = _HIGHER_IS_BETTER[metric]
-    best_value: float | None = None
-    best_state: dict[str, torch.Tensor] | None = None
-    epochs_without_improvement = 0
+    state = EarlyStoppingState(metric=metric, k=k)
+    best_model_state: dict[str, torch.Tensor] | None = None
 
     def callback(epoch: int, result: TrainingResult) -> bool:
-        nonlocal best_value, best_state, epochs_without_improvement
+        nonlocal best_model_state
 
         if epoch % eval_every != 0:
             return False
@@ -216,25 +238,26 @@ def early_stopping_callback(
         metrics = calculate_metrics(recommender, test_data, k_values=k)
         value = metrics.rmse if metric == "rmse" else getattr(metrics, metric)[k]
 
-        improved = best_value is None or (
-            value > best_value if higher_is_better else value < best_value
+        improved = state.best_value is None or (
+            value > state.best_value if higher_is_better else value < state.best_value
         )
         if improved:
-            best_value, best_state = value, copy.deepcopy(result.model.state_dict())
-            epochs_without_improvement = 0
+            state.best_value, state.best_epoch = value, epoch
+            best_model_state = copy.deepcopy(result.model.state_dict())
+            state.epochs_without_improvement = 0
         else:
-            epochs_without_improvement += eval_every
+            state.epochs_without_improvement += eval_every
 
         LOGGER.info(
             "Epoch %d: %s=%.4f (best=%.4f, %d epochs without improvement)",
             epoch,
             metric,
             value,
-            best_value,
-            epochs_without_improvement,
+            state.best_value,
+            state.epochs_without_improvement,
         )
 
-        if epochs_without_improvement < patience:
+        if state.epochs_without_improvement < patience:
             return False
 
         LOGGER.info(
@@ -242,11 +265,12 @@ def early_stopping_callback(
             metric,
             patience,
         )
-        if best_state is not None:
-            result.model.load_state_dict(best_state)
+        state.stopped = True
+        if best_model_state is not None:
+            result.model.load_state_dict(best_model_state)
         return True
 
-    return callback
+    return callback, state
 
 
 def _combine_callbacks(
@@ -279,7 +303,9 @@ def train(  # noqa: PLR0913
     unobserved_rating_value: float | None = None,
     num_sampled_negative_examples: int = 4,
     seed: int | None = None,
-    on_epoch_end: Callable[[int, TrainingResult], bool | None] | None = None,
+    on_epoch_end: Callable[[int, TrainingResult], bool | None]
+    | Iterable[Callable[[int, TrainingResult], bool | None]]
+    | None = None,
 ) -> TrainingResult:
     """
     Train a `CollaborativeFilteringModel` on mean squared error plus the
@@ -295,11 +321,16 @@ def train(  # noqa: PLR0913
 
     `on_epoch_end`, if given, is called after every epoch with the 1-based
     epoch number and the result so far, e.g. to checkpoint long runs. If it
-    returns a truthy value, training stops after that epoch.
+    returns a truthy value, training stops after that epoch. Pass an iterable
+    of callbacks (e.g. `[early_stopping_callback(...)[0], my_checkpoint]`) to
+    run several independently every epoch; training stops if any of them do.
     """
 
     if seed is not None:
         torch.manual_seed(seed)
+
+    if on_epoch_end is not None and not callable(on_epoch_end):
+        on_epoch_end = _combine_callbacks(*on_epoch_end)
 
     ratings = ratings.drop_nulls(subset=[ratings_key, game_id_key, user_id_key])
 
@@ -540,17 +571,16 @@ def _main() -> None:
                 result.to_collaborative_filtering_data().to_npz(path)
 
         callbacks.append(checkpoint)
+    early_stopping_state: EarlyStoppingState | None = None
     if args.early_stopping_metric:
-        callbacks.append(
-            early_stopping_callback(
-                test_data,
-                metric=args.early_stopping_metric,
-                k=args.early_stopping_k or min(args.k_values),
-                patience=args.early_stopping_patience,
-                eval_every=args.early_stopping_eval_every,
-            ),
+        early_stopping, early_stopping_state = early_stopping_callback(
+            test_data,
+            metric=args.early_stopping_metric,
+            k=args.early_stopping_k or min(args.k_values),
+            patience=args.early_stopping_patience,
+            eval_every=args.early_stopping_eval_every,
         )
-    on_epoch_end = _combine_callbacks(*callbacks) if callbacks else None
+        callbacks.append(early_stopping)
 
     result = train(
         train_data,
@@ -567,8 +597,16 @@ def _main() -> None:
         unobserved_rating_value=args.unobserved_rating_value,
         num_sampled_negative_examples=args.num_sampled_negative_examples,
         seed=args.seed,
-        on_epoch_end=on_epoch_end,
+        on_epoch_end=callbacks or None,
     )
+
+    if early_stopping_state is not None and early_stopping_state.stopped:
+        LOGGER.info(
+            "Early stopping: best %s=%.4f at epoch %d",
+            early_stopping_state.metric,
+            early_stopping_state.best_value,
+            early_stopping_state.best_epoch,
+        )
 
     data = result.to_collaborative_filtering_data()
     metrics = calculate_metrics(
