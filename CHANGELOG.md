@@ -29,6 +29,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `Adam` optimizer to build a `torch.optim.lr_scheduler`, `.step()`'d at the
   end of every epoch. Left unset, the learning rate stays flat as before.
   The CLI exposes step decay directly via `--lr-step-size` and `--lr-gamma`.
+- `training_metadata()` and `write_training_metadata()` in the `dnn` module.
+  `training_metadata()` builds a provenance dict recording every
+  hyperparameter actually used, the early-stopping outcome if early stopping
+  was used, and the installed library version; `write_training_metadata()`
+  persists a dict as a JSON sidecar next to a trained model's `.npz` (e.g.
+  `model.npz` -> `model.json`). Kept as two functions so a calling
+  application (e.g. a build task) can enrich the dict with
+  deployment-specific facts it holds and the library can't know -- a git
+  SHA, the identity of the data snapshot trained on -- before persisting it.
+  The CLI calls both, unenriched, automatically after training.
+
+### Changed
+
+- `TrainingResult` gained a required `unobserved_rating_value` field, so the
+  value `train()` actually fit against (resolved from the data when left
+  unset) is recoverable afterwards instead of only appearing in a log line.
+  **Breaking** for any code constructing `TrainingResult` directly.
 
 ## [4.4.0] - 2026-08-30
 
