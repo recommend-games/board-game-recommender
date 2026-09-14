@@ -25,6 +25,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   together every epoch (stopping if any of them do), so combining early
   stopping with checkpointing or metadata capture no longer needs a private
   helper.
+- `train()` accepts an optional `lr_scheduler_factory`, called once with the
+  `Adam` optimizer to build a `torch.optim.lr_scheduler`, `.step()`'d at the
+  end of every epoch. Left unset, the learning rate stays flat as before.
+  The CLI exposes step decay directly via `--lr-step-size` and `--lr-gamma`.
 
 ## [4.4.0] - 2026-08-30
 

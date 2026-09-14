@@ -30,6 +30,7 @@ from board_game_recommender.light import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 NUM_USERS = 5
@@ -347,6 +348,54 @@ def test_train_accepts_a_list_of_on_epoch_end_callbacks() -> None:
     # Both callbacks ran on every epoch up to the stop, regardless of order
     assert first_calls == [1, 2]
     assert second_calls == [1, 2]
+
+
+def test_train_calls_lr_scheduler_factory_once_with_the_optimizer() -> None:
+    ratings = _synthetic_ratings(num_users=NUM_USERS, num_items=NUM_ITEMS, seed=30)
+    optimizers: list[torch.optim.Optimizer] = []
+
+    def factory(
+        optimizer: torch.optim.Optimizer,
+    ) -> torch.optim.lr_scheduler.LRScheduler:
+        optimizers.append(optimizer)
+        return torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5)
+
+    train(
+        ratings,
+        num_factors=NUM_FACTORS,
+        num_epochs=3,
+        seed=SEED,
+        lr_scheduler_factory=factory,
+    )
+
+    assert len(optimizers) == 1
+    assert isinstance(optimizers[0], torch.optim.Adam)
+
+
+def test_train_decays_the_learning_rate_via_the_scheduler() -> None:
+    ratings = _synthetic_ratings(num_users=NUM_USERS, num_items=NUM_ITEMS, seed=31)
+    learning_rate = 0.1
+    gamma = 0.5
+    num_epochs = 3
+    optimizers: list[torch.optim.Optimizer] = []
+
+    def factory(
+        optimizer: torch.optim.Optimizer,
+    ) -> torch.optim.lr_scheduler.LRScheduler:
+        optimizers.append(optimizer)
+        return torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=gamma)
+
+    train(
+        ratings,
+        num_factors=NUM_FACTORS,
+        num_epochs=num_epochs,
+        learning_rate=learning_rate,
+        seed=SEED,
+        lr_scheduler_factory=factory,
+    )
+
+    final_lr = optimizers[0].param_groups[0]["lr"]
+    assert final_lr == pytest.approx(learning_rate * gamma**num_epochs)
 
 
 def _small_test_data() -> RecommenderTestData[int, str]:
@@ -797,6 +846,8 @@ def test_parse_args_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert args.unobserved_rating_value is None
     assert args.k_values == (10,)
     assert args.seed is None
+    assert args.lr_step_size is None
+    assert args.lr_gamma == 0.5  # noqa: PLR2004
 
 
 def test_main_trains_evaluates_and_saves_a_model(
@@ -886,6 +937,65 @@ def test_main_writes_checkpoints_every_n_epochs(
 
     checkpoint = LightGamesRecommender.from_npz(tmp_path / "model_epoch0002.npz")
     assert checkpoint.num_users > 0
+
+
+def test_main_wires_lr_step_size_into_a_step_lr_schedule(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ratings = _synthetic_ratings(num_users=10, num_items=15, seed=24)
+    ratings_path = tmp_path / "ratings.jl"
+    ratings.write_ndjson(ratings_path)
+    output_path = tmp_path / "model.npz"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "dnn.py",
+            str(ratings_path),
+            str(output_path),
+            "--power-users",
+            "10",
+            "--test-rows",
+            "10",
+            "--num-epochs",
+            "1",
+            "--learning-rate",
+            "0.1",
+            "--lr-step-size",
+            "1",
+            "--lr-gamma",
+            "0.25",
+            "--seed",
+            str(SEED),
+        ],
+    )
+
+    captured_kwargs: dict[str, object] = {}
+
+    def spy_train(*args: object, **kwargs: object) -> TrainingResult:
+        captured_kwargs.update(kwargs)
+        return train(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr("board_game_recommender.dnn.train", spy_train)
+
+    _main()
+
+    factory = cast(
+        "Callable[[torch.optim.Optimizer], torch.optim.lr_scheduler.LRScheduler]",
+        captured_kwargs["lr_scheduler_factory"],
+    )
+    assert factory is not None
+
+    optimizer = torch.optim.Adam([torch.nn.Parameter(torch.zeros(1))], lr=0.1)
+    scheduler = factory(optimizer)
+    assert isinstance(scheduler, torch.optim.lr_scheduler.StepLR)
+
+    scheduler.step()
+    assert optimizer.param_groups[0]["lr"] == pytest.approx(0.1 * 0.25)
+    scheduler.step()
+    assert optimizer.param_groups[0]["lr"] == pytest.approx(0.1 * 0.25**2)
 
 
 def test_main_stops_early_when_the_metric_plateaus(
