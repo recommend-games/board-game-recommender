@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import functools
 import logging
 import sys
 from dataclasses import dataclass
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
     import numpy as np
+    from torch.optim.lr_scheduler import LRScheduler
 
     from board_game_recommender.evaluation import RecommenderTestData
 
@@ -287,7 +289,7 @@ def _combine_callbacks(
     return combined
 
 
-def train(  # noqa: PLR0913
+def train(  # noqa: C901, PLR0913, PLR0915
     ratings: pl.DataFrame,
     *,
     user_id_key: str = DEFAULT_USER_ID_KEY,
@@ -297,6 +299,7 @@ def train(  # noqa: PLR0913
     num_epochs: int = 20,
     batch_size: int = 1 << 16,
     learning_rate: float = 1e-3,
+    lr_scheduler_factory: Callable[[optim.Optimizer], LRScheduler] | None = None,
     regularization: float = 1e-9,
     linear_regularization: float = 1e-9,
     ranking_regularization: float = 0.25,
@@ -324,6 +327,12 @@ def train(  # noqa: PLR0913
     returns a truthy value, training stops after that epoch. Pass an iterable
     of callbacks (e.g. `[early_stopping_callback(...)[0], my_checkpoint]`) to
     run several independently every epoch; training stops if any of them do.
+
+    `lr_scheduler_factory`, if given, is called once with the `Adam`
+    optimizer and must return a `torch.optim.lr_scheduler` instance, e.g.
+    `functools.partial(torch.optim.lr_scheduler.StepLR, step_size=5,
+    gamma=0.5)`. Its `.step()` is called at the end of every epoch, after
+    `on_epoch_end`. Left unset, `learning_rate` stays flat for the whole run.
     """
 
     if seed is not None:
@@ -391,6 +400,9 @@ def train(  # noqa: PLR0913
         LOGGER.info("Estimated unobserved_rating_value: %.4f", unobserved_rating_value)
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    lr_scheduler = (
+        lr_scheduler_factory(optimizer) if lr_scheduler_factory is not None else None
+    )
 
     num_rows = len(users)
     for epoch in range(num_epochs):
@@ -432,14 +444,17 @@ def train(  # noqa: PLR0913
             num_epochs,
             epoch_loss / num_rows,
         )
-        if on_epoch_end is not None and on_epoch_end(
+        stop = on_epoch_end is not None and on_epoch_end(
             epoch + 1,
             TrainingResult(
                 model=model,
                 user_labels=user_labels,
                 item_labels=item_labels,
             ),
-        ):
+        )
+        if lr_scheduler is not None:
+            lr_scheduler.step()
+        if stop:
             LOGGER.info("Stopping early after epoch %d/%d", epoch + 1, num_epochs)
             break
 
@@ -464,6 +479,20 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--num-epochs", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=1 << 16)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument(
+        "--lr-step-size",
+        type=int,
+        default=None,
+        help="multiply the learning rate by --lr-gamma every N epochs; "
+        "unset disables scheduling and keeps a flat rate",
+    )
+    parser.add_argument(
+        "--lr-gamma",
+        type=float,
+        default=0.5,
+        help="factor the learning rate is multiplied by every --lr-step-size "
+        "epochs; unused unless --lr-step-size is set",
+    )
     parser.add_argument("--regularization", type=float, default=1e-9)
     parser.add_argument("--linear-regularization", type=float, default=1e-9)
     parser.add_argument("--ranking-regularization", type=float, default=0.25)
@@ -582,6 +611,16 @@ def _main() -> None:
         )
         callbacks.append(early_stopping)
 
+    lr_scheduler_factory = (
+        functools.partial(
+            optim.lr_scheduler.StepLR,
+            step_size=args.lr_step_size,
+            gamma=args.lr_gamma,
+        )
+        if args.lr_step_size
+        else None
+    )
+
     result = train(
         train_data,
         user_id_key=args.user_id_key,
@@ -591,6 +630,7 @@ def _main() -> None:
         num_epochs=args.num_epochs,
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
+        lr_scheduler_factory=lr_scheduler_factory,
         regularization=args.regularization,
         linear_regularization=args.linear_regularization,
         ranking_regularization=args.ranking_regularization,
