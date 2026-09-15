@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from typing import TYPE_CHECKING, cast
 
@@ -22,6 +23,8 @@ from board_game_recommender.dnn import (
     _parse_args,
     early_stopping_callback,
     train,
+    training_metadata,
+    write_training_metadata,
 )
 from board_game_recommender.evaluation import RecommenderTestData
 from board_game_recommender.light import (
@@ -415,6 +418,7 @@ def _test_result(model: CollaborativeFilteringModel) -> TrainingResult:
         model=model,
         user_labels=np.array([f"user{u}" for u in range(NUM_USERS)]),
         item_labels=np.arange(NUM_ITEMS),
+        unobserved_rating_value=0.0,
     )
 
 
@@ -1043,3 +1047,108 @@ def test_main_stops_early_when_the_metric_plateaus(
     assert output_path.exists()
     assert "Stopping early" in caplog.text
     assert "Epoch 10/10" not in caplog.text
+
+
+def test_training_metadata_records_hyperparameters_and_library_version() -> None:
+    metadata = training_metadata(hyperparameters={"num_factors": 32, "seed": None})
+
+    assert metadata["hyperparameters"] == {"num_factors": 32, "seed": None}
+    assert metadata["early_stopping"] is None
+    assert isinstance(metadata["library_version"], str)
+    assert metadata["library_version"]
+
+
+def test_training_metadata_records_the_early_stopping_outcome() -> None:
+    state = EarlyStoppingState(
+        metric="ndcg",
+        k=10,
+        best_value=0.75,
+        best_epoch=15,
+        stopped=True,
+    )
+
+    metadata = training_metadata(
+        hyperparameters={"num_factors": 32},
+        early_stopping=state,
+    )
+
+    assert metadata["early_stopping"] == {
+        "metric": "ndcg",
+        "k": 10,
+        "stopped": True,
+        "best_epoch": 15,
+        "best_value": 0.75,
+    }
+
+
+def test_write_training_metadata_writes_a_sidecar_json(tmp_path: Path) -> None:
+    model_path = tmp_path / "model.npz"
+    metadata = training_metadata(hyperparameters={"num_factors": 32})
+
+    sidecar_path = write_training_metadata(model_path, metadata)
+
+    assert sidecar_path == tmp_path / "model.json"
+    assert json.loads(sidecar_path.read_text()) == metadata
+
+
+def test_write_training_metadata_persists_fields_added_by_the_caller(
+    tmp_path: Path,
+) -> None:
+    """
+    The calling application is expected to enrich `training_metadata()`'s
+    result with deployment-specific facts (e.g. a git SHA, a data snapshot
+    id) the library has no way to know, before persisting it.
+    """
+
+    model_path = tmp_path / "model.npz"
+    metadata = training_metadata(hyperparameters={"num_factors": 32})
+    metadata["git_sha"] = "deadbeef"
+
+    sidecar_path = write_training_metadata(model_path, metadata)
+
+    assert json.loads(sidecar_path.read_text())["git_sha"] == "deadbeef"
+
+
+def test_main_writes_a_metadata_sidecar_alongside_the_model(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    power_users = 10
+    test_rows = 10
+    ratings = _synthetic_ratings(num_users=power_users, num_items=15, seed=25)
+    ratings_path = tmp_path / "ratings.jl"
+    ratings.write_ndjson(ratings_path)
+    output_path = tmp_path / "model.npz"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "dnn.py",
+            str(ratings_path),
+            str(output_path),
+            "--power-users",
+            str(power_users),
+            "--test-rows",
+            str(test_rows),
+            "--num-epochs",
+            "1",
+            "--seed",
+            str(SEED),
+        ],
+    )
+
+    _main()
+
+    sidecar_path = output_path.with_suffix(".json")
+    assert output_path.exists()
+    assert sidecar_path.exists()
+    metadata = json.loads(sidecar_path.read_text())
+    assert metadata["hyperparameters"]["num_epochs"] == 1
+    assert metadata["hyperparameters"]["seed"] == SEED
+    assert metadata["hyperparameters"]["power_users"] == power_users
+    assert metadata["hyperparameters"]["test_rows"] == test_rows
+    # Left unset on the CLI, so it must be the value train() actually
+    # resolved and fit against, not None.
+    assert isinstance(metadata["hyperparameters"]["unobserved_rating_value"], float)
+    assert metadata["early_stopping"] is None

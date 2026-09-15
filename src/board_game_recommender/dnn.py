@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import copy
 import functools
+import importlib.metadata
+import json
 import logging
 import sys
 from dataclasses import dataclass
@@ -29,7 +31,7 @@ from board_game_recommender.light import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable, Iterable, Mapping
 
     import numpy as np
     from torch.optim.lr_scheduler import LRScheduler
@@ -125,11 +127,18 @@ class CollaborativeFilteringModel(nn.Module):
 
 @dataclass(frozen=True)
 class TrainingResult:
-    """A trained model, together with the labels its indexes refer to."""
+    """
+    A trained model, together with the labels its indexes refer to.
+
+    `unobserved_rating_value` is what the model was actually fit against: it
+    mirrors `train()`'s parameter of the same name, resolved from the data
+    when left unset there.
+    """
 
     model: CollaborativeFilteringModel
     user_labels: np.ndarray
     item_labels: np.ndarray
+    unobserved_rating_value: float
 
     def to_collaborative_filtering_data(self) -> CollaborativeFilteringData:
         """Convert to the format `LightGamesRecommender` serves."""
@@ -287,6 +296,59 @@ def _combine_callbacks(
         return any([callback(epoch, result) for callback in callbacks])  # noqa: C419
 
     return combined
+
+
+def training_metadata(
+    *,
+    hyperparameters: Mapping[str, object],
+    early_stopping: EarlyStoppingState | None = None,
+) -> dict[str, object]:
+    """
+    Build a training run's provenance record: every hyperparameter actually
+    used, the early-stopping outcome (if early stopping was used), and the
+    installed library version.
+
+    This only covers what the training loop itself knows. A calling
+    application is expected to enrich the returned dict with
+    deployment-specific facts it holds and the library can't know, e.g. a
+    git SHA or the identity of the data snapshot trained on, before
+    persisting it (see `write_training_metadata`).
+    """
+
+    return {
+        "library_version": importlib.metadata.version("board-game-recommender"),
+        "hyperparameters": dict(hyperparameters),
+        "early_stopping": (
+            {
+                "metric": early_stopping.metric,
+                "k": early_stopping.k,
+                "stopped": early_stopping.stopped,
+                "best_epoch": early_stopping.best_epoch,
+                "best_value": early_stopping.best_value,
+            }
+            if early_stopping is not None
+            else None
+        ),
+    }
+
+
+def write_training_metadata(
+    model_path: Path | str,
+    metadata: Mapping[str, object],
+) -> Path:
+    """
+    Write `metadata` as a JSON sidecar next to a trained model's `.npz`,
+    e.g. `model.npz` -> `model.json`. Build `metadata` with
+    `training_metadata()`, optionally enriched with further fields first.
+    """
+
+    sidecar_path = Path(model_path).with_suffix(".json")
+    LOGGER.info("Saving training metadata to <%s>", sidecar_path)
+    with sidecar_path.open(mode="w", encoding="utf-8") as file:
+        json.dump(dict(metadata), file, indent=2, sort_keys=True)
+        file.write("\n")
+
+    return sidecar_path
 
 
 def train(  # noqa: C901, PLR0913, PLR0915
@@ -450,6 +512,7 @@ def train(  # noqa: C901, PLR0913, PLR0915
                 model=model,
                 user_labels=user_labels,
                 item_labels=item_labels,
+                unobserved_rating_value=unobserved_rating_value,
             ),
         )
         if lr_scheduler is not None:
@@ -458,7 +521,12 @@ def train(  # noqa: C901, PLR0913, PLR0915
             LOGGER.info("Stopping early after epoch %d/%d", epoch + 1, num_epochs)
             break
 
-    return TrainingResult(model=model, user_labels=user_labels, item_labels=item_labels)
+    return TrainingResult(
+        model=model,
+        user_labels=user_labels,
+        item_labels=item_labels,
+        unobserved_rating_value=unobserved_rating_value,
+    )
 
 
 def _parse_args() -> argparse.Namespace:
@@ -672,6 +740,40 @@ def _main() -> None:
         )
 
     data.to_npz(args.output)
+
+    metadata = training_metadata(
+        hyperparameters={
+            "user_id_key": args.user_id_key,
+            "game_id_key": args.game_id_key,
+            "ratings_key": args.ratings_key,
+            "num_factors": args.num_factors,
+            "num_epochs": args.num_epochs,
+            "batch_size": args.batch_size,
+            "learning_rate": args.learning_rate,
+            "lr_step_size": args.lr_step_size,
+            "lr_gamma": args.lr_gamma if args.lr_step_size else None,
+            "regularization": args.regularization,
+            "linear_regularization": args.linear_regularization,
+            "ranking_regularization": args.ranking_regularization,
+            # The value actually used, not `args.unobserved_rating_value`:
+            # left unset, `train()` resolves it from the data, and that
+            # resolved value is what the shipped model was fit against.
+            "unobserved_rating_value": result.unobserved_rating_value,
+            "num_sampled_negative_examples": args.num_sampled_negative_examples,
+            "power_users": args.power_users,
+            "test_rows": args.test_rows,
+            "k_values": args.k_values,
+            # metric and k, resolved, live on `early_stopping` below, not
+            # here: `args.early_stopping_k` is often None (defaulting to
+            # `min(args.k_values)`), which would disagree with the k the
+            # run actually evaluated at.
+            "early_stopping_patience": args.early_stopping_patience,
+            "early_stopping_eval_every": args.early_stopping_eval_every,
+            "seed": args.seed,
+        },
+        early_stopping=early_stopping_state,
+    )
+    write_training_metadata(args.output, metadata)
 
 
 if __name__ == "__main__":
