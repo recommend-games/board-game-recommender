@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [4.6.0] - 2026-09-18
+
 ### Changed
 
 - `LightGamesRecommender.from_npz()` now loads `users_factors`,
@@ -184,7 +186,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Initial v4 implementation containing ABC, baseline and light recommenders
 
-[Unreleased]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.5.0...master
+[Unreleased]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.6.0...master
+[4.6.0]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.5.0...4.6.0
 [4.5.0]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.4.0...4.5.0
 [4.4.0]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.3.0...4.4.0
 [4.3.0]: https://gitlab.com/recommend.games/board-game-recommender/compare/4.2.0...4.3.0
