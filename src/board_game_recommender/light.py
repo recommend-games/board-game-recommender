@@ -16,6 +16,14 @@ from board_game_recommender.baseline import dataframe_from_scores
 
 LOGGER = logging.getLogger(__name__)
 
+# float32 precision exceeds the model's training noise, halving memory for free.
+_FLOAT32_FIELDS = (
+    "users_linear_terms",
+    "users_factors",
+    "items_linear_terms",
+    "items_factors",
+)
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Set as AbstractSet
@@ -54,7 +62,13 @@ class CollaborativeFilteringData:
         with file_path.open(mode="rb") as file:
             files = np.load(file=file)
             files_dict = {
-                key: float(files[key]) if key == "intercept" else files[key]
+                key: (
+                    float(files[key])
+                    if key == "intercept"
+                    else files[key].astype(np.float32)
+                    if key in _FLOAT32_FIELDS
+                    else files[key]
+                )
                 for key in files.files
             }
             assert all(
@@ -85,9 +99,14 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
             lambda: -1,
             zip(data.users_labels, range(num_users), strict=True),
         )
-        self.users_linear_terms = np.concatenate((data.users_linear_terms, np.zeros(1)))
+        self.users_linear_terms = np.concatenate(
+            (data.users_linear_terms, np.zeros(1, dtype=data.users_linear_terms.dtype)),
+        )
         self.users_factors = np.concatenate(
-            (data.users_factors, np.zeros((1, num_factors))),
+            (
+                data.users_factors,
+                np.zeros((1, num_factors), dtype=data.users_factors.dtype),
+            ),
             axis=0,
         )
 
@@ -97,9 +116,14 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
             lambda: -1,
             zip(data.items_labels, range(num_items), strict=True),
         )
-        self.items_linear_terms = np.concatenate((data.items_linear_terms, np.zeros(1)))
+        self.items_linear_terms = np.concatenate(
+            (data.items_linear_terms, np.zeros(1, dtype=data.items_linear_terms.dtype)),
+        )
         self.items_factors = np.concatenate(
-            (data.items_factors, np.zeros((num_factors, 1))),
+            (
+                data.items_factors,
+                np.zeros((num_factors, 1), dtype=data.items_factors.dtype),
+            ),
             axis=1,
         )
 
