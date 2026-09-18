@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- `LightGamesRecommender.from_npz()` now loads `users_factors`,
+  `items_factors`, `users_linear_terms`, and `items_linear_terms` as
+  `float32` instead of `float64`, roughly halving the in-memory footprint of
+  a loaded model. Files on disk are unaffected — `to_npz()` still writes
+  whatever dtype the data was constructed with.
+
 ## [4.5.0] - 2026-09-15
 
 ### Added

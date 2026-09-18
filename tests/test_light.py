@@ -15,6 +15,8 @@ from board_game_recommender.light import (
 )
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import polars as pl
 
 UNKNOWN_GAME = 9999
@@ -152,6 +154,37 @@ def test_recommend_similar_with_unknown_game(
         [0.5, 0.0, SQRT_HALF / 2],
         atol=1e-12,
     )
+
+
+def test_from_npz_casts_factor_arrays_to_float32(tmp_path: Path) -> None:
+    data = CollaborativeFilteringData(
+        intercept=7.0,
+        users_labels=np.array(["alice"]),
+        users_linear_terms=np.array([0.5]),
+        users_factors=np.array([[1.0, 0.0]]),
+        items_labels=np.array([1, 2, 3]),
+        items_linear_terms=np.array([0.1, 0.2, 0.3]),
+        items_factors=np.array([[1.0, 0.0, 1.0], [0.0, 1.0, 1.0]]),
+    )
+    file_path = tmp_path / "model.npz"
+    data.to_npz(file_path)
+
+    loaded = CollaborativeFilteringData.from_npz(file_path)
+
+    assert loaded.users_linear_terms.dtype == np.float32
+    assert loaded.users_factors.dtype == np.float32
+    assert loaded.items_linear_terms.dtype == np.float32
+    assert loaded.items_factors.dtype == np.float32
+    # Labels are untouched
+    assert loaded.items_labels.dtype == data.items_labels.dtype
+
+    recommender = LightGamesRecommender(loaded)
+
+    # The padding row/column added in __init__ must not upcast the arrays back
+    assert recommender.users_linear_terms.dtype == np.float32
+    assert recommender.users_factors.dtype == np.float32
+    assert recommender.items_linear_terms.dtype == np.float32
+    assert recommender.items_factors.dtype == np.float32
 
 
 def test_recommend_similar_without_games(recommender: LightGamesRecommender) -> None:
