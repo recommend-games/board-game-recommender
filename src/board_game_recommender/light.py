@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -30,6 +29,36 @@ if TYPE_CHECKING:
     from typing import Any, Self
 
     import polars as pl
+
+
+class SortedLabelIndex:
+    """Maps labels to their original position via a sorted permutation.
+
+    An `np.searchsorted()` lookup over a permutation array avoids the
+    per-item Python object overhead of a `dict` built from the same labels.
+    """
+
+    def __init__(self, labels: np.ndarray) -> None:
+        # `sorter=` looks up positions without materializing a sorted copy of
+        # `labels`, which -- unlike `self._order` -- is exactly as big as the
+        # duplicate array this class exists to avoid.
+        self._labels = labels
+        self._order = np.argsort(labels)
+
+    def __getitem__(self, queries: Iterable[Any]) -> np.ndarray:
+        # a bare str/int would otherwise iterate into garbage instead of erroring
+        if isinstance(queries, (str, int, np.str_, np.integer)):
+            msg = f"expected a batch of labels, got a single one: {queries!r}"
+            raise TypeError(msg)
+        queries_array = np.asarray(list(queries))
+        positions = np.searchsorted(
+            self._labels,
+            queries_array,
+            sorter=self._order,
+        ).clip(max=len(self._labels) - 1)
+        candidate_indexes = self._order[positions]
+        found = self._labels[candidate_indexes] == queries_array
+        return cast("np.ndarray", np.where(found, candidate_indexes, -1))
 
 
 @dataclass(frozen=True)
@@ -91,14 +120,8 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
 
         self.intercept: float = data.intercept
 
-        num_users = len(data.users_labels)
-        # dtype must round-trip exactly through to_npz(); a list would narrow it.
-        self._users_labels_array = data.users_labels
-        self.users_labels: list[str] = list(data.users_labels)
-        self.users_indexes = defaultdict(
-            lambda: -1,
-            zip(data.users_labels, range(num_users), strict=True),
-        )
+        self.users_labels: np.ndarray = data.users_labels
+        self.users_indexes = SortedLabelIndex(data.users_labels)
         self.users_linear_terms = np.concatenate(
             (data.users_linear_terms, np.zeros(1, dtype=data.users_linear_terms.dtype)),
         )
@@ -110,13 +133,8 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
             axis=0,
         )
 
-        num_items = len(data.items_labels)
-        self._items_labels_array = data.items_labels
-        self.items_labels: list[int] = list(data.items_labels)
-        self.items_indexes = defaultdict(
-            lambda: -1,
-            zip(data.items_labels, range(num_items), strict=True),
-        )
+        self.items_labels: np.ndarray = data.items_labels
+        self.items_indexes = SortedLabelIndex(data.items_labels)
         self.items_linear_terms = np.concatenate(
             (data.items_linear_terms, np.zeros(1, dtype=data.items_linear_terms.dtype)),
         )
@@ -139,10 +157,10 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
         # Undo __init__'s padding instead of keeping a second copy just for this.
         CollaborativeFilteringData(
             intercept=self.intercept,
-            users_labels=self._users_labels_array,
+            users_labels=self.users_labels,
             users_linear_terms=self.users_linear_terms[:-1],
             users_factors=self.users_factors[:-1, :],
-            items_labels=self._items_labels_array,
+            items_labels=self.items_labels,
             items_linear_terms=self.items_linear_terms[:-1],
             items_factors=self.items_factors[:, :-1],
         ).to_npz(file_path)
@@ -160,7 +178,7 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
     def known_games(self) -> AbstractSet[int]:
         if self._known_games is not None:
             return self._known_games
-        self._known_games = frozenset(self.items_labels)
+        self._known_games = frozenset(self.items_labels.tolist())
         return self._known_games
 
     @property
@@ -175,7 +193,7 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
     def known_users(self) -> AbstractSet[str]:
         if self._known_users is not None:
             return self._known_users
-        self._known_users = frozenset(self.users_labels)
+        self._known_users = frozenset(self.users_labels.tolist())
         return self._known_users
 
     @property
@@ -192,7 +210,7 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
         """Calculate recommendations scores for certain users and games."""
 
         if users:
-            user_ids = np.array([self.users_indexes[user] for user in users])
+            user_ids = self.users_indexes[users]
             users_factors = self.users_factors[user_ids]
             users_linear_terms = self.users_linear_terms[user_ids].reshape(-1, 1)
         else:
@@ -204,7 +222,7 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
             users_linear_terms = users_linear_terms.mean(axis=0).reshape(1, 1)
 
         if games:
-            game_ids = np.array([self.items_indexes[game] for game in games])
+            game_ids = self.items_indexes[games]
             items_factors = self.items_factors[:, game_ids]
             items_linear_terms = self.items_linear_terms[game_ids].reshape(1, -1)
         else:
@@ -226,7 +244,7 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
         """Calculate average game scores from bias terms."""
 
         if games:
-            game_ids = np.array([self.items_indexes[game] for game in games])
+            game_ids = self.items_indexes[games]
             items_linear_terms = self.items_linear_terms[game_ids]
         else:
             items_linear_terms = self.items_linear_terms[:-1]
@@ -304,7 +322,7 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
         have no latent factors, so they score 0 against everything.
         """
 
-        game_ids = np.array([self.items_indexes[game] for game in games], dtype=int)
+        game_ids = self.items_indexes[games]
         game_factors = self.items_factors[:, game_ids]
         return cosine_similarity(game_factors, self.items_factors[:, :-1])
 
