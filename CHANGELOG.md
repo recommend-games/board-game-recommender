@@ -17,6 +17,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `CollaborativeFilteringData` alive as a second copy of the numeric arrays
   for the lifetime of the recommender. `to_npz()` now reconstructs it from
   the padded arrays instead.
+- `LightGamesRecommender.users_labels`/`items_labels` are now numpy arrays
+  instead of `list`, and user/game lookup uses `np.searchsorted` instead of
+  a `dict` built from them, removing the per-entry Python object overhead of
+  both. Lookup results are unchanged, including for unknown users/games.
 
 ## [4.5.0] - 2026-09-15
 

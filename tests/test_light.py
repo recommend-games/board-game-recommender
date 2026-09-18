@@ -11,6 +11,7 @@ import pytest
 from board_game_recommender.light import (
     CollaborativeFilteringData,
     LightGamesRecommender,
+    SortedLabelIndex,
     cosine_similarity,
 )
 
@@ -156,6 +157,24 @@ def test_recommend_similar_with_unknown_game(
     )
 
 
+def test_sorted_label_index_string_labels() -> None:
+    index = SortedLabelIndex(np.array(["charlie", "alice", "bob"]))
+    result = index[["alice", "bob", "charlie", "unknown"]]
+    np.testing.assert_array_equal(result, [1, 2, 0, -1])
+
+
+def test_sorted_label_index_int_labels() -> None:
+    index = SortedLabelIndex(np.array([30, 10, 20]))
+    result = index[[10, 20, 30, 999]]
+    np.testing.assert_array_equal(result, [1, 2, 0, -1])
+
+
+def test_sorted_label_index_rejects_bare_scalar() -> None:
+    index = SortedLabelIndex(np.array(["alice", "bob"]))
+    with pytest.raises(TypeError):
+        index["alice"]
+
+
 def test_from_npz_casts_factor_arrays_to_float32(tmp_path: Path) -> None:
     data = CollaborativeFilteringData(
         intercept=7.0,
@@ -230,8 +249,8 @@ def test_recommender_to_npz_round_trips(tmp_path: Path) -> None:
     recommender.to_npz(file_path)
     reloaded = LightGamesRecommender.from_npz(file_path)
 
-    assert reloaded.users_labels == recommender.users_labels
-    assert reloaded.items_labels == recommender.items_labels
+    np.testing.assert_array_equal(reloaded.users_labels, recommender.users_labels)
+    np.testing.assert_array_equal(reloaded.items_labels, recommender.items_labels)
     assert reloaded.intercept == recommender.intercept
     np.testing.assert_allclose(reloaded.users_factors, recommender.users_factors)
     np.testing.assert_allclose(reloaded.items_factors, recommender.items_factors)
