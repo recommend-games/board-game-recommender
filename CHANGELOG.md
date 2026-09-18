@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `float32` instead of `float64`, roughly halving the in-memory footprint of
   a loaded model. Files on disk are unaffected — `to_npz()` still writes
   whatever dtype the data was constructed with.
+- `LightGamesRecommender` no longer keeps the original, unpadded
+  `CollaborativeFilteringData` alive as a second copy of the numeric arrays
+  for the lifetime of the recommender. `to_npz()` now reconstructs it from
+  the padded arrays instead.
 
 ## [4.5.0] - 2026-09-15
 

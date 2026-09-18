@@ -85,8 +85,6 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
     _known_users: frozenset[str] | None = None
 
     def __init__(self, data: CollaborativeFilteringData) -> None:
-        self.data = data
-
         assert data.users_factors.shape[-1] == data.items_factors.shape[0]
         num_factors = data.items_factors.shape[0]
         # TODO check other dimensions as well (num_users and num_items)
@@ -94,6 +92,8 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
         self.intercept: float = data.intercept
 
         num_users = len(data.users_labels)
+        # dtype must round-trip exactly through to_npz(); a list would narrow it.
+        self._users_labels_array = data.users_labels
         self.users_labels: list[str] = list(data.users_labels)
         self.users_indexes = defaultdict(
             lambda: -1,
@@ -111,6 +111,7 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
         )
 
         num_items = len(data.items_labels)
+        self._items_labels_array = data.items_labels
         self.items_labels: list[int] = list(data.items_labels)
         self.items_indexes = defaultdict(
             lambda: -1,
@@ -135,7 +136,16 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
 
     def to_npz(self, file_path: Path | str) -> None:
         """Save data into an .npz file."""
-        self.data.to_npz(file_path)
+        # Undo __init__'s padding instead of keeping a second copy just for this.
+        CollaborativeFilteringData(
+            intercept=self.intercept,
+            users_labels=self._users_labels_array,
+            users_linear_terms=self.users_linear_terms[:-1],
+            users_factors=self.users_factors[:-1, :],
+            items_labels=self._items_labels_array,
+            items_linear_terms=self.items_linear_terms[:-1],
+            items_factors=self.items_factors[:, :-1],
+        ).to_npz(file_path)
 
     @classmethod
     def from_npz(

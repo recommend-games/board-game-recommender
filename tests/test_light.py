@@ -187,6 +187,85 @@ def test_from_npz_casts_factor_arrays_to_float32(tmp_path: Path) -> None:
     assert recommender.items_factors.dtype == np.float32
 
 
+def test_light_recommender_does_not_retain_original_numeric_arrays() -> None:
+    # regression test: `.data` used to keep every numeric array duplicated
+    data = CollaborativeFilteringData(
+        intercept=7.0,
+        users_labels=np.array(["alice"]),
+        users_linear_terms=np.array([0.5]),
+        users_factors=np.array([[1.0, 0.0]]),
+        items_labels=np.array([1, 2, 3]),
+        items_linear_terms=np.array([0.1, 0.2, 0.3]),
+        items_factors=np.array([[1.0, 0.0, 1.0], [0.0, 1.0, 1.0]]),
+    )
+    original_arrays = (
+        data.users_linear_terms,
+        data.users_factors,
+        data.items_linear_terms,
+        data.items_factors,
+    )
+
+    recommender = LightGamesRecommender(data)
+
+    assert not any(
+        attr is array
+        for attr in vars(recommender).values()
+        for array in original_arrays
+    )
+
+
+def test_recommender_to_npz_round_trips(tmp_path: Path) -> None:
+    data = CollaborativeFilteringData(
+        intercept=7.0,
+        users_labels=np.array(["alice", "bob"]),
+        users_linear_terms=np.array([0.5, -0.2]),
+        users_factors=np.array([[1.0, 0.0], [0.5, 0.5]]),
+        items_labels=np.array([1, 2, 3]),
+        items_linear_terms=np.array([0.1, 0.2, 0.3]),
+        items_factors=np.array([[1.0, 0.0, 1.0], [0.0, 1.0, 1.0]]),
+    )
+    recommender = LightGamesRecommender(data)
+
+    file_path = tmp_path / "model.npz"
+    recommender.to_npz(file_path)
+    reloaded = LightGamesRecommender.from_npz(file_path)
+
+    assert reloaded.users_labels == recommender.users_labels
+    assert reloaded.items_labels == recommender.items_labels
+    assert reloaded.intercept == recommender.intercept
+    np.testing.assert_allclose(reloaded.users_factors, recommender.users_factors)
+    np.testing.assert_allclose(reloaded.items_factors, recommender.items_factors)
+    np.testing.assert_allclose(
+        reloaded.users_linear_terms,
+        recommender.users_linear_terms,
+    )
+    np.testing.assert_allclose(
+        reloaded.items_linear_terms,
+        recommender.items_linear_terms,
+    )
+
+
+def test_recommender_to_npz_preserves_label_dtype(tmp_path: Path) -> None:
+    # rebuilding from a Python list would narrow the dtype to fit the content
+    data = CollaborativeFilteringData(
+        intercept=7.0,
+        users_labels=np.array(["alice", "bob"], dtype="<U40"),
+        users_linear_terms=np.array([0.5, -0.2]),
+        users_factors=np.array([[1.0, 0.0], [0.5, 0.5]]),
+        items_labels=np.array([1, 2, 3]),
+        items_linear_terms=np.array([0.1, 0.2, 0.3]),
+        items_factors=np.array([[1.0, 0.0, 1.0], [0.0, 1.0, 1.0]]),
+    )
+    recommender = LightGamesRecommender(data)
+
+    file_path = tmp_path / "model.npz"
+    recommender.to_npz(file_path)
+
+    with file_path.open(mode="rb") as file:
+        files = np.load(file=file)
+        assert files["users_labels"].dtype == data.users_labels.dtype
+
+
 def test_recommend_similar_without_games(recommender: LightGamesRecommender) -> None:
     with np.errstate(invalid="raise", divide="raise"):
         result = recommender.recommend_similar([])
