@@ -381,6 +381,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#460-2026-09-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6.0 - 2026-09-18
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.6.0 - 2026-09-18">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#450-2026-09-15" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -404,7 +432,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#changed" class="md-nav__link">
+  <a href="#changed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Changed
@@ -510,7 +538,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#changed_1" class="md-nav__link">
+  <a href="#changed_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         Changed
@@ -549,7 +577,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#changed_2" class="md-nav__link">
+  <a href="#changed_3" class="md-nav__link">
     <span class="md-ellipsis">
       
         Changed
@@ -666,6 +694,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#460-2026-09-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6.0 - 2026-09-18
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.6.0 - 2026-09-18">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#450-2026-09-15" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -689,7 +745,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#changed" class="md-nav__link">
+  <a href="#changed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Changed
@@ -795,7 +851,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#changed_1" class="md-nav__link">
+  <a href="#changed_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         Changed
@@ -834,7 +890,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#changed_2" class="md-nav__link">
+  <a href="#changed_3" class="md-nav__link">
     <span class="md-ellipsis">
       
         Changed
@@ -928,7 +984,24 @@
 <h1 id="changelog">Changelog</h1>
 <p>All notable changes to this project will be documented in this file.</p>
 <p>The format is based on <a href="https://keepachangelog.com/en/1.0.0/">Keep a Changelog</a>, and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
-<h2 id="unreleased"><a href="https://gitlab.com/recommend.games/board-game-recommender/compare/4.5.0...master">Unreleased</a></h2>
+<h2 id="unreleased"><a href="https://gitlab.com/recommend.games/board-game-recommender/compare/4.6.0...master">Unreleased</a></h2>
+<h2 id="460-2026-09-18"><a href="https://gitlab.com/recommend.games/board-game-recommender/compare/4.5.0...4.6.0">4.6.0</a> - 2026-09-18</h2>
+<h3 id="changed">Changed</h3>
+<ul>
+<li><code>LightGamesRecommender.from_npz()</code> now loads <code>users_factors</code>,
+  <code>items_factors</code>, <code>users_linear_terms</code>, and <code>items_linear_terms</code> as
+  <code>float32</code> instead of <code>float64</code>, roughly halving the in-memory footprint of
+  a loaded model. Files on disk are unaffected — <code>to_npz()</code> still writes
+  whatever dtype the data was constructed with.</li>
+<li><code>LightGamesRecommender</code> no longer keeps the original, unpadded
+  <code>CollaborativeFilteringData</code> alive as a second copy of the numeric arrays
+  for the lifetime of the recommender. <code>to_npz()</code> now reconstructs it from
+  the padded arrays instead.</li>
+<li><code>LightGamesRecommender.users_labels</code>/<code>items_labels</code> are now numpy arrays
+  instead of <code>list</code>, and user/game lookup uses <code>np.searchsorted</code> instead of
+  a <code>dict</code> built from them, removing the per-entry Python object overhead of
+  both. Lookup results are unchanged, including for unknown users/games.</li>
+</ul>
 <h2 id="450-2026-09-15"><a href="https://gitlab.com/recommend.games/board-game-recommender/compare/4.4.0...4.5.0">4.5.0</a> - 2026-09-15</h2>
 <h3 id="added">Added</h3>
 <ul>
@@ -964,7 +1037,7 @@
   SHA, the identity of the data snapshot trained on -- before persisting it.
   The CLI calls both, unenriched, automatically after training.</li>
 </ul>
-<h3 id="changed">Changed</h3>
+<h3 id="changed_1">Changed</h3>
 <ul>
 <li><code>TrainingResult</code> gained a required <code>unobserved_rating_value</code> field, so the
   value <code>train()</code> actually fit against (resolved from the data when left
@@ -1045,7 +1118,7 @@
   down that its scores match what <code>LightGamesRecommender</code> serves. They skip
   where the optional <code>torch</code> extra is not installed.</li>
 </ul>
-<h3 id="changed_1">Changed</h3>
+<h3 id="changed_2">Changed</h3>
 <ul>
 <li>Require Python 3.12 or newer, dropping 3.9 through 3.11. Every core
   dependency had already moved past 3.9, so this unlocks current numpy (2.0 -&gt;
@@ -1060,7 +1133,7 @@
   board_game_recommender import LightGamesRecommender</code> worked in v3 but raised
   <code>ImportError</code> in 4.0.0 and 4.1.0, since the package's <code>__init__.py</code> was empty.</li>
 </ul>
-<h3 id="changed_2">Changed</h3>
+<h3 id="changed_3">Changed</h3>
 <ul>
 <li>API documentation now lists each class once, under the import path it is
   actually reachable from, rather than walking every submodule.</li>
