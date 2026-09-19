@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import logging
+import struct
+import zipfile
 from collections.abc import Iterable
-from dataclasses import asdict, dataclass
+from collections.abc import Set as AbstractSet
+from dataclasses import dataclass, fields, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 
@@ -23,10 +26,28 @@ _FLOAT32_FIELDS = (
     "items_factors",
 )
 
+# The members served straight off the file rather than read into the heap.
+_MMAP_FIELDS = (
+    "users_labels",
+    "users_linear_terms",
+    "users_factors",
+)
+
+_ZIP_LOCAL_HEADER_SIZE = 30
+_ZIP_LOCAL_HEADER_SIGNATURE = b"PK\x03\x04"
+
+# Array data has to start at an aligned file offset, or numpy copies the whole
+# array into an aligned buffer on every single operation -- see
+# `_aligned_extra_field()`. 64 is what `.npy` itself pads its headers to.
+_ARRAY_ALIGN = 64
+# A .zip extra field is a sequence of (id, size, payload) records. 0xFFFF is
+# not assigned to anything, so readers skip it; numpy's own loader included.
+_PADDING_EXTRA_FIELD_ID = 0xFFFF
+_EXTRA_FIELD_HEADER_SIZE = 4
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from collections.abc import Set as AbstractSet
-    from typing import Any, Self
+    from typing import IO, Self
 
     import polars as pl
 
@@ -36,14 +57,22 @@ class SortedLabelIndex:
 
     An `np.searchsorted()` lookup over a permutation array avoids the
     per-item Python object overhead of a `dict` built from the same labels.
+
+    `presorted=True` skips building the permutation at all: `np.argsort()`
+    reads every element, which would page in a whole memory mapping.
     """
 
-    def __init__(self, labels: np.ndarray) -> None:
+    def __init__(self, labels: np.ndarray, *, presorted: bool = False) -> None:
         # `sorter=` looks up positions without materializing a sorted copy of
         # `labels`, which -- unlike `self._order` -- is exactly as big as the
         # duplicate array this class exists to avoid.
         self._labels = labels
-        self._order = np.argsort(labels)
+        self._order: np.ndarray | None = None if presorted else np.argsort(labels)
+
+    @property
+    def presorted(self) -> bool:
+        """Whether the labels were already sorted, so no permutation exists."""
+        return self._order is None
 
     def __getitem__(self, queries: Iterable[Any]) -> np.ndarray:
         # a bare str/int would otherwise iterate into garbage instead of erroring
@@ -51,14 +80,210 @@ class SortedLabelIndex:
             msg = f"expected a batch of labels, got a single one: {queries!r}"
             raise TypeError(msg)
         queries_array = np.asarray(list(queries))
+        if not queries_array.size:
+            return np.empty(0, dtype=np.intp)
         positions = np.searchsorted(
             self._labels,
-            queries_array,
+            self._as_labels_dtype(queries_array),
             sorter=self._order,
         ).clip(max=len(self._labels) - 1)
-        candidate_indexes = self._order[positions]
+        order = self._order  # a local narrows where the `presorted` property can't
+        candidate_indexes = positions if order is None else order[positions]
         found = self._labels[candidate_indexes] == queries_array
-        return cast("np.ndarray", np.where(found, candidate_indexes, -1))
+        return np.where(found, candidate_indexes, -1)
+
+    def _as_labels_dtype(self, queries_array: np.ndarray) -> np.ndarray:
+        """Narrow string queries to the labels' own width before searching.
+
+        Two `<U` dtypes of different width make `searchsorted()` promote to a
+        common one, copying the entire label array -- a full 55 MB scan where
+        a ~20-page binary search was intended. Truncation is safe: `found`
+        compares against the untruncated original. Only same-kind casts,
+        since e.g. str-to-int64 raises where a miss is the right answer.
+        """
+
+        labels_dtype = self._labels.dtype
+        if queries_array.dtype.kind != labels_dtype.kind or labels_dtype.kind not in (
+            "U",
+            "S",
+        ):
+            return queries_array
+        return queries_array.astype(labels_dtype)
+
+    def __contains__(self, label: Any) -> bool:
+        """Membership for a single label, without materializing anything."""
+        # `__getitem__` rejects scalars on purpose; this is the scalar door.
+        return bool(self[[label]][0] >= 0)
+
+    def __len__(self) -> int:
+        return len(self._labels)
+
+    def __iter__(self) -> Any:
+        # Touches every label -- fine for a build-time `list()`, never on a
+        # request path. Callers wanting membership should use `in` instead.
+        return iter(self._labels.tolist())
+
+
+class LabelSet(AbstractSet[Any]):
+    """A set view over a `SortedLabelIndex`, answering `in` without a copy.
+
+    The `frozenset(labels.tolist())` this replaces cost ~58 MB, and building
+    it read every label -- which defeats a memory mapping outright.
+    """
+
+    def __init__(self, index: SortedLabelIndex) -> None:
+        self._index = index
+
+    def __contains__(self, label: object) -> bool:
+        return label in self._index
+
+    def __len__(self) -> int:
+        return len(self._index)
+
+    def __iter__(self) -> Any:
+        return iter(self._index)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({len(self)} labels)"
+
+
+def _read_npy_member_layout(
+    file: IO[bytes],
+    header_offset: int,
+) -> tuple[int, np.dtype, tuple[int, ...], bool]:
+    """Locate one `.npy` member's array data inside an uncompressed `.npz`.
+
+    Returns the byte offset of the raw array data, plus the dtype, shape and
+    storage order parsed from the member's `.npy` header.
+    """
+
+    file.seek(header_offset)
+    local_header = file.read(_ZIP_LOCAL_HEADER_SIZE)
+    if local_header[:4] != _ZIP_LOCAL_HEADER_SIGNATURE:
+        msg = f"no local file header at offset {header_offset}"
+        raise ValueError(msg)
+    # The local header's name/extra lengths are the authoritative ones: the
+    # central directory's extra field legitimately differs in size from this.
+    name_length, extra_length = struct.unpack("<HH", local_header[26:30])
+    file.seek(header_offset + _ZIP_LOCAL_HEADER_SIZE + name_length + extra_length)
+
+    version = np.lib.format.read_magic(file)
+    if version == (1, 0):
+        shape, fortran_order, dtype = np.lib.format.read_array_header_1_0(file)
+    elif version == (2, 0):
+        shape, fortran_order, dtype = np.lib.format.read_array_header_2_0(file)
+    else:
+        msg = f"unsupported .npy format version {version}"
+        raise ValueError(msg)
+
+    return file.tell(), dtype, shape, fortran_order
+
+
+def _aligned_extra_field(header_offset: int, filename: str) -> bytes:
+    """Padding that pushes a zip member's payload to an aligned file offset.
+
+    On an unaligned array numpy neither fails nor degrades: it copies the
+    whole thing into an aligned buffer on *every* operation. That took one
+    `searchsorted` over the mapped `users_labels` from 2.6 us to 18 ms and
+    paged in all 55 MB, i.e. it silently undoes on-demand loading. `np.savez()`
+    gives no control over member offsets, hence writing the archive by hand.
+
+    numpy pads the member's own `.npy` header to 64, so aligning the payload
+    aligns the array data with it.
+    """
+
+    payload_offset = (
+        header_offset + _ZIP_LOCAL_HEADER_SIZE + len(filename.encode("utf-8"))
+    )
+    padding = -payload_offset % _ARRAY_ALIGN
+    if padding == 0:
+        return b""
+    # A record cannot be shorter than its own 4-byte header.
+    while padding < _EXTRA_FIELD_HEADER_SIZE:
+        padding += _ARRAY_ALIGN
+    return struct.pack(
+        "<HH",
+        _PADDING_EXTRA_FIELD_ID,
+        padding - _EXTRA_FIELD_HEADER_SIZE,
+    ) + bytes(padding - _EXTRA_FIELD_HEADER_SIZE)
+
+
+def savez_aligned(file_path: Path | str, **arrays: Any) -> None:
+    """Write an uncompressed `.npz` whose members are readable via `np.memmap`.
+
+    Same output as `np.savez()`, except that every member's array data starts
+    at a 64-byte-aligned offset in the file. `np.load()` reads it identically;
+    `memmap_npz_members()` can additionally map it in place.
+    """
+
+    file_path = Path(file_path).resolve()
+    with zipfile.ZipFile(
+        file_path,
+        mode="w",
+        compression=zipfile.ZIP_STORED,
+        allowZip64=True,
+    ) as archive:
+        for name, value in arrays.items():
+            filename = f"{name}.npy"
+            info = zipfile.ZipInfo(filename=filename, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_STORED
+            info.extra = _aligned_extra_field(archive.fp.tell(), filename)  # type: ignore[union-attr]
+            # No `force_zip64`: its 20-byte extra field goes into the local
+            # header too, which would undo the padding computed above.
+            with archive.open(info, mode="w") as member:
+                np.lib.format.write_array(
+                    member,
+                    np.asanyarray(value),
+                    allow_pickle=False,
+                )
+
+
+def memmap_npz_members(
+    file_path: Path | str,
+    names: Iterable[str],
+) -> dict[str, np.memmap]:
+    """Memory-map the named members of an uncompressed `.npz` file in place.
+
+    `np.load(..., mmap_mode="r")` **silently ignores** `mmap_mode` for `.npz`,
+    so it cannot be used for this. Members are stored uncompressed, though, so
+    each can be mapped out of the container at its own offset.
+    """
+
+    file_path = Path(file_path).resolve()
+    mappings: dict[str, np.memmap] = {}
+
+    with zipfile.ZipFile(file_path) as archive, file_path.open(mode="rb") as file:
+        for name in names:
+            info = archive.getinfo(f"{name}.npy")
+            if info.compress_type != zipfile.ZIP_STORED:
+                msg = (
+                    f"member <{name}> is compressed and cannot be mapped; the "
+                    "artefact must be written with np.savez(), not "
+                    "np.savez_compressed()"
+                )
+                raise ValueError(msg)
+            offset, dtype, shape, fortran_order = _read_npy_member_layout(
+                file,
+                info.header_offset,
+            )
+            mapping = np.memmap(
+                file_path,
+                dtype=dtype,
+                shape=shape,
+                order="F" if fortran_order else "C",
+                mode="r",
+                offset=offset,
+            )
+            if not mapping.flags.aligned:
+                # Slower than not mapping at all -- see `_aligned_extra_field`.
+                msg = (
+                    f"member <{name}> starts at unaligned offset {offset}; "
+                    "the artefact must be written by savez_aligned()"
+                )
+                raise ValueError(msg)
+            mappings[name] = mapping
+
+    return mappings
 
 
 @dataclass(frozen=True)
@@ -72,113 +297,247 @@ class CollaborativeFilteringData:
     items_labels: np.ndarray  # (num_items,)
     items_linear_terms: np.ndarray  # (num_items,)
     items_factors: np.ndarray  # (num_factors, num_items)
+    # Recorded rather than checked: verifying sortedness reads every label,
+    # and assuming it wrongly answers every lookup wrongly, silently. Older
+    # artefacts lack the member and load as unsorted.
+    users_sorted: bool = False
+
+    def _field_values(self) -> dict[str, Any]:
+        # `dataclasses.asdict()` would deep-copy all 226 MB just to save it.
+        return {field.name: getattr(self, field.name) for field in fields(self)}
+
+    def sorted_by_user_label(self) -> Self:
+        """The same data with the user arrays in ascending label order.
+
+        This is what lets `np.searchsorted()` run against a mapped label array
+        with no permutation to build at load time.
+        """
+
+        if self.users_sorted:
+            return self
+
+        order = np.argsort(self.users_labels)
+        return replace(
+            self,
+            users_labels=self.users_labels[order],
+            users_linear_terms=self.users_linear_terms[order],
+            users_factors=self.users_factors[order],
+            users_sorted=True,
+        )
 
     def to_npz(self, file_path: Path | str) -> None:
         """Save data into an .npz file."""
 
         file_path = Path(file_path).resolve()
         LOGGER.info("Saving data as .npz to <%s>", file_path)
-        with file_path.open(mode="wb") as file:
-            np.savez(file=file, **asdict(self))
+        values = self.sorted_by_user_label()._field_values()  # noqa: SLF001
+        # Not on load: an `astype()` there materializes the whole array.
+        for key in _FLOAT32_FIELDS:
+            values[key] = values[key].astype(np.float32, copy=False)
+        savez_aligned(file_path, **values)
         LOGGER.info("Done saving <%s>", file_path)
 
     @classmethod
-    def from_npz(cls, file_path: Path | str) -> Self:
-        """Load data from an .npz file."""
+    def from_npz(cls, file_path: Path | str, *, mmap: bool = False) -> Self:
+        """Load data from an .npz file.
+
+        `mmap=True` serves the user arrays off the file, so only the pages a
+        lookup touches become resident. An artefact not in sorted user order
+        is loaded eagerly instead, since `searchsorted` would otherwise lie.
+        """
 
         file_path = Path(file_path).resolve()
         LOGGER.info("Loading data as .npz from <%s>", file_path)
         with file_path.open(mode="rb") as file:
             files = np.load(file=file)
-            files_dict = {
-                key: (
-                    float(files[key])
-                    if key == "intercept"
-                    else files[key].astype(np.float32)
-                    if key in _FLOAT32_FIELDS
-                    else files[key]
+            keys = list(files.files)
+            users_sorted = "users_sorted" in keys and bool(files["users_sorted"])
+
+            if mmap and not users_sorted:
+                LOGGER.warning(
+                    "Artefact <%s> is not in sorted user order, so it can't be "
+                    "memory-mapped; loading it into memory instead. Re-export "
+                    "it to enable on-demand loading.",
+                    file_path,
                 )
-                for key in files.files
-            }
+
+            mapped = (
+                memmap_npz_members(file_path, _MMAP_FIELDS)
+                if mmap and users_sorted
+                else {}
+            )
+
+            values: dict[str, Any] = {}
+            for key in keys:
+                if key == "users_sorted":
+                    values[key] = users_sorted
+                elif key == "intercept":
+                    values[key] = float(files[key])
+                elif key in mapped:
+                    values[key] = mapped[key]
+                elif key in _FLOAT32_FIELDS:
+                    # Pre-4.7 artefacts still arrive as float64.
+                    values[key] = files[key].astype(np.float32, copy=False)
+                else:
+                    values[key] = files[key]
+
             assert all(
-                isinstance(key, str) and isinstance(value, (np.ndarray, float))
-                for key, value in files_dict.items()
-            ), "All keys must be strings and all values must be numpy arrays or floats"
-            return cls(**files_dict)  # type: ignore[arg-type]
+                isinstance(key, str) and isinstance(value, (np.ndarray, float, bool))
+                for key, value in values.items()
+            ), "All keys must be strings and all values arrays, floats or bools"
+            return cls(**values)
+
+
+def _gather(vector: np.ndarray, indexes: np.ndarray) -> np.ndarray:
+    """`vector[indexes]`, with a zero in place of every `-1` (unknown label)."""
+
+    known = indexes >= 0
+    result = np.zeros(len(indexes), dtype=vector.dtype)
+    if known.any():
+        result[known] = vector[indexes[known]]
+    return result
+
+
+def _gather_rows(matrix: np.ndarray, indexes: np.ndarray) -> np.ndarray:
+    """`matrix[indexes]`, with a zero row in place of every `-1`."""
+
+    known = indexes >= 0
+    result = np.zeros((len(indexes), matrix.shape[1]), dtype=matrix.dtype)
+    if known.any():
+        result[known] = matrix[indexes[known]]
+    return result
+
+
+def _gather_columns(matrix: np.ndarray, indexes: np.ndarray) -> np.ndarray:
+    """`matrix[:, indexes]`, with a zero column in place of every `-1`."""
+
+    known = indexes >= 0
+    result = np.zeros((matrix.shape[0], len(indexes)), dtype=matrix.dtype)
+    if known.any():
+        result[:, known] = matrix[:, indexes[known]]
+    return result
 
 
 class LightGamesRecommender(BaseGamesRecommender[int, str]):
     """Light recommender without Turi Create dependency."""
 
-    _known_games: frozenset[int] | None = None
-    _known_users: frozenset[str] | None = None
+    def __init__(
+        self,
+        data: CollaborativeFilteringData,
+        *,
+        eager_users: Iterable[str] | None = None,
+    ) -> None:
+        """
+        `eager_users` are read into the heap up front so they never pay for a
+        page fault. Unknown names are ignored, so a premium-user list is safe
+        to pass even when it has moved ahead of the artefact.
+        """
 
-    def __init__(self, data: CollaborativeFilteringData) -> None:
         assert data.users_factors.shape[-1] == data.items_factors.shape[0]
-        num_factors = data.items_factors.shape[0]
         # TODO check other dimensions as well (num_users and num_items)
 
         self.intercept: float = data.intercept
 
         self.users_labels: np.ndarray = data.users_labels
-        self.users_indexes = SortedLabelIndex(data.users_labels)
-        self.users_linear_terms = np.concatenate(
-            (data.users_linear_terms, np.zeros(1, dtype=data.users_linear_terms.dtype)),
+        self.users_indexes = SortedLabelIndex(
+            data.users_labels,
+            presorted=data.users_sorted,
         )
-        self.users_factors = np.concatenate(
-            (
-                data.users_factors,
-                np.zeros((1, num_factors), dtype=data.users_factors.dtype),
-            ),
-            axis=0,
-        )
+        # Stored unpadded: the zero sentinel row this used to append had to
+        # materialize the whole array. `_gather*()` resolves misses instead.
+        self.users_linear_terms = data.users_linear_terms
+        self.users_factors = data.users_factors
 
         self.items_labels: np.ndarray = data.items_labels
         self.items_indexes = SortedLabelIndex(data.items_labels)
-        self.items_linear_terms = np.concatenate(
-            (data.items_linear_terms, np.zeros(1, dtype=data.items_linear_terms.dtype)),
+        self.items_linear_terms = data.items_linear_terms
+        self.items_factors = data.items_factors
+
+        self._known_games: AbstractSet[int] = LabelSet(self.items_indexes)
+        self._known_users: AbstractSet[str] = LabelSet(self.users_indexes)
+
+        self._eager_indexes = np.empty(0, dtype=np.intp)
+        self._eager_factors = np.empty(
+            (0, self.users_factors.shape[1]),
+            dtype=self.users_factors.dtype,
         )
-        self.items_factors = np.concatenate(
-            (
-                data.items_factors,
-                np.zeros((num_factors, 1), dtype=data.items_factors.dtype),
-            ),
-            axis=1,
+        self._eager_linear_terms = np.empty(
+            0,
+            dtype=self.users_linear_terms.dtype,
         )
+        if eager_users is not None:
+            self._load_eager_users(eager_users)
 
         LOGGER.info(
-            "Loaded light recommender with %d users and %d items",
+            "Loaded light recommender with %d users (%d of them eagerly) and %d items",
             len(self.users_labels),
+            len(self._eager_indexes),
             len(self.items_labels),
         )
 
+    def _load_eager_users(self, eager_users: Iterable[str]) -> None:
+        """Copy the given users' rows into the heap, so lookups never fault."""
+
+        indexes = self.users_indexes[list(eager_users)]
+        # `unique()` also sorts, which is what `_user_rows()` searches against.
+        self._eager_indexes = np.unique(indexes[indexes >= 0])
+        # `asarray()` copies out of the mapping; that is the point.
+        self._eager_factors = np.asarray(self.users_factors[self._eager_indexes])
+        self._eager_linear_terms = np.asarray(
+            self.users_linear_terms[self._eager_indexes],
+        )
+
+    def _user_rows(self, user_ids: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Factors and linear terms for user rows, preferring the eager copy."""
+
+        if not len(self._eager_indexes):
+            return (
+                _gather_rows(self.users_factors, user_ids),
+                _gather(self.users_linear_terms, user_ids),
+            )
+
+        positions = np.searchsorted(self._eager_indexes, user_ids).clip(
+            max=len(self._eager_indexes) - 1,
+        )
+        eager = self._eager_indexes[positions] == user_ids
+
+        # Masked out of the mapped read, then filled from the heap copy, so a
+        # resident user never touches the mapping at all.
+        mapped_ids = np.where(eager, -1, user_ids)
+        factors = _gather_rows(self.users_factors, mapped_ids)
+        linear_terms = _gather(self.users_linear_terms, mapped_ids)
+        if eager.any():
+            factors[eager] = self._eager_factors[positions[eager]]
+            linear_terms[eager] = self._eager_linear_terms[positions[eager]]
+        return factors, linear_terms
+
     def to_npz(self, file_path: Path | str) -> None:
         """Save data into an .npz file."""
-        # Undo __init__'s padding instead of keeping a second copy just for this.
         CollaborativeFilteringData(
             intercept=self.intercept,
             users_labels=self.users_labels,
-            users_linear_terms=self.users_linear_terms[:-1],
-            users_factors=self.users_factors[:-1, :],
+            users_linear_terms=self.users_linear_terms,
+            users_factors=self.users_factors,
             items_labels=self.items_labels,
-            items_linear_terms=self.items_linear_terms[:-1],
-            items_factors=self.items_factors[:, :-1],
+            items_linear_terms=self.items_linear_terms,
+            items_factors=self.items_factors,
+            users_sorted=self.users_indexes.presorted,
         ).to_npz(file_path)
 
     @classmethod
     def from_npz(
         cls,
         file_path: Path | str,
+        *,
+        mmap: bool = False,
+        eager_users: Iterable[str] | None = None,
     ) -> Self:
         """Load data from an .npz file."""
-        data = CollaborativeFilteringData.from_npz(file_path)
-        return cls(data)
+        data = CollaborativeFilteringData.from_npz(file_path, mmap=mmap)
+        return cls(data, eager_users=eager_users)
 
     @property
     def known_games(self) -> AbstractSet[int]:
-        if self._known_games is not None:
-            return self._known_games
-        self._known_games = frozenset(self.items_labels.tolist())
         return self._known_games
 
     @property
@@ -191,9 +550,6 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
 
     @property
     def known_users(self) -> AbstractSet[str]:
-        if self._known_users is not None:
-            return self._known_users
-        self._known_users = frozenset(self.users_labels.tolist())
         return self._known_users
 
     @property
@@ -211,11 +567,17 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
 
         if users:
             user_ids = self.users_indexes[users]
-            users_factors = self.users_factors[user_ids]
-            users_linear_terms = self.users_linear_terms[user_ids].reshape(-1, 1)
+            users_factors, users_linear_terms_1d = self._user_rows(user_ids)
+            users_linear_terms = users_linear_terms_1d.reshape(-1, 1)
         else:
-            users_factors = self.users_factors[:-1, :]
-            users_linear_terms = self.users_linear_terms[:-1].reshape(-1, 1)
+            # Reads every factor off disk when mapped; no request path does
+            # this, they all pass explicit users.
+            LOGGER.warning(
+                "Scoring all %d users at once; this reads every user factor",
+                self.num_users,
+            )
+            users_factors = self.users_factors
+            users_linear_terms = self.users_linear_terms.reshape(-1, 1)
 
         if avg_users:
             users_factors = users_factors.mean(axis=0).reshape(1, -1)
@@ -223,11 +585,14 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
 
         if games:
             game_ids = self.items_indexes[games]
-            items_factors = self.items_factors[:, game_ids]
-            items_linear_terms = self.items_linear_terms[game_ids].reshape(1, -1)
+            items_factors = _gather_columns(self.items_factors, game_ids)
+            items_linear_terms = _gather(self.items_linear_terms, game_ids).reshape(
+                1,
+                -1,
+            )
         else:
-            items_factors = self.items_factors[:, :-1]
-            items_linear_terms = self.items_linear_terms[:-1].reshape(1, -1)
+            items_factors = self.items_factors
+            items_linear_terms = self.items_linear_terms.reshape(1, -1)
 
         return cast(
             "np.ndarray",
@@ -245,9 +610,9 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
 
         if games:
             game_ids = self.items_indexes[games]
-            items_linear_terms = self.items_linear_terms[game_ids]
+            items_linear_terms = _gather(self.items_linear_terms, game_ids)
         else:
-            items_linear_terms = self.items_linear_terms[:-1]
+            items_linear_terms = self.items_linear_terms
 
         return cast("np.ndarray", items_linear_terms + self.intercept)
 
@@ -323,8 +688,8 @@ class LightGamesRecommender(BaseGamesRecommender[int, str]):
         """
 
         game_ids = self.items_indexes[games]
-        game_factors = self.items_factors[:, game_ids]
-        return cosine_similarity(game_factors, self.items_factors[:, :-1])
+        game_factors = _gather_columns(self.items_factors, game_ids)
+        return cosine_similarity(game_factors, self.items_factors)
 
     def recommend_similar(
         self,

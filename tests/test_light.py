@@ -206,8 +206,10 @@ def test_from_npz_casts_factor_arrays_to_float32(tmp_path: Path) -> None:
     assert recommender.items_factors.dtype == np.float32
 
 
-def test_light_recommender_does_not_retain_original_numeric_arrays() -> None:
-    # regression test: `.data` used to keep every numeric array duplicated
+def test_light_recommender_does_not_copy_numeric_arrays() -> None:
+    # regression test: `__init__` used to pad every numeric array with a
+    # sentinel row, which duplicated all of them; unknown labels are now
+    # resolved at index level instead, so the arrays are shared as they are.
     data = CollaborativeFilteringData(
         intercept=7.0,
         users_labels=np.array(["alice"]),
@@ -217,20 +219,15 @@ def test_light_recommender_does_not_retain_original_numeric_arrays() -> None:
         items_linear_terms=np.array([0.1, 0.2, 0.3]),
         items_factors=np.array([[1.0, 0.0, 1.0], [0.0, 1.0, 1.0]]),
     )
-    original_arrays = (
-        data.users_linear_terms,
-        data.users_factors,
-        data.items_linear_terms,
-        data.items_factors,
-    )
 
     recommender = LightGamesRecommender(data)
 
-    assert not any(
-        attr is array
-        for attr in vars(recommender).values()
-        for array in original_arrays
-    )
+    assert recommender.users_linear_terms is data.users_linear_terms
+    assert recommender.users_factors is data.users_factors
+    assert recommender.items_linear_terms is data.items_linear_terms
+    assert recommender.items_factors is data.items_factors
+    # ...and the data object itself is not kept alive either
+    assert not any(value is data for value in vars(recommender).values())
 
 
 def test_recommender_to_npz_round_trips(tmp_path: Path) -> None:
