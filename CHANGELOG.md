@@ -6,6 +6,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `LightGamesRecommender.from_npz()` and `CollaborativeFilteringData.from_npz()`
+  take `mmap=True`, which serves `users_labels`, `users_factors` and
+  `users_linear_terms` straight off the file instead of reading them into
+  memory. Only the pages a lookup actually touches become resident: measured
+  against the production artefact, loading costs +0.1 MB instead of +190 MB,
+  and 200 on-demand user lookups cost +4.2 MB at 39 µs each. Those pages are
+  clean and file-backed, so the kernel evicts them under pressure rather than
+  the process being killed. An artefact exported before this release is not in
+  sorted user order and is loaded eagerly instead, with a warning.
+- `LightGamesRecommender.from_npz()` and the constructor take `eager_users`,
+  a set of users read into the heap up front so they never pay for a page
+  fault — intended for premium and high-activity users. Names the artefact
+  does not know are ignored, so the list may run ahead of the artefact.
+- `savez_aligned()`, which writes the same `.npz` as `np.savez()` but starts
+  every member's array data at a 64-byte-aligned file offset. Without this,
+  numpy copies a whole mapped array into an aligned buffer on *every*
+  operation: a `searchsorted` over unaligned mapped `users_labels` measured
+  18 ms and paged in all 55 MB, against 38 µs aligned.
+
+### Changed
+
+- `to_npz()` now writes the user arrays in ascending `users_labels` order, and
+  records that in a `users_sorted` member. Sorted storage is what lets
+  `np.searchsorted()` run against a mapped label array with no `argsort()` at
+  load time — an `argsort()` would read every label and page in the whole
+  mapping. Sortedness cannot be checked without doing exactly that, hence the
+  recorded flag; an artefact lacking it is treated as unsorted.
+- The float32 cast added in 4.6.0 moved from load time to export time:
+  `to_npz()` now writes float32 and `from_npz()` no longer casts what is
+  already float32. An `astype()` at load time materialises the whole array,
+  which defeats memory-mapping it. This also shrinks the artefact on disk —
+  the production one went from 226 MB to 143 MB. Artefacts written with an
+  older release still load, and are still cast on the way in.
+- `LightGamesRecommender.__init__()` no longer appends a zero-padding row and
+  column to the user and item arrays to give unknown labels somewhere to
+  point. The padding duplicated every array; unknown labels are now resolved
+  at index level instead. Scores for unknown users and games are unchanged.
+- `known_users` and `known_games` are now set views over the label index
+  rather than a `frozenset` built from every label. Membership answers are
+  identical, `in` no longer materialises ~68 MB of Python strings on first
+  access, and it no longer reads every label — which would defeat mmap. They
+  are still iterable, which does read every label; prefer `in`.
+
 ## [4.6.0] - 2026-09-18
 
 ### Changed
